@@ -1,0 +1,160 @@
+#!/usr/bin/env python3
+"""Build the cross-flavour API availability table from Warcraft Wiki.
+
+Blizzard's own generated documentation (see build_api_index.lua) is exact for one
+build, and it is the better source for signatures. It has two blind spots this
+fills:
+
+  1. It documents the C_* systems. The old-style global functions -- GetQuestLogTitle,
+     GetNumQuestLogEntries, AddQuestWatch -- are not in it at all, and this AddOn
+     calls them constantly.
+  2. It says nothing about protection. Whether a call is protected, needs a hardware
+     event, or cannot be made in combat is not in the generated tables.
+
+The wiki carries both, plus a per-flavour availability matrix covering exactly the
+clients this project cares about. It is community-maintained, so it is corroboration
+rather than proof -- see KNOWLEDGE.md on which source wins.
+
+Two pages, fetched as raw wikitext:
+
+  World_of_Warcraft_API          the full list, with {{apitag|...}} markers
+  World_of_Warcraft_API/Classic  a table of {{apicompat|0xN}} availability bits
+
+Usage:
+  build_wiki_compat.py [--offline DIR] OUTDIR
+
+Bit values. The mask runs left-to-right across the page's four columns, so Classic
+Era is the HIGH bit:
+
+  0x8 Classic Era   0x4 TBC Anniversary   0x2 Mists of Pandaria Classic   0x1 retail
+
+Not guessed -- the obvious reading (0x1 = the leftmost column) is wrong, and it fails
+silently by making Mists and retail come out identical. Three checks pin it down:
+
+  GetQuestLogTitle          0xe   Era + TBC + Mists, gone from retail
+  C_QuestLog.AddQuestWatch  0x1   retail only, the replacement for AddQuestWatch
+  C_Minimap.GetTrackingInfo 0xf   all four
+
+If a future run reports the same count for two flavours, suspect this first.
+"""
+
+import argparse
+import os
+import re
+import sys
+import urllib.request
+
+RAW = "https://warcraft.wiki.gg/index.php?title={}&action=raw"
+PAGES = {"api": "World_of_Warcraft_API", "classic": "World_of_Warcraft_API/Classic"}
+
+# Column order on the /Classic page. Keep the letters one character wide: the
+# output is meant to be grepped, and a fixed-width flag column is what makes
+# "which of these exist on Mists" a single pattern.
+FLAVOURS = [(0x8, "E", "Classic Era"), (0x4, "T", "TBC Anniversary"),
+            (0x2, "M", "Mists of Pandaria Classic"), (0x1, "X", "retail")]
+
+
+def fetch(page, offline):
+    if offline:
+        path = os.path.join(offline, page.replace("/", "_") + ".txt")
+        with open(path, encoding="utf-8") as fh:
+            return fh.read()
+    with urllib.request.urlopen(RAW.format(page.replace("/", "%2F")), timeout=60) as r:
+        return r.read().decode("utf-8", "replace")
+
+
+def parse_tags(text):
+    """function name -> sorted list of {{apitag|...}} markers on its line."""
+    tags = {}
+    for line in text.splitlines():
+        m = re.search(r"\[\[API:([A-Za-z0-9_.]+)\|", line)
+        if not m:
+            continue
+        found = re.findall(r"\{\{apitag\|([a-z-]+)", line)
+        if found:
+            tags.setdefault(m.group(1), set()).update(found)
+    return {k: sorted(v) for k, v in tags.items()}
+
+
+def parse_compat(text):
+    """function name -> availability bitmask."""
+    compat = {}
+    pending = None
+    for line in text.splitlines():
+        m = re.search(r"\{\{apicompat\|0x([0-9a-fA-F]+)", line)
+        if m:
+            pending = int(m.group(1), 16)
+        n = re.search(r"\{\{apilink\.api\|([A-Za-z0-9_.]+)\}\}", line)
+        if n and pending is not None:
+            compat[n.group(1)] = pending
+            pending = None
+    return compat
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("outdir")
+    ap.add_argument("--offline", help="directory of pre-fetched raw wikitext")
+    args = ap.parse_args()
+
+    api = fetch(PAGES["api"], args.offline)
+    classic = fetch(PAGES["classic"], args.offline)
+
+    # Both pages state the builds they are current for. Carry that into the output:
+    # a compatibility table with no build stamp is a table nobody can date.
+    stamp = []
+    for line in classic.splitlines()[:12]:
+        m = re.search(r"\[\[Patch_([0-9.]+)/API_changes\|[^\]]+\]\]\s*\((\d+)\)\s*\[\[([^\]|]+)", line)
+        if m:
+            stamp.append("{}  {} ({})".format(m.group(3).strip(), m.group(1), m.group(2)))
+    note = re.search(r"\{\{i-note\|(.-?)\}\}", api) or re.search(r"\{\{i-note\|([^}]+)\}\}", api)
+
+    tags = parse_tags(api)
+    compat = parse_compat(classic)
+    if not compat:
+        sys.exit("no {{apicompat}} rows parsed -- the page layout changed")
+
+    lines = []
+    for name in sorted(compat, key=str.lower):
+        bits = compat[name]
+        flags = "".join(letter if bits & bit else "." for bit, letter, _ in FLAVOURS)
+        row = "{}  {}".format(flags, name)
+        t = tags.get(name)
+        if t:
+            row += "  [" + ",".join(t) + "]"
+        lines.append(row)
+
+    counts = {letter: sum(1 for n, b in compat.items() if b & bit)
+              for bit, letter, _ in FLAVOURS}
+
+    header = [
+        "-- Generated by dev/knowledge/build_wiki_compat.py. Do not hand-edit.",
+        "-- Source: Warcraft Wiki, World_of_Warcraft_API and .../Classic (community-maintained).",
+        "--",
+        "-- Flag column, in order: " + "  ".join(
+            "{}={}".format(l, d) for _, l, d in FLAVOURS),
+        "-- A dot means the function is absent on that client.",
+        "--",
+        "-- Current for:",
+    ] + ["--   " + s for s in stamp] + [
+        "--",
+        "-- Totals: " + ", ".join("{} {}".format(counts[l], d) for _, l, d in FLAVOURS),
+        "-- Tags in brackets come from the main page, which tracks retail. Treat a tag",
+        "-- as corroboration for an older client, never as proof.",
+        "",
+    ]
+    if note:
+        header.insert(6, "-- Main page note: " + note.group(1).strip())
+
+    out = os.path.join(args.outdir, "api-compat.txt")
+    with open(out, "w", encoding="utf-8") as fh:
+        fh.write("\n".join(header) + "\n" + "\n".join(lines) + "\n")
+
+    print("{} functions -> {}".format(len(lines), out))
+    for _, l, d in FLAVOURS:
+        print("  {} {:5d}  {}".format(l, counts[l], d))
+    print("  tagged {}".format(sum(1 for n in compat if n in tags)))
+
+
+if __name__ == "__main__":
+    main()

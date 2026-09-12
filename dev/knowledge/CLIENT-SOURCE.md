@@ -27,10 +27,16 @@ Blizzard's source does not replace a probe. It answers a different question:
 | Which file does this flavour actually load? | the source, exactly |
 | What does Blizzard's own code do when this CVar changes? | the source, exactly |
 | Does the write succeed in play, and does it look right? | only the game |
-| Is this call protected, or does it taint? | only the game |
+| Is this call protected, or does it taint? | the game — but read the wiki's tags first |
 
 So: read the source first, and probe what the source cannot say. What must not happen is a third
 thing — asserting behaviour from memory when the source is one clone away.
+
+On the protection row: Blizzard's generated tables say nothing about protection, but the Warcraft
+Wiki tags 133 functions `protected` and 27 `nocombat`, and `api-compat.txt` carries those tags
+next to the flavour each function exists on. Read them before spending a probe — and read the
+flavour column in the same glance, because a tag on a function that does not exist here explains
+nothing. See `README.md` in this directory for the case where that nearly went wrong.
 
 ### The calibration that keeps this honest
 

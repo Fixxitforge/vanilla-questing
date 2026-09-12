@@ -53,21 +53,59 @@ will not port — but the problem is known-solved once, which is more than the p
 
 ## The two threads, as evidence of demand
 
-Given to this project as "things the AddOn likely needs to remove in the retail client". **Neither
-has been read** — both domains are blocked from the development environment — so there is no
-summary here, deliberately.
+### "Please allow to turn off the quest helper" — read
 
-- <https://www.mmo-champion.com/threads/2644576-Should-the-game-remove-quest-assistance-area-maps-and-focus-more-on-exploration>
-- <https://eu.forums.blizzard.com/en/wow/t/please-allow-to-turn-off-the-quest-helper/529991>
+<https://eu.forums.blizzard.com/en/wow/t/please-allow-to-turn-off-the-quest-helper/529991>
 
-Read them on a machine that can, and pull the named features into a checklist. A thread full of
-people saying which specific thing they want gone is a feature list written by the audience.
+Four posts, 202 views, opened 21 August 2024, **automatically closed 30 days after the last reply**.
+Small, and shut. Its value is not its size.
 
-### And then post in them
+The opening post asks for this AddOn, feature by feature, without knowing it exists:
 
-**Once the retail port ships, say so in both threads.** They are people asking for this AddOn
-before it existed for their client, which is the least cold audience it will ever have. Recorded on
-issue #5 so it is not remembered only here.
+> "an enforced built-in quest helper that puts markers on the **map**, **mini-map** and **tooltips
+> of NPCs**, which directly guide a player to particular quest-related places and NPCs, indicating
+> whom to fight and where. I find such a game-design decision to undermine immersive exploration
+> and joy of discovery."
+
+Three surfaces named, and all three are options this AddOn already ships. Then:
+
+> "I tried finding addons that could remove quest-related points of interest, however, found
+> nothing — only reddit threads where people look for such an addon. There was the 'World Map
+> point of interest removal' addon, but it was last updated in 2016 and API changed dramatically
+> since then, so it doesn't work. Moreover, **it didn't affect the mini-map and NPCs tooltips**."
+
+Someone looked for this, could not find it, and named the two gaps in the nearest thing they found
+— both of which this AddOn covers. That is the strongest demand signal in this file.
+
+No official reply. No CVars or workarounds named beyond "you can turn off the quest arrow".
+
+**And a real objection, from the one reply:**
+
+> "in recent expansions, there is no other way to find them. In Classic, where you had to go was
+> spelt out in the quest instructions, but in later expansions … you will be told to go kill The
+> Big Bull of Bilbo with no directions for how to find him. … It wouldn't need just turning off
+> the map symbols; the devs would have to go back to putting directions in the quest text."
+
+This is the retail port's central design problem and it should be written into the listing rather
+than discovered by a player. On 5.5.4 the quest text still tells you where to go, so removing the
+helper leaves a playable game. **On retail it may not.** Whatever ships there needs to say plainly
+that some modern quests cannot be completed without the markers, and that the options are
+individually switchable for exactly that reason.
+
+### The mmo-champion thread — still unread
+
+<https://www.mmo-champion.com/threads/2644576-Should-the-game-remove-quest-assistance-area-maps-and-focus-more-on-exploration>
+
+Cloudflare returns `403` with `cf-mitigated: challenge` to everything this environment can send.
+Not summarised here, because it has not been read.
+
+### Marketing, with a correction
+
+**The Blizzard thread is closed to new replies** — Discourse shut it automatically in September
+2024. The plan recorded on issue #5 to post in both threads when the retail port ships does not
+work for this one. What is available instead: the EU and US forums take new topics, the poster
+above asked for recommendations and would be worth a courteous reply if a live thread ever
+surfaces, and the reddit threads they mention are the actual place people were looking.
 
 Same tone as everywhere else: what it does, that it is free, one link. Not a pitch.
 
@@ -83,6 +121,18 @@ From reading MapCleaner (retail) beside this client's source — see `REFERENCE-
 | Typewriter quest text | `instantQuestText` off, and the client types it | gone from the client; AddOns re-implement it in Lua |
 | Minimap quest markers | `C_Minimap` tracking entry | unverified |
 | Quest unit circles | `ShowQuestUnitCircles` | `ShowQuestUnitCircles` |
+| Quest log API | `GetQuestLogTitle`, `GetNumQuestLogEntries`, `AddQuestWatch` | **all three gone**; `C_QuestLog.*` instead |
+| Opening the map from code | — | `C_Map.OpenWorldMap`, tagged `nocombat` |
 
 Four of the twelve options are a rewrite rather than a port, on this reading. That is the number
 issue #5 should be sized against.
+
+The last two rows are from `api-compat.txt`, which is generated from the wiki's cross-flavour
+table. The quest log row is the one to note: **the global quest log functions this AddOn calls
+throughout do not exist on retail at all.** That is not a per-option cost like the four above; it
+is a floor under the whole port.
+
+`C_Map.OpenWorldMap` carrying `nocombat` is worth reading twice, because it is a trap in both
+directions. It looks like an explanation for this project's world-map-in-combat bug — and it
+cannot be, because the function is retail-only and absent from 5.5.4. It does mean the retail port
+inherits a combat restriction on the map, from a different mechanism, before it starts.
