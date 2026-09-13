@@ -273,7 +273,7 @@ local PRESET_ORDER = { "classic", "disabled" }
 -- The native dropdown must list "custom" even though it is never a choice --
 -- a dropdown cannot display a value that is not among its entries, and
 -- "custom" is exactly what it displays most of the time. Reordered on request
--- to Full Classic experience, Custom, Disabled: reading "Classic" in that
+-- to Vanilla (Default), Custom, Disabled: reading "Vanilla" in that
 -- instruction as the Custom entry, since those are the three that exist.
 local PRESET_DROPDOWN_ORDER = { "classic", "custom", "disabled" }
 
@@ -284,11 +284,11 @@ local PRESET_DROPDOWN_ORDER = { "classic", "custom", "disabled" }
 -- it is read off the namespace rather than called as a local because it is
 -- defined further down this file.
 --
--- Experimental options do not enter into "Full Classic experience" at all.
+-- Experimental options do not enter into "Vanilla (Default)" at all.
 -- They used to: switching one on dropped the preset to Custom, and picking
 -- Full Classic switched it back off. Both are confusing, and the second is
 -- worse -- a preset undoing a deliberate choice the player had made. The
--- experiments are not part of the Classic experience, so having one on does
+-- experiments are not part of Vanilla (Default), so having one on does
 -- not stop the rest of the settings being it.
 --
 -- "Disabled" is different, and does count them: it means nothing is on.
@@ -808,8 +808,6 @@ end
 -- reload. If a client ever ignores the flag, the callback simply runs outside
 -- a commit and nothing reloads: the map is correct the next time it opens,
 -- which is the same behaviour the slash commands already have.
-local applyingPreset = false
-
 -- What the reload-needing options looked like when the panel was opened, so a
 -- reset that moves nothing does not rebuild the UI for no reason.
 local rebuildBaseline = {}
@@ -1117,7 +1115,7 @@ local function registerNative()
 	-- down reacts by refreshing, which writes the derived preset back over the
 	-- one the player just picked. By the time this ran, GetValue() had already
 	-- been overwritten with the old value, so choosing "Disabled" re-applied
-	-- "Full Classic experience" instead.
+	-- "Vanilla (Default)" instead.
 	--
 	-- Which argument slot carries the value is not documented on this client,
 	-- so take the first one that is a preset this AddOn knows.
@@ -1226,7 +1224,7 @@ local function registerNative()
 	captureRebuildBaseline()
 
 	-- Registration leaves every control showing its registration-time value.
-	-- Without this the dropdown read "Full Classic experience" on a fresh
+	-- Without this the dropdown read "Vanilla (Default)" on a fresh
 	-- login no matter what the checkboxes said.
 	ns.RefreshNative()
 

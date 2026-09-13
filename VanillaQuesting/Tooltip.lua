@@ -308,8 +308,25 @@ end
 -- out of, or one still carrying a height of ours.
 local function onSizeChanged(tooltip)
 	if fitting or scanning then return end
-	if not ns.db or not ns.db.settings.hideTooltipsQuestProgress then return end
 	if type(tooltip) ~= "table" or type(tooltip.NumLines) ~= "function" then return end
+
+	-- The setting gates the SCRUB, not the fit.
+	--
+	-- Setting a height pins the frame, and there is no way to un-pin it: the
+	-- client has no ClearHeight, so from the first fit onwards the tooltip
+	-- sizes itself from the number we last gave it instead of from its lines,
+	-- for the rest of the session. Walking away the moment the option is
+	-- switched off is exactly what left the next tooltip -- one with nothing
+	-- removed from it -- wearing the size of the last scrubbed one.
+	--
+	-- So while the option is on, correct freshly scrubbed tooltips. Once it is
+	-- off, keep correcting any frame still carrying a height of ours: it now
+	-- measures its full, unscrubbed contents, and comes out the right size.
+	-- Ownership ends at the reload, which is the only thing that gives the
+	-- frame back.
+	if not tooltip.__vqPinned then
+		if not ns.db or not ns.db.settings.hideTooltipsQuestProgress then return end
+	end
 
 	local name = tooltip:GetName()
 	if not name then return end
@@ -381,8 +398,14 @@ function M:Enable()
 end
 
 function M:Disable()
-	-- Nothing to restore. The lines are rebuilt from scratch every time a
+	-- The lines need no restoring: they are rebuilt from scratch every time a
 	-- tooltip is shown, so the next one is Blizzard's again.
+	--
+	-- The HEIGHT is the part that does not go away. Once this AddOn has set
+	-- one, the frame is pinned to it until the UI reloads, so `__vqPinned` is
+	-- deliberately left standing and `onSizeChanged` keeps fitting the frame
+	-- to its now-complete contents. Clearing the flag here would abandon the
+	-- frame at whatever size the last scrubbed tooltip needed.
 end
 
 function M:Status()

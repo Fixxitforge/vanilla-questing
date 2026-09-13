@@ -1046,8 +1046,8 @@ if scenario == "native_halfway" then
 	check("options still open", ok, err)
 end
 
-if scenario == "normal" then
-	-- ---- Tier 2: the objective tracker ----
+if scenario == "normal" or scenario == "no_button_type" then
+	-- ---- The objective tracker ----
 	--
 	-- Nothing here hides the tracker. Classic has one; you shift-click a quest
 	-- in the log and it appears. What gets removed is what MoP bolted on.
@@ -1062,24 +1062,42 @@ if scenario == "normal" then
 	check("item buttons are hidden by default", ns.db.settings.hideTrackerItemButtons == true)
 	check("turn-in pop-ups are off by default", ns.db.settings.noCompleteQuestPopup == false)
 
-	-- Quest titles stop being clickable.
-	WatchFrame_Update()
-	local allDead = true
-	for _, b in ipairs(WATCHFRAME_LINKBUTTONS) do
-		if b:IsMouseEnabled() then allDead = false end
+	-- Quest titles stop being clickable -- and ACHIEVEMENT lines do not.
+	--
+	-- Two separate facts on purpose. "Every button is dead" was the old check,
+	-- and it passed for the whole of v1.0.0 while the AddOn was killing
+	-- achievement clicks too, because nothing ever asked which button was
+	-- which. A check that cannot tell the bug from the fix is not a check.
+	local function mouseState()
+		local quest, achievement
+		for _, b in ipairs(WATCHFRAME_LINKBUTTONS) do
+			if b.__name == "link1" then quest = b:IsMouseEnabled() end
+			if b.__name == "link2" then achievement = b:IsMouseEnabled() end
+		end
+		return quest, achievement
 	end
-	check("tracker quest titles are not clickable", allDead)
+
+	WatchFrame_Update()
+	local questLive, achievementLive = mouseState()
+	check("tracker quest titles are not clickable", questLive == false)
+	if scenario == "no_button_type" then
+		check("untagged pool: everything is disabled rather than nothing",
+			achievementLive == false)
+	else
+		check("tracked achievements stay clickable", achievementLive == true)
+	end
 	check("quest item buttons are hidden", WatchFrameItem1:IsShown() == false)
 
 	-- The tracker rebuilds constantly and puts its buttons back each time. A
 	-- one-shot fix at login would pass a naive test and fail in play.
 	WatchFrame_Update()
 	WatchFrame_Update()
-	local stillDead = true
-	for _, b in ipairs(WATCHFRAME_LINKBUTTONS) do
-		if b:IsMouseEnabled() then stillDead = false end
+	local questStill, achievementStill = mouseState()
+	check("still not clickable after further rebuilds", questStill == false)
+	if scenario ~= "no_button_type" then
+		check("achievements still clickable after further rebuilds",
+			achievementStill == true)
 	end
-	check("still not clickable after further rebuilds", stillDead)
 	check("item buttons stay hidden after further rebuilds", WatchFrameItem1:IsShown() == false)
 
 	-- Turning it off must hand the clicks back: a subtractive AddOn leaves no

@@ -327,7 +327,7 @@ SlashCmdList["VANILLAQUESTING"] = function(msg)
 	elseif cmd == "on" or cmd == "off" then
 		local want = (cmd == "on")
 		if arg == "" then
-			-- "/vq on" means the Classic experience, not the experiments.
+			-- "/vq on" means Vanilla (Default), not the experiments.
 			-- Experimental features are only ever turned on by name.
 			--
 			-- Left exactly as the player set them, in both directions of the

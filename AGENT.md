@@ -34,7 +34,7 @@ instead of the player's value ([#27](https://github.com/Fixxitforge/vanilla-ques
 Treat all three as real bugs on their own merits — the design rule is the argument, not a public
 commitment.
 
-**Once all three are fixed**, and only then, the README's **Uninstalling** section may say it:
+**Once all three are fixed**, and only then, the README's **Uninstall** section may say it:
 that `/vq off` followed by deleting the folder leaves the game exactly as it was before the AddOn
 was installed. That is the one place it belongs, because that is the one moment a player needs to
 know it.

@@ -1,6 +1,6 @@
 -- Vanilla Questing -- Objective tracker
 --
--- Tier 2. Classic HAS a tracker: you shift-click a quest in the log and it
+-- Classic HAS a tracker: you shift-click a quest in the log and it
 -- appears. So nothing here hides it -- that would remove a Classic feature
 -- rather than a MoP one. What Classic did not have is everything MoP bolted
 -- onto the lines: clickable quest titles with a context menu behind them, and
@@ -53,6 +53,19 @@ end
 -- The buttons are disabled rather than hidden: hiding them would leave the
 -- title text unclickable but also disturb the layout the tracker built around
 -- them. EnableMouse(false) takes the click without moving anything.
+--
+-- Only the QUEST ones. Blizzard tags every pooled button as it lays it out --
+-- `linkButton.type = "QUEST"` or `"ACHIEVEMENT"` in Wrath/WatchFrame.lua, the
+-- file 5.5.x loads -- and branches on that tag in six places of its own. Until
+-- v1.0.1 this AddOn disabled the whole pool and the README called achievement
+-- lines going dead an unavoidable limitation. It was not; the tag was simply
+-- never read.
+--
+-- The tag is only meaningful after the redraw that sets it, and Blizzard
+-- clears it on release, so a button with no type is one not currently in use.
+-- If NOTHING in the pool carries a type, this is not that client: fall back to
+-- the old behaviour rather than silently doing nothing, because an option that
+-- removes nothing is worse than one with a stated cost.
 
 do
 	local M = ns:RegisterModule("trackerPlainText", {})
@@ -60,6 +73,9 @@ do
 	M.desc  = "Quest titles in the tracker stop being clickable."
 	M.onText  = "Tracker quest titles are now plain text."
 	M.offText = "Tracker quest titles are clickable."
+	-- Stays until the fix in v1.0.1 has been played. The code no longer
+	-- touches achievement buttons, but a limitation is removed from the
+	-- player's tooltip when the game says so, not when the diff does.
 	M.limitation = "Known limitation: tracked achievements stop being clickable too."
 	M.group = "Quest Tracker"
 	M.order = 70
@@ -70,12 +86,25 @@ do
 	-- that they were on. A subtractive AddOn leaves no trace when off.
 	local touched = {}
 
+	-- Does any button in the pool carry a type? Asked fresh on every pass
+	-- rather than cached: the pool is empty before the first redraw, and a
+	-- cached "no" taken then would disable achievements for the whole session.
+	local function poolIsTagged(buttons)
+		for i = 1, #buttons do
+			local b = buttons[i]
+			if type(b) == "table" and b.type ~= nil then return true end
+		end
+		return false
+	end
+
 	function M:trackerPass()
 		local buttons = WATCHFRAME_LINKBUTTONS
 		if type(buttons) ~= "table" then return end
+		local tagged = poolIsTagged(buttons)
 		for i = 1, #buttons do
 			local b = buttons[i]
-			if type(b) == "table" and type(b.EnableMouse) == "function" then
+			if type(b) == "table" and type(b.EnableMouse) == "function"
+				and (not tagged or b.type == "QUEST") then
 				if touched[b] == nil and type(b.IsMouseEnabled) == "function" then
 					local ok, was = pcall(b.IsMouseEnabled, b)
 					touched[b] = ok and was or false

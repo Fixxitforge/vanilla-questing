@@ -309,8 +309,12 @@ hooksecurefunc = function(a, b, c)
 	table.insert(postHooks[a], b)
 end
 
-local function mkButton(name)
-	local b = { __name = name, __mouse = true, __shown = true }
+-- `kind` is Blizzard's own `linkButton.type`, set as it lays each pooled
+-- button out and cleared when it releases it. The AddOn reads it to leave
+-- achievement lines clickable, so the harness has to carry it or the fix is
+-- untested and the fallback is the only path the suite ever runs.
+local function mkButton(name, kind)
+	local b = { __name = name, __mouse = true, __shown = true, type = kind }
 	function b:EnableMouse(v) self.__mouse = v and true or false end
 	function b:IsMouseEnabled() return self.__mouse end
 	function b:Hide() self.__shown = false end
@@ -320,7 +324,14 @@ local function mkButton(name)
 end
 
 WATCHFRAME_MAXQUESTS = 10
-WATCHFRAME_LINKBUTTONS = { mkButton("link1"), mkButton("link2") }
+-- One of each, because the whole point of the tag is telling them apart.
+WATCHFRAME_LINKBUTTONS = { mkButton("link1", "QUEST"), mkButton("link2", "ACHIEVEMENT") }
+if scenario == "no_button_type" then
+	-- A client whose pool carries no tag at all. The AddOn must fall back to
+	-- disabling everything rather than silently disabling nothing: an option
+	-- that removes nothing is worse than one with a stated cost.
+	for _, b in ipairs(WATCHFRAME_LINKBUTTONS) do b.type = nil end
+end
 WatchFrameItem1 = mkButton("WatchFrameItem1")
 _G.WatchFrameItem1 = WatchFrameItem1
 

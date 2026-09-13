@@ -1,6 +1,6 @@
 -- Vanilla Questing -- Minimap
 --
--- Tier 1 minimap. One lever does both jobs: the "Track Quest POIs" entry in
+-- One lever does both jobs: the "Track Quest POIs" entry in
 -- the minimap tracking list controls the numbered quest pins AND the blue
 -- quest objective area. Confirmed in game; see SPEC.md conclusions G1/G2.
 --
@@ -96,8 +96,12 @@ local function setTracking(index, enabled)
 	return ok
 end
 
--- TODO(Options): when the Tier 3 options panel ships, this line and the
--- tooltip below should point at the panel instead of a slash command.
+-- Names the slash command rather than the options panel, deliberately. This
+-- line is chat, and a player reading chat is already typing; "/vq off
+-- hideMinimapQuestHelper" can be copied straight out of it, where "open the
+-- options panel and find the third checkbox" cannot. The panel shipped in
+-- v0.10.0 and the TODO that sat here asking for this to change outlived the
+-- thing it was waiting for.
 local function notice()
 	-- Throttled: a burst of tracking events must not turn into a wall of text.
 	local now = (type(GetTime) == "function" and GetTime()) or 0

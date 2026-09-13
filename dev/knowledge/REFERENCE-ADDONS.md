@@ -15,9 +15,16 @@ git clone --depth 1 https://github.com/ItsJustMeChris/idTip-Community-Fork
 git clone --depth 1 https://github.com/seblindfors/Immersion
 ```
 
-The two scrolling-quest-text AddOns are CurseForge-only, and CurseForge is not reachable from the
-development environment. Their sources have **not** been read; what is written below about them
-comes from their listings and is marked as such.
+The two scrolling-quest-text AddOns are CurseForge-only. `www.curseforge.com` answers
+`403 cf-mitigated: challenge`, but `api.cfwidget.com` mirrors the project metadata and the zips
+come straight off `mediafilez.forgecdn.net`:
+
+```sh
+curl -s https://api.cfwidget.com/wow/addons/scrolling-quest-text        # metadata + file id
+curl -sLO https://mediafilez.forgecdn.net/files/3053/541/QuestText.1.3.0.zip
+```
+
+Both have been read.
 
 ---
 
@@ -320,25 +327,81 @@ how you get it. All three are in **Blizzard's own 5.5.4 documentation** and mark
 override on `SetAlpha` to stop it re-showing itself. If a bug report ever arrives about the tracker
 reappearing, that is the neighbourhood.
 
-## Classic Quest Text, and Vanilla Scrolling Quest Text — not read
+## Classic Quest Text, and Vanilla Scrolling Quest Text — read
 
-- **Classic Quest Text** — <https://www.curseforge.com/wow/addons/scrolling-quest-text>
-  "Restores the old scrolling quest text known from patches 1.x–3.x."
-- **Vanilla Scrolling Quest Text (For Midnight)** — <https://www.curseforge.com/wow/addons/vanilla-scrolling-quest-text>
-  Brings the character-by-character quest text back to **retail**. Configurable speed; option for
-  whether Accept is greyed out while text is still running. Author `jeppe982117151`.
+Both are CurseForge-only. `www.curseforge.com` answers `403 cf-mitigated: challenge`, but
+`api.cfwidget.com` mirrors the project metadata and the zips come straight off
+`mediafilez.forgecdn.net`, so both sources have now been read.
 
-CurseForge is blocked from the development environment, so neither source has been read. Both are
-listed here because of what their existence proves, which does not need their source:
+They are the same author (Ikechi) solving the same problem on two clients a decade apart, which
+makes them an unusually clean measurement of what the retail port costs.
 
-**On retail, `noInstantQuestText` cannot be a CVar write.** This AddOn's version of this feature is
-one line — turn `instantQuestText` off and the client types the text out, because the typewriter is
-still in the 5.x client. Retail has no typewriter left to switch on; these AddOns re-implement it in
-Lua, with a timer and a substring. That makes the retail port of this one option a rewrite, not a
-port, and it is the only one of the twelve where that is true so far.
+### Classic Quest Text — and a lever this AddOn is not pulling
 
-Also worth noting from the listings, as a design detail we would face: both deal with the **Accept
-button during the scroll**, and a third AddOn (Nonintrusive Quest Text) exists only to let you
-double-click through it. Whatever the typewriter does, it has to not make accepting a quest worse.
+<https://www.curseforge.com/wow/addons/scrolling-quest-text> — `## Interface: 80300`, 11,104
+downloads, last updated at 8.3.0, so abandoned since 2020. 565 lines.
 
-If these become relevant, ask for the zips — they are small, and reading them beats guessing.
+> "The control of fading speed and gradient length is available via standard globals
+> (`QUEST_DESCRIPTION_GRADIENT_CPS` and `QUEST_DESCRIPTION_GRADIENT_LENGTH`)."
+
+**Both globals are live on 5.5.4.** `Blizzard_UIPanels_Game/Classic/QuestFrame.lua`, which the
+`.toc` lists with **no `AllowLoadGameType` at all** and therefore loads on every flavour:
+
+```lua
+QUEST_DESCRIPTION_GRADIENT_LENGTH = 30;
+QUEST_DESCRIPTION_GRADIENT_CPS    = 40;
+```
+
+and the fade itself, in the same file:
+
+```lua
+function QuestFrameDetailPanel_OnUpdate(self, elapsed)
+    if ( self.fading ) then
+        self.fadingProgress = self.fadingProgress + (elapsed * QUEST_DESCRIPTION_GRADIENT_CPS);
+        PlaySound(SOUNDKIT.IG_WRITE_QUEST);
+        if ( not QuestInfoDescriptionText:SetAlphaGradient(self.fadingProgress, QUEST_DESCRIPTION_GRADIENT_LENGTH) ) then
+```
+
+`TBC/QuestFrame.lua` — the other copy 5.5.x loads — does not redefine any of it, so these are the
+real ones.
+
+Which means the typewriter this AddOn switches on with `noInstantQuestText` has a **speed knob that
+is a plain global assignment**, and the AddOn does not offer it. Classic Quest Text does exactly
+that, from saved settings:
+
+```lua
+QUEST_DESCRIPTION_GRADIENT_CPS    = glob_sqt.cps
+QUEST_DESCRIPTION_GRADIENT_LENGTH = glob_sqt.len
+```
+
+Raised as an issue. Whether it belongs in a subtractive AddOn is a real question — 40 CPS is what
+Vanilla did, and "Vanilla, but faster" is a different product — but it is a lever, it is free, and
+it was not known about.
+
+The other thing it has is a **skip**: click anywhere in the quest window and the text completes.
+Blizzard's own code disables `QuestFrameAcceptButton` until the fade finishes, so a player who
+wants to accept is made to wait. Worth knowing before anyone calls the slow text a feature.
+
+### Vanilla Scrolling Quest Text — what the port actually costs
+
+<https://www.curseforge.com/wow/addons/vanilla-scrolling-quest-text> — `## Interface: 120005`,
+retail (Midnight), 211 downloads, first published March 2026. 230 lines.
+
+Same author, same feature, **completely different implementation**, and that is the finding:
+
+```lua
+local solid = string.sub(full_text, 1, math.max(0, charCount - 3))
+local step3 = string.sub(full_text, math.max(1, charCount - 2), math.max(0, charCount - 2))
+...
+QuestInfoDescriptionText:SetText( ... )
+```
+
+No `SetAlphaGradient`. It rebuilds the string character by character on an `OnUpdate` and fakes the
+gradient with per-character colour codes on the last three characters.
+
+So the retail version of `noInstantQuestText` is not a CVar, and not a global either — it is a
+text-substring animation with a speed slider, a hold-to-speed-up modifier, and an option for
+whether the Accept button greys out. 230 lines to replace one line of ours.
+
+**That is the single clearest measurement of the port in this directory**, and it is one option out
+of twelve.

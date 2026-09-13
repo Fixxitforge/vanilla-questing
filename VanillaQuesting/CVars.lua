@@ -10,7 +10,7 @@ local C = ns.color
 
 local RULES = {
 	{
-		-- Tier 1. Removes the numbered quest pins, the blue quest area
+		-- Removes the numbered quest pins, the blue quest area
 		-- highlights, the "Track Quest" checkbox and the quest log panel
 		-- inside the fullscreen map. Verified in game.
 		key     = "hideMapQuestHelper",
@@ -31,17 +31,19 @@ local RULES = {
 		desc    = "Removes the quest markers, the blue objective areas, the Track Quest checkbox and the quest list in the world map.",
 	},
 	{
-		-- Tier 2, opt-in. Newly accepted quests stop auto-tracking. This is
-		-- real quality of life, not clutter, so it ships off and the player
-		-- chooses it rather than having it chosen for them.
+		-- Newly accepted quests stop auto-tracking.
 		key     = "noAutoQuestTracking",
 		cvar    = "autoQuestWatch",
 		-- Blizzard shows this one as "Automatic Quest Tracking". Confirmed by
 		-- [G19], which read the variable off Blizzard's own control.
 		blizzOption = "Automatic Quest Tracking",
 		wanted  = "0",
-		-- Ships ON: the Full Classic experience is what people install this
-		-- AddOn for, so a fresh install gives exactly that.
+		-- Ships ON. Vanilla (Default) is what people install this AddOn for,
+		-- so a fresh install gives exactly that. An earlier pass argued the
+		-- opposite four lines up -- that this is quality of life rather than
+		-- clutter and should ship off. That decision was reversed; the
+		-- argument for it is gone rather than left sitting next to the code
+		-- that contradicts it.
 		default = true,
 		label   = "automatic tracking of new quests",
 		onText  = "Newly accepted quests are no longer tracked automatically.",
@@ -75,7 +77,7 @@ local RULES = {
 		desc    = "Quest text appears slowly, accompanied by the sound of a quill writing.",
 	},
 	{
-		-- Tier 3, opt-in. The boss and creature portrait pins MoP puts on
+		-- The boss and creature portrait pins MoP puts on
 		-- zone maps, which Classic never had. Confirmed working in game.
 		-- Recon named the lever: provider 7 is EncounterJournalDataProvider
 		-- carrying cvar=showBosses.
@@ -93,7 +95,7 @@ local RULES = {
 		desc    = "Hides the boss portraits on the world map.",
 	},
 	{
-		-- Tier 3, opt-in, EXPERIMENTAL and off by default.
+		-- EXPERIMENTAL and off by default.
 		--
 		-- Unusually for this AddOn it turns something ON. Quest objects and
 		-- herbs get either an outline or a sparkle, never both, so switching
