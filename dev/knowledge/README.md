@@ -11,7 +11,7 @@ This is not documentation of this AddOn — that is `SPEC.md`. It is the noteboo
 | [`api-index.txt`](api-index.txt) | Every system, function and event the client documents. 533 systems, 4,590 functions, 1,483 events |
 | [`api-signatures.txt`](api-signatures.txt) | Full signatures and structures, for the systems this AddOn touches |
 | [`api-compat.txt`](api-compat.txt) | Which of 7,362 API functions exist on Classic Era, TBC, **Mists** and retail, with protection tags. From the wiki; fills two gaps Blizzard's own documentation has |
-| [`REFERENCE-ADDONS.md`](REFERENCE-ADDONS.md) | Five AddOns worth reading, what to take from each, and what not to copy |
+| [`REFERENCE-ADDONS.md`](REFERENCE-ADDONS.md) | Six AddOns worth reading, what to take from each, and what not to copy |
 | [`RETAIL.md`](RETAIL.md) | What a retail port would have to remove. All of it unverified, and marked as such |
 | `fetch_client_source.sh` | Clones a client's interface source and rebuilds the index |
 | `build_api_index.lua` | Generates the two index files from the client's own API documentation |

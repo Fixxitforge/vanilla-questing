@@ -1,6 +1,6 @@
 # Reference AddOns
 
-Five AddOns worth reading, and what each one is actually good for. Read as evidence of *how other
+Six AddOns worth reading, and what each one is actually good for. Read as evidence of *how other
 people solved the problem on a real client*, which is the one thing a wiki cannot give you.
 
 Nothing here is a dependency and nothing here is copied. This project stays a single AddOn with no
@@ -12,6 +12,7 @@ Three of the five are on GitHub and can be cloned:
 git clone --depth 1 https://github.com/bloerwald/MapCleaner
 git clone --depth 1 https://github.com/Stanzilla/AdvancedInterfaceOptions
 git clone --depth 1 https://github.com/ItsJustMeChris/idTip-Community-Fork
+git clone --depth 1 https://github.com/seblindfors/Immersion
 ```
 
 The two scrolling-quest-text AddOns are CurseForge-only, and CurseForge is not reachable from the
@@ -209,6 +210,115 @@ AIO's is the one that matches "one AddOn, one listing".
 should not be assumed.
 
 ---
+
+## Immersion — how to be one AddOn on five clients
+
+`seblindfors/Immersion`. Replaces the quest and gossip frames with a cinematic dialogue view. Very
+little of what it *does* is relevant here — it is additive where this AddOn is subtractive. What is
+relevant is how it survives being installed on five different clients at once, which is issue #5's
+whole problem.
+
+### One package, five interface numbers
+
+```
+## Interface: 11509, 20506, 38010, 50500, 120100
+```
+
+Era, TBC, a Wrath-era build, **Mists**, retail. That is the second shipping example of the
+multi-value `.toc` line, after Advanced Interface Options, and between them the mechanism is not in
+doubt.
+
+One detail worth a second look: it declares **`50500`** while the live client is **`50504`**.
+Whether the client treats that as current or flags the AddOn out of date is not something the
+`.toc` can answer, and it matters for #21 — if a same-expansion interface number is close enough,
+the 5.5.5 bump is less urgent than it looks. Worth one glance at the AddOn list in game.
+
+### The pattern to steal: one API table, not branches everywhere
+
+`Interface.lua` defines `ImmersionAPI` and routes every version-sensitive call through it:
+
+```lua
+function API:GetQuestText(...)
+    return GetQuestText and GetQuestText(...)
+end
+```
+
+The `Func and Func(...)` shim means a client missing the function returns nil instead of erroring,
+and the call sites never learn which client they are on. **This AddOn already writes defensively
+this way in places** — `type(WatchFrame_Update) == "function"` before every call — but scattered
+through the modules rather than collected. Collecting it is what makes a second client tractable,
+and it is the concrete shape issue #5 is missing.
+
+### Two version tests, and why the second one is the better idea
+
+```lua
+local IS_RETAIL = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE or nil;
+
+local IS_WOW10 = (function()
+    local version = select(4, GetBuildInfo())
+    if version >= 30401 or ( version >= 11404 and version <= 20506 ) then
+        return true
+    end
+end)();
+```
+
+`WOW_PROJECT_ID` against `WOW_PROJECT_MAINLINE` is the documented test, and note that it **degrades
+safely**: if either constant is nil on an older client the comparison is simply false, which is the
+right answer anyway. That is not proof the constants exist on 5.5.4 — an unprobed nil and a real
+false look identical here — but it does mean using it costs nothing.
+
+`IS_WOW10` is the more interesting one, and it is deliberately **not** a version test. It asks
+whether the modern API is present, and the answer is discontinuous: 3.4.1 and up, *or* the 1.14.4
+to 2.5.6 range, because Blizzard backported the modern API to Era and TBC but not to the Wrath
+builds in between.
+
+**A capability is not a version.** Anywhere this project is tempted to write "on Mists, do X",
+the question underneath is almost always "is this present", and that one has an answer that keeps
+working on a client nobody has thought about yet.
+
+For the record, 50504 clears `>= 30401`, so this client is "WoW10" by that test — consistent with
+what probing found independently: the modern Settings API, `MenuUtil`, and frame pools are all here.
+
+### The compat registry, which belongs to a different issue
+
+`Compat.lua` is not about client versions at all. It is a table keyed by **other AddOn names**, each
+with a function that patches up the clash:
+
+```lua
+L.compat = {
+    ['ConsolePort']      = function(self) ... end;
+    ['Blitz']            = function(self) ... end;
+    ['NomiCakes']        = function(self) ... end;
+    ['!KalielsTracker']  = function(self) ... end;
+}
+```
+
+`Display/Onload.lua` drives it on `ADDON_LOADED`, and the bookkeeping is the good part:
+
+```lua
+for addOn, func in pairs(L.compat) do
+    if select(4, C_AddOns.GetAddOnInfo(addOn)) then   -- loadable at any point?
+        if C_AddOns.IsAddOnLoaded(addOn) then
+            func(self)
+            L.compat[addOn] = nil
+        end
+    else                                              -- never going to load
+        L.compat[addOn] = nil
+    end
+end
+```
+
+Entries are pruned as they fire or are ruled out, the table is dropped when empty, and the event is
+unregistered after that. It handles both orders — the other AddOn loading before or after.
+
+This is the shape issue #15 wants. The ask there was for a report that says which other AddOns are
+installed and might clash, and `C_AddOns.GetAddOnInfo` / `IsAddOnLoaded` / `GetAddOnMetadata` are
+how you get it. All three are in **Blizzard's own 5.5.4 documentation** and marked `ETMX` in
+`api-compat.txt` — present on every flavour, which is as confirmed as an API gets here.
+
+`!KalielsTracker` is worth noting for its own sake: a tracker AddOn that fights back, with an
+override on `SetAlpha` to stop it re-showing itself. If a bug report ever arrives about the tracker
+reappearing, that is the neighbourhood.
 
 ## Classic Quest Text, and Vanilla Scrolling Quest Text — not read
 

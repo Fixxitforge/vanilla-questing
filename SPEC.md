@@ -158,7 +158,7 @@ and is never advertised** — no "leaves no trace" on any public page. Three pat
 it: [#18](https://github.com/Fixxitforge/vanilla-questing/issues/18),
 [#19](https://github.com/Fixxitforge/vanilla-questing/issues/19),
 [#27](https://github.com/Fixxitforge/vanilla-questing/issues/27). Once all three are closed, the
-README's Uninstalling section may say it, and nowhere else.
+README's **Uninstall** section may say it, and nowhere else.
 
 **SavedVariables:** account-wide, not per character. Whether that should be the player's choice
 is [issue #10](https://github.com/Fixxitforge/vanilla-questing/issues/10).
@@ -404,7 +404,9 @@ Three of CurseForge's own rules shaped it: donation links go **at the bottom**, 
 must never advertise paywalled features; off-platform links go at the bottom too; and the summary
 says what the project does, not who made it.
 
-Licence: **All rights reserved**, CurseForge's default.
+Licence: **MIT**, matching [`LICENSE`](LICENSE) in this repository. The listing's licence field
+has to be set to match — a repository that says MIT beside a listing that says All rights reserved
+is one claim too many, and the stricter of the two is the one a reader believes.
 
 Its **Known limitations** section must include, at minimum:
 
