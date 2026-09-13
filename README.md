@@ -150,8 +150,7 @@ If it is making your adventures better, you can support development with a coffe
 
 ## Licence
 
-**[MIT](LICENSE)** — use it, change it, ship your own version, as long as the copyright notice
-travels with it.
+**[MIT](LICENSE)**
 
 ## Create a release
 
