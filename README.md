@@ -47,7 +47,7 @@ or `/reload`, then type `/vq` to open the options.
 
 ## What it removes
 
-Twelve options, in the five groups the options panel uses.
+You have full control, disable as much or as little as you like.
 
 **Map and minimap**
 
