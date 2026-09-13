@@ -286,8 +286,9 @@ local function status()
 		-- "(experimental)" note after it carries the mark on its own, and the
 		-- panel cannot colour its names at all (see [G23b]) -- so colouring
 		-- them here made the two disagree about what an option looks like.
+		-- A sub-option is indented, so the list reads the way the panel looks.
 		ns:Print("  " .. (on and (C.on .. "on " .. C.close) or (C.off .. "off " .. C.close)) ..
-			"  " .. C.highlight .. tostring(m.key) .. C.close ..
+			"  " .. (m.parent and "   " or "") .. C.highlight .. tostring(m.key) .. C.close ..
 			(m.experimental and (" " .. C.experimental .. "(experimental)" .. C.close) or ""))
 	end
 end

@@ -34,10 +34,24 @@ instead of the player's value ([#27](https://github.com/Fixxitforge/vanilla-ques
 Treat all three as real bugs on their own merits — the design rule is the argument, not a public
 commitment.
 
-**Once all three are fixed**, and only then, the README's **Uninstall** section may say it:
-that `/vq off` followed by deleting the folder leaves the game exactly as it was before the AddOn
-was installed. That is the one place it belongs, because that is the one moment a player needs to
-know it.
+**The claim stops at `/vq off`, and it stops there permanently.** Not "once the bugs are fixed" —
+there is no fix. `#32` walked the rest of the path and it does not close:
+
+- The remembered values live in SavedVariables, inside the folder. Deleting the folder deletes the
+  record of what to restore in the same action.
+- A logout-time restore would cover the tidy case, and does not cover the others. Unticking the
+  AddOn on the character select screen means it never loads and never restores — and that is a
+  far commoner thing to do than deleting a folder.
+- A crash, a force-quit, or deleting the folder mid-session are all outside anything an AddOn can
+  hook.
+
+So the README says what is true and no more: **`/vq off` hands the game's own settings back while
+the AddOn is still loaded to do it**, then delete the folder. It never promises that deleting the
+folder alone restores anything, and there is no future in which it starts to.
+
+The design rule above is unchanged. Putting settings back is still the job, and #18 and #27 are
+still real bugs. What changed is that the end of the road has been walked, and it has a wall at
+the end of it.
 
 ---
 

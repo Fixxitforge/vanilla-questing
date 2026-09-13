@@ -73,10 +73,6 @@ do
 	M.desc  = "Quest titles in the tracker stop being clickable."
 	M.onText  = "Tracker quest titles are now plain text."
 	M.offText = "Tracker quest titles are clickable."
-	-- Stays until the fix in v1.0.1 has been played. The code no longer
-	-- touches achievement buttons, but a limitation is removed from the
-	-- player's tooltip when the game says so, not when the diff does.
-	M.limitation = "Known limitation: tracked achievements stop being clickable too."
 	M.group = "Quest Tracker"
 	M.order = 70
 
@@ -97,6 +93,21 @@ do
 		return false
 	end
 
+	-- Which kinds of line this pass silences.
+	--
+	-- Quests always. Achievements only when the sub-option asks for them --
+	-- and on a client whose pool carries no tag at all, everything, because
+	-- there is no way to be selective and an option that removes nothing is
+	-- worse than one with a stated cost.
+	local function silences(b, tagged)
+		if not tagged then return true end
+		if b.type == "QUEST" then return true end
+		if b.type == "ACHIEVEMENT" then
+			return ns.db and ns.db.settings.trackerPlainTextAchievements and true or false
+		end
+		return false
+	end
+
 	function M:trackerPass()
 		local buttons = WATCHFRAME_LINKBUTTONS
 		if type(buttons) ~= "table" then return end
@@ -104,7 +115,7 @@ do
 		for i = 1, #buttons do
 			local b = buttons[i]
 			if type(b) == "table" and type(b.EnableMouse) == "function"
-				and (not tagged or b.type == "QUEST") then
+				and silences(b, tagged) then
 				if touched[b] == nil and type(b.IsMouseEnabled) == "function" then
 					local ok, was = pcall(b.IsMouseEnabled, b)
 					touched[b] = ok and was or false
@@ -133,6 +144,68 @@ do
 		local buttons = WATCHFRAME_LINKBUTTONS
 		if type(buttons) ~= "table" then return "no tracker link buttons" end
 		return #buttons .. " tracker link button(s)"
+	end
+
+	-----------------------------------------------------------------
+	-- Sub-option: achievement lines too
+	-----------------------------------------------------------------
+	--
+	-- The first sub-option this AddOn has. `M.parent` names the module it
+	-- hangs off; Options.lua hands the child initializer to Blizzard's
+	-- SetParentInitializer, which indents it, drops it to the small font and
+	-- greys it out whenever the parent is off. The fallback panel and
+	-- `/vq status` indent to match, so all three agree.
+	--
+	-- It exists because v1.0.0 could not tell a quest line from an achievement
+	-- line and silenced both, and the README called that an unavoidable
+	-- limitation. It was not -- but "a tracker that is entirely text" is still
+	-- a reasonable thing to want, so the old behaviour is offered rather than
+	-- taken away. Off by default: the limitation is gone, not renamed.
+	--
+	-- Declared inside this block on purpose. It shares `touched`, which is
+	-- what lets it hand the achievement clicks back without guessing that they
+	-- were on.
+	local C = ns:RegisterModule("trackerPlainTextAchievements", {})
+	C.title   = "Achievement Lines Too"
+	C.desc    = "Achievement titles in the tracker stop being clickable as well."
+	C.onText  = "Tracker achievement titles are now plain text."
+	C.offText = "Tracker achievement titles are clickable."
+	C.group   = "Quest Tracker"
+	C.order   = 71
+	C.parent  = "trackerPlainText"
+
+	ns:RegisterDefaults({ trackerPlainTextAchievements = false })
+
+	function C:Enable()
+		ensureHook()
+		if type(WatchFrame_Update) == "function" then pcall(WatchFrame_Update) end
+	end
+
+	function C:Disable()
+		-- Only the achievement buttons. The parent owns the quest ones and is
+		-- very likely still on.
+		for b, was in pairs(touched) do
+			if type(b) == "table" and b.type == "ACHIEVEMENT"
+				and type(b.EnableMouse) == "function" then
+				pcall(b.EnableMouse, b, was and true or false)
+				touched[b] = nil
+			end
+		end
+		if type(WatchFrame_Update) == "function" then pcall(WatchFrame_Update) end
+	end
+
+	function C:Status()
+		if not (ns.db and ns.db.settings.trackerPlainText) then
+			return "parent option is off"
+		end
+		local buttons = WATCHFRAME_LINKBUTTONS
+		if type(buttons) ~= "table" then return "no tracker link buttons" end
+		local n = 0
+		for i = 1, #buttons do
+			local b = buttons[i]
+			if type(b) == "table" and b.type == "ACHIEVEMENT" then n = n + 1 end
+		end
+		return n .. " achievement line(s) in the tracker"
 	end
 end
 

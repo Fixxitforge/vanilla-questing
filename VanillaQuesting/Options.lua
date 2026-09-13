@@ -623,13 +623,18 @@ local function build()
 
 		local cb = makeCheckbox(row)
 		if cb then
-			cb:SetPoint("LEFT", 12, 0)
+			-- A sub-option is indented, the way the native panel indents it.
+			-- The greying-out the native panel does for free is not worth
+			-- rebuilding here: this panel only appears when the native
+			-- registration has failed, and the indent alone says which option
+			-- a row belongs to.
+			cb:SetPoint("LEFT", m.parent and 28 or 12, 0)
 
 			-- An experimental option's NAME is orange. Not its tooltip header,
 			-- which stays white like every other tooltip title -- the thing
 			-- that is experimental is the option, and that is what should be
 			-- marked in the list you scan.
-			local label = fs(row, "GameFontNormal")
+			local label = fs(row, m.parent and "GameFontNormalSmall" or "GameFontNormal")
 			label:SetPoint("LEFT", cb, "RIGHT", 4, 0)
 			label:SetText(m.title or m.key)
 			if m.experimental then
@@ -1155,6 +1160,11 @@ local function registerNative()
 	-- The mark still reaches the player twice: `/vq status` colours the name,
 	-- and the tooltip body carries the experimental note in orange.
 
+	-- Initializers by module key, so a child can be handed its parent's. The
+	-- ordering guarantees the parent is built first: a sub-option's `order`
+	-- puts it immediately after the module it belongs to.
+	local nativeInitializers = {}
+
 	local function addCheckbox(m)
 		local oks, setting = pcall(Settings.RegisterAddOnSetting,
 			category, "VanillaQuesting_" .. m.key, m.key, ns.db.settings,
@@ -1163,8 +1173,37 @@ local function registerNative()
 
 		if m.needsApply then askForApply(setting) end
 
-		if not pcall(Settings.CreateCheckbox, category, setting, tooltipFor(m)) then
-			return false
+		local okc, init = pcall(Settings.CreateCheckbox, category, setting, tooltipFor(m))
+		if not okc then return false end
+
+		-- Sub-options.
+		--
+		-- CreateCheckbox hands back the initializer, and SetParentInitializer
+		-- is what makes Blizzard's own nested checkboxes nested: the child
+		-- indents, drops to the smaller font, and greys out whenever the
+		-- predicate is false. Blizzard uses it throughout
+		-- Blizzard_SettingsDefinitions_Frame/AudioAssist.lua on this client.
+		--
+		-- The predicate reads the saved value rather than the parent setting
+		-- object, because that value is the one `/vq` and the fallback panel
+		-- write too -- and the three have to agree about when a child is live.
+		--
+		-- Greyed, not hidden: Blizzard's own behaviour, and the better one. A
+		-- child that vanishes takes the explanation of itself with it.
+		--
+		-- Guarded rather than assumed, like everything else that touches this
+		-- API. A client without SetParentInitializer leaves the child as an
+		-- ordinary checkbox, in the right place, doing the right thing --
+		-- flatter than intended, never broken.
+		if type(init) == "table" then
+			nativeInitializers[m.key] = init
+			local parentInit = m.parent and nativeInitializers[m.parent]
+			if parentInit and type(init.SetParentInitializer) == "function" then
+				local parentKey = m.parent
+				pcall(init.SetParentInitializer, init, parentInit, function()
+					return ns.db and ns.db.settings[parentKey] and true or false
+				end)
+			end
 		end
 
 		pcall(setting.SetValueChangedCallback, setting, function() onSettingChanged(m) end)

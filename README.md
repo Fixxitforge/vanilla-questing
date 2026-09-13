@@ -43,7 +43,8 @@ or `/reload`, then type `/vq` to open the options.
 
 `hideMapQuestHelper` · `hideMinimapQuestHelper` · `hideBossPortraits` · `noInstantQuestText` ·
 `hideCharacterFrame` · `hideTooltipsQuestProgress` · `noAutoQuestTracking` · `trackerPlainText` ·
-`hideTrackerItemButtons` · `noBagItemHighlight` · `outlineMode` · `noCompleteQuestPopup`
+`hideTrackerItemButtons` · `noBagItemHighlight` · `outlineMode` · `noCompleteQuestPopup` ·
+`trackerPlainTextAchievements`
 
 ## What it removes
 
@@ -68,7 +69,7 @@ What goes is everything MoP bolted onto it.
 
 - Automatic tracking of newly accepted quests
 - Clickable quest titles — no click-to-open-map, no right-click menu. Classic's tracker was text
-  you read
+  you read. Achievement lines stay clickable, unless you tick **Achievement Lines Too**
 - Quest item use buttons beside tracked quests. Quest items are used from your bags
 
 **UI**
@@ -86,15 +87,6 @@ These are never switched on by the **Vanilla (Default)** preset. Turn them on yo
 - Loot sparkles on quest objects, replaced with an outline — see Known limitations
 
 ## Known limitations
-
-### Achievement tracker lines also stop being clickable
-
-Turning the quest tracker to plain text also stops achievement lines in the tracker
-responding to clicks. The tracker draws quest titles and achievement titles from a single shared
-pool of buttons, and this version switches the clicks off across the whole pool.
-
-If you track achievements and want them clickable, leave that one option off. Everything else
-still works.
 
 ### Quest objects show either an outline or loot sparkles — never neither
 

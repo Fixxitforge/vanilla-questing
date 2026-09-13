@@ -191,23 +191,28 @@ function M:Enable()
 	settled = true
 end
 
--- Switching this option OFF turns Track Quest POIs back ON.
+-- Switching this option OFF restores what the player had, always.
 --
--- Not "back to what the player had", which is what it used to do. Track Quest
--- POIs is on by default in the game, so a player who turns this option off is
--- asking for the minimap quest helper -- and handing them back an entry that
--- happened to be off when they installed the AddOn would look like the option
--- had failed.
+-- v0.18.0 did the opposite: it turned Track Quest POIs back ON regardless, on
+-- the argument that the entry is on by default, so handing back an OFF would
+-- look like the option had failed. That was the one place in the whole AddOn
+-- that restored a Blizzard default instead of the value it found, and being
+-- the only exception is most of what was wrong with it.
 --
--- This is the one place the AddOn restores a Blizzard DEFAULT rather than the
--- exact value it found. The remembered value is still kept, and is what a full
--- Disable() at logout or on unload would want if that ever becomes a thing.
+-- The case it worried about is real but harmless: a player who had the entry
+-- off before installing gets it back off, and that is a choice they already
+-- made once. Nothing here made it for them, and nothing here should quietly
+-- undo it. No chat line either -- announcing "your own setting is where you
+-- left it" is noise.
 function M:Disable()
 	settled = false
 	local index, info = findEntry()
 	if not index then return end
-	if not info.active then
-		setTracking(index, true)
+
+	local wanted = ns.db and ns.db.state.minimapMarkersTracking
+	if wanted == nil then return end
+	if (info.active and true or false) ~= wanted then
+		setTracking(index, wanted)
 	end
 end
 

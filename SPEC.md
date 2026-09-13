@@ -105,18 +105,26 @@ a line in Blizzard's code — and the first thing reading it turned up was an er
 Documented in `README.md` and to be repeated on the CurseForge page. These are things this
 client will not let an AddOn do cleanly, not things left undone.
 
-1. **Achievement tracker lines also stop being clickable** when `trackerPlainText` is on. The
-   tracker draws quest and achievement titles from one pool of buttons
-   (`WATCHFRAME_LINKBUTTONS`), and `trackerPlainText` calls `EnableMouse(false)` on all of them.
-   True of the shipped code, and stated in the option's own tooltip so the player reads it where
-   they decide.
+1. **~~Achievement tracker lines also stop being clickable.~~** Fixed in v1.0.1, played and
+   confirmed. Kept here because the reasoning is worth more than the entry was.
 
-   **It is a defect, not a law, and the reason given here until now was wrong.** This entry used
-   to say the buttons "do not mark which is which". They do: Blizzard's own
-   `Wrath/WatchFrame.lua` sets `linkButton.type` to `"QUEST"` or `"ACHIEVEMENT"` and branches on
-   it in six places. The probe pass this entry asked for was answered by reading the client's
-   source instead — see `dev/knowledge/CLIENT-SOURCE.md`. Tracked as an issue; the limitation
-   stays documented until a fix has been played.
+   It was documented for four versions as something this client would not let an AddOn do
+   cleanly: the tracker draws quest and achievement titles from one pool of buttons
+   (`WATCHFRAME_LINKBUTTONS`) and, the entry said, "does not mark which is which". It marks which
+   is which. Blizzard's own `Wrath/WatchFrame.lua` sets `linkButton.type` to `"QUEST"` or
+   `"ACHIEVEMENT"` and branches on it in six places of its own. The entry even asked for another
+   probe pass some day, and the answer turned out to be in the source rather than the client —
+   see `dev/knowledge/CLIENT-SOURCE.md`.
+
+   **A limitation nobody re-checks becomes a fact about the AddOn rather than a fact about the
+   client.** This one was wrong for four versions, sat in the README and on the listing, and was
+   never anything but an unread field. The lesson is the section header: these are things the
+   client will not let an AddOn do, and an entry that cannot say which call refuses, and why, is
+   not one of them yet.
+
+   The old behaviour is still available, because "a tracker that is entirely text" is a
+   reasonable thing to want: `trackerPlainTextAchievements`, off by default, the AddOn's first
+   sub-option.
 2. **Quest objects show either an outline or loot sparkles — never neither.** The two are
    alternatives in the engine, so sparkles cannot simply be removed; the most an AddOn can do is
    ask for the outline instead, which is what `outlineMode` does. Where a client fails to render
@@ -154,11 +162,15 @@ where the underlying lever is (see the `questPOI` bundling note in G5).
 **Settings that belong to the game go back as the player left them.** The console variables and
 the minimap tracking this AddOn drives all survive deleting the folder, so each is recorded before
 it is touched and written back when the option is switched off. **This is an internal design rule
-and is never advertised** — no "leaves no trace" on any public page. Three paths currently break
-it: [#18](https://github.com/Fixxitforge/vanilla-questing/issues/18),
-[#19](https://github.com/Fixxitforge/vanilla-questing/issues/19),
-[#27](https://github.com/Fixxitforge/vanilla-questing/issues/27). Once all three are closed, the
-README's **Uninstall** section may say it, and nowhere else.
+and is never advertised** — no "leaves no trace" on any public page, and no version in which it
+becomes one. [#19](https://github.com/Fixxitforge/vanilla-questing/issues/19) and
+[#27](https://github.com/Fixxitforge/vanilla-questing/issues/27) are fixed in v1.0.1;
+[#18](https://github.com/Fixxitforge/vanilla-questing/issues/18) is open. But
+[#32](https://github.com/Fixxitforge/vanilla-questing/issues/32) settled the question those three were
+gating: the remembered values live in SavedVariables, inside the folder, so deleting the folder
+destroys the record of what to restore in the same action. A logout-time restore would cover the
+tidy case and miss unticking the AddOn on the character select screen, which is commoner. The
+README claims `/vq off` and nothing beyond it.
 
 **SavedVariables:** account-wide, not per character. Whether that should be the player's choice
 is [issue #10](https://github.com/Fixxitforge/vanilla-questing/issues/10).

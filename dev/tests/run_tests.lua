@@ -182,6 +182,36 @@ if scenario == "normal" then
 	pcall(fire, "MINIMAP_UPDATE_TRACKING")
 	check("notice returns after the throttle window", noticeCount() == before + 2, noticeCount() - before)
 
+	-- #27: switching the option off restores what the player had, including
+	-- OFF. Until v1.0.1 this turned Track Quest POIs back ON regardless, which
+	-- was the one place in the AddOn that restored a Blizzard default rather
+	-- than the value it found.
+	--
+	-- The harness starts with the entry ON, so the old behaviour and the new
+	-- one agree there and no check could tell them apart. This starts from the
+	-- other side, which is the only side that distinguishes them.
+	pcall(SlashCmdList["VANILLAQUESTING"], "off hideMinimapQuestHelper")
+	ns.db.state.minimapMarkersTracking = nil
+	tracking[4].active = false
+	pcall(SlashCmdList["VANILLAQUESTING"], "on hideMinimapQuestHelper")
+	check("an entry that was already off is remembered as off",
+		ns.db.state.minimapMarkersTracking == false,
+		tostring(ns.db.state.minimapMarkersTracking))
+	pcall(SlashCmdList["VANILLAQUESTING"], "off hideMinimapQuestHelper")
+	check("turning the option off leaves it off, rather than forcing the default",
+		tracking[4].active == false, tostring(tracking[4].active))
+
+	-- And the ordinary case still works: remembered ON comes back ON.
+	ns.db.state.minimapMarkersTracking = nil
+	tracking[4].active = true
+	pcall(SlashCmdList["VANILLAQUESTING"], "on hideMinimapQuestHelper")
+	check("the AddOn hides it while the option is on", tracking[4].active == false,
+		tostring(tracking[4].active))
+	pcall(SlashCmdList["VANILLAQUESTING"], "off hideMinimapQuestHelper")
+	check("and hands a remembered ON back", tracking[4].active == true,
+		tostring(tracking[4].active))
+	advanceTime(20)
+
 elseif scenario == "cvar_refused" then
 	-- questHelper-style: the write is accepted and ignored
 	check("questPOI unchanged", cvars.questPOI == "1", cvars.questPOI)
@@ -1128,14 +1158,24 @@ if scenario == "normal" or scenario == "no_button_type" then
 	-- /vq status must cover the new modules without being told about them.
 	local b4 = #chatlog
 	pcall(SlashCmdList["VANILLAQUESTING"], "status")
-	local named = 0
+	-- Counted per KEY, not per substring match. "trackerPlainText" is a
+	-- prefix of "trackerPlainTextAchievements", so a naive count of hits
+	-- scores the sub-option's line twice and the check moves whenever an
+	-- option is named after another one.
+	local seen, missing = {}, {}
 	for i = b4 + 1, #chatlog do
 		local line = tostring(chatlog[i])
-		for _, k in ipairs({ "trackerPlainText", "hideTrackerItemButtons", "noCompleteQuestPopup" }) do
-			if line:find(k, 1, true) then named = named + 1 end
+		for _, k in ipairs({ "trackerPlainText", "trackerPlainTextAchievements",
+			"hideTrackerItemButtons", "noCompleteQuestPopup" }) do
+			if line:find(k, 1, true) then seen[k] = true end
 		end
 	end
-	check("/vq status lists the tracker options", named == 3, named)
+	for _, k in ipairs({ "trackerPlainText", "trackerPlainTextAchievements",
+		"hideTrackerItemButtons", "noCompleteQuestPopup" }) do
+		if not seen[k] then missing[#missing + 1] = k end
+	end
+	check("/vq status lists the tracker options", #missing == 0,
+		table.concat(missing, ", "))
 
 	ns:ResetDefaults(true)
 end
