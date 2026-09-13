@@ -147,8 +147,6 @@ A screenshot settles most things.
 
 ## ☕ Support the project
 
-This AddOn is free and stays free. Nothing is held back for anyone who chips in.
-
 If it is making your adventures better, you can support development with a coffee:
 **[Ko-fi](https://ko-fi.com/fixxit)**
 
