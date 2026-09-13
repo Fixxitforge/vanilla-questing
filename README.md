@@ -52,32 +52,29 @@ You have full control, disable as much or as little as you like.
 
 **Map and minimap**
 
-- Numbered quest pins, shaded objective areas, the Track Quest checkbox and the quest list
+- Removed the quest markers, blue objective areas, the Track Quest checkbox and the quest list
   inside the full-screen map
-- Quest markers on the minimap
-- Boss and creature portrait pins on zone maps, which Classic never had
+- Removed the quest markers on the minimap
+- Hides the boss markers on zone maps
 
 **Quests**
 
-- Instant Quest Text, so quest text types out a line at a time as it did in Classic
-- The framed questgiver portrait beside quest text, in the offer window and the quest log
+- No Instant Quest Text, quest text types out a word at a time
+- Removed the framed questgiver portrait beside quest text, in the offer window and the quest log
 
 **Quest tracker**
 
-The tracker itself stays. Classic had one: you shift-click a quest in the log and it appears.
-What goes is everything MoP bolted onto it.
-
-- Automatic tracking of newly accepted quests
-- Clickable quest titles — no click-to-open-map, no right-click menu. Classic's tracker was text
+- No automatic tracking of newly accepted quests
+- No clickable quest titles — no click-to-open-map, no right-click menu. Classic's tracker was text
   you read. Tracked achievements go plain text too; untick **Plain Text Tracked Achievements**
   under it to keep those clickable
-- Quest item use buttons beside tracked quests. Quest items are used from your bags
+- No quest item use buttons beside tracked quests.
 
 **UI**
 
 - Quest progress appended to tooltips — mousing a creature no longer tells you which quest it
   belongs to or how many you still need
-- The yellow highlight MoP puts on quest items in your bags, and the `!` on items that start a
+- The yellow highlight on quest items in your bags, and the `!` on items that start a
   quest — one option, since Blizzard draws both with the same texture
 
 **Experimental**
