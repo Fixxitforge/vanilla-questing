@@ -82,8 +82,8 @@ What goes is everything MoP bolted onto it.
 
 These are never switched on by the **Vanilla (Default)** preset. Turn them on yourself.
 
+- Removes the Complete Quest popups
 - Loot sparkles on quest objects, replaced with an outline — see Known limitations
-- Turn-in pop-up bubbles
 
 ## Known limitations
 
@@ -94,7 +94,7 @@ responding to clicks. The tracker draws quest titles and achievement titles from
 pool of buttons, and this version switches the clicks off across the whole pool.
 
 If you track achievements and want them clickable, leave that one option off. Everything else
-still works. This one is being looked at rather than accepted — see the issue tracker.
+still works.
 
 ### Quest objects show either an outline or loot sparkles — never neither
 
