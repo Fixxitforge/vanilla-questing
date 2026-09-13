@@ -136,13 +136,6 @@ Cheapest answers first. Most reports are answered by one of the top three.
 
 A screenshot settles most things.
 
-## Support the project
-
-This AddOn is free and stays free. Nothing is held back for anyone who chips in.
-
-If it is making your adventures better, you can support development with a coffee:
-**[☕ Ko-fi](https://ko-fi.com/fixxit)**
-
 ## Uninstall
 
 1. Run **`/vq off`** to restore the game's settings.
@@ -151,6 +144,13 @@ If it is making your adventures better, you can support development with a coffe
 ## Licence
 
 **[MIT](LICENSE)**
+
+## Support the project
+
+This AddOn is free and stays free. Nothing is held back for anyone who chips in.
+
+If it is making your adventures better, you can support development with a coffee:
+**[☕ Ko-fi](https://ko-fi.com/fixxit)**
 
 ## Create a release
 
