@@ -143,10 +143,9 @@ This AddOn is free and stays free. Nothing is held back for anyone who chips in.
 If it is making your adventures better, you can support development with a coffee:
 **[☕ Ko-fi](https://ko-fi.com/fixxit)**
 
-## Uninstalling
+## Uninstall
 
-1. Run **`/vq off`**. This hands the game's own settings back while the AddOn is still loaded to do
-   it.
+1. Run **`/vq off`** to restore the game's settings.
 2. Delete the `VanillaQuesting` folder from `World of Warcraft\_classic_\Interface\AddOns\`.
 
 ## Licence
