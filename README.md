@@ -69,7 +69,8 @@ What goes is everything MoP bolted onto it.
 
 - Automatic tracking of newly accepted quests
 - Clickable quest titles — no click-to-open-map, no right-click menu. Classic's tracker was text
-  you read. Achievement lines stay clickable, unless you tick **Achievement Lines Too**
+  you read. Tracked achievements go plain text too; untick **Plain Text Tracked Achievements**
+  under it to keep those clickable
 - Quest item use buttons beside tracked quests. Quest items are used from your bags
 
 **UI**

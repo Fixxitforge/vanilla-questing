@@ -150,6 +150,26 @@ if scenario == "normal" then
 	check("Outline 3 is left alone when the option goes on", cvars.Outline == "3", cvars.Outline)
 	pcall(SlashCmdList["VANILLAQUESTING"], "off outlineMode")
 	check("and is still 3 afterwards", cvars.Outline == "3", cvars.Outline)
+
+	-- The remembered value has to be forgotten when the option is handed back,
+	-- or it is never replaced. Reported in play against the minimap; the CVar
+	-- modules had it too, which is why it is tested here as well as there.
+	--
+	-- The sequence that catches it: own it, hand it back, let the player set
+	-- something new, then own and hand back again. A test that never has the
+	-- player change anything in between cannot tell the two versions apart.
+	cvars.Outline = "0"
+	VanillaQuestingDB.state.Outline = nil
+	pcall(SlashCmdList["VANILLAQUESTING"], "on outlineMode")
+	pcall(SlashCmdList["VANILLAQUESTING"], "off outlineMode")
+	check("handing a CVar back forgets what it was",
+		VanillaQuestingDB.state.Outline == nil, tostring(VanillaQuestingDB.state.Outline))
+	cvars.Outline = "3"
+	pcall(SlashCmdList["VANILLAQUESTING"], "on outlineMode")
+	pcall(SlashCmdList["VANILLAQUESTING"], "off outlineMode")
+	check("so a value set between cycles is the one restored",
+		cvars.Outline == "3", cvars.Outline)
+
 	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
 	pcall(SlashCmdList["VANILLAQUESTING"], "off hideMinimapQuestHelper")
 	for i = #tooltipLines, 1, -1 do tooltipLines[i] = nil end
@@ -200,6 +220,16 @@ if scenario == "normal" then
 	pcall(SlashCmdList["VANILLAQUESTING"], "off hideMinimapQuestHelper")
 	check("turning the option off leaves it off, rather than forcing the default",
 		tracking[4].active == false, tostring(tracking[4].active))
+
+	-- E7 from the v1.0.1 test pass, which failed in play: turn the option off,
+	-- switch the entry back on BY HAND, then cycle the option. The value the
+	-- player just chose is the one that has to come back -- not the one from
+	-- before they touched it.
+	tracking[4].active = true
+	pcall(SlashCmdList["VANILLAQUESTING"], "on hideMinimapQuestHelper")
+	pcall(SlashCmdList["VANILLAQUESTING"], "off hideMinimapQuestHelper")
+	check("a manual re-enable between cycles is what gets restored",
+		tracking[4].active == true, tostring(tracking[4].active))
 
 	-- And the ordinary case still works: remembered ON comes back ON.
 	ns.db.state.minimapMarkersTracking = nil
@@ -309,6 +339,11 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 	local first = checks[1]
 	if first then
 		local before = VanillaQuestingDB.settings.hideMapQuestHelper
+		-- Read the remembered value BEFORE the click. Handing a CVar back
+		-- forgets it, so asking afterwards asks a question whose answer the
+		-- click just erased -- and the test then expects Blizzard's default
+		-- rather than the value the AddOn correctly restored.
+		local remembered = VanillaQuestingDB.state.questPOI
 		first:SetChecked(not before)
 		ok, err = pcall(rawget(first, "script_OnClick"), first)
 		check("checkbox click runs", ok, err)
@@ -318,7 +353,7 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 		-- Disabling restores the value the addon remembered, which is not
 		-- necessarily "1": if the saved DB was replaced mid-run the addon
 		-- re-captures whatever was current, which is correct behaviour.
-		local expected = before and VanillaQuestingDB.state.questPOI or "0"
+		local expected = before and remembered or "0"
 		check("world map CVar followed the click", cvars.questPOI == expected,
 			cvars.questPOI .. " expected " .. tostring(expected))
 		pcall(SlashCmdList["VANILLAQUESTING"], "reset")
@@ -1110,12 +1145,50 @@ if scenario == "normal" or scenario == "no_button_type" then
 	WatchFrame_Update()
 	local questLive, achievementLive = mouseState()
 	check("tracker quest titles are not clickable", questLive == false)
+	check("achievement lines follow the sub-option, which ships on",
+		achievementLive == false)
+
+	-- The sub-option is the whole point of reading the tag: turning it off has
+	-- to leave achievement lines alone while quest lines stay silenced. On a
+	-- client whose pool carries no tag there is nothing to be selective with,
+	-- and everything stays disabled -- an option that removes nothing being
+	-- worse than one with a stated cost.
+	ns:Set("trackerPlainTextAchievements", false)
+	WatchFrame_Update()
+	local q2, a2 = mouseState()
+	check("quest titles stay silenced with the sub-option off", q2 == false)
 	if scenario == "no_button_type" then
-		check("untagged pool: everything is disabled rather than nothing",
-			achievementLive == false)
+		check("untagged pool: the sub-option cannot spare achievements", a2 == false)
 	else
-		check("tracked achievements stay clickable", achievementLive == true)
+		check("turning the sub-option off gives achievement clicks back", a2 == true)
 	end
+	ns:Set("trackerPlainTextAchievements", true)
+	WatchFrame_Update()
+
+	-- A sub-option whose parent is off is doing nothing, and every readout has
+	-- to say so. Reported in play: the panel kept the tick, /vq status said
+	-- "on", and the tracker was plainly clickable -- the readout arguing with
+	-- the game.
+	check("a sub-option is active while its parent is on",
+		ns:IsActive("trackerPlainTextAchievements") == true)
+	ns:Set("trackerPlainText", false)
+	check("its saved value survives the parent going off",
+		ns.db.settings.trackerPlainTextAchievements == true)
+	check("but it is not active", ns:IsActive("trackerPlainTextAchievements") == false)
+
+	local b5 = #chatlog
+	pcall(SlashCmdList["VANILLAQUESTING"], "status")
+	local childLine
+	for i = b5 + 1, #chatlog do
+		local line = tostring(chatlog[i])
+		if line:find("trackerPlainTextAchievements", 1, true) then childLine = line end
+	end
+	check("/vq status reports the sub-option as off while the parent is",
+		childLine ~= nil and childLine:find("off", 1, true) ~= nil, tostring(childLine))
+
+	ns:Set("trackerPlainText", true)
+	check("and active again once the parent is back",
+		ns:IsActive("trackerPlainTextAchievements") == true)
 	check("quest item buttons are hidden", WatchFrameItem1:IsShown() == false)
 
 	-- The tracker rebuilds constantly and puts its buttons back each time. A
@@ -1124,10 +1197,8 @@ if scenario == "normal" or scenario == "no_button_type" then
 	WatchFrame_Update()
 	local questStill, achievementStill = mouseState()
 	check("still not clickable after further rebuilds", questStill == false)
-	if scenario ~= "no_button_type" then
-		check("achievements still clickable after further rebuilds",
-			achievementStill == true)
-	end
+	check("achievement lines still follow the sub-option after rebuilds",
+		achievementStill == false)
 	check("item buttons stay hidden after further rebuilds", WatchFrameItem1:IsShown() == false)
 
 	-- Turning it off must hand the clicks back: a subtractive AddOn leaves no

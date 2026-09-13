@@ -207,10 +207,27 @@ end
 function M:Disable()
 	settled = false
 	local index, info = findEntry()
+	-- No entry means nothing to hand back, and nothing to forget either: the
+	-- value was never recorded, because Enable returns at the same point.
 	if not index then return end
 
 	local wanted = ns.db and ns.db.state.minimapMarkersTracking
 	if wanted == nil then return end
+
+	-- Forget as we hand back.
+	--
+	-- The memory is only valid while this AddOn is the one holding the entry
+	-- down. Once the option is off the player owns it again, and whatever they
+	-- set next is what the NEXT Enable has to remember -- Enable only records
+	-- when there is nothing recorded, so a value kept across an off/on cycle
+	-- is a stale one that never gets replaced.
+	--
+	-- That was the bug: turn the option off, switch Track Quest POIs back on
+	-- by hand, turn the option on and off again, and the entry went off --
+	-- restored to what it had been two decisions ago rather than to what the
+	-- player had just chosen.
+	ns.db.state.minimapMarkersTracking = nil
+
 	if (info.active and true or false) ~= wanted then
 		setTracking(index, wanted)
 	end

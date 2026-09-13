@@ -158,15 +158,15 @@ do
 	--
 	-- It exists because v1.0.0 could not tell a quest line from an achievement
 	-- line and silenced both, and the README called that an unavoidable
-	-- limitation. It was not -- but "a tracker that is entirely text" is still
-	-- a reasonable thing to want, so the old behaviour is offered rather than
-	-- taken away. Off by default: the limitation is gone, not renamed.
+	-- limitation. It was not -- but a tracker that is entirely text is what
+	-- Classic had, so this ships ON and the limitation becomes a choice rather
+	-- than disappearing. What changed is that turning it off now works.
 	--
 	-- Declared inside this block on purpose. It shares `touched`, which is
 	-- what lets it hand the achievement clicks back without guessing that they
 	-- were on.
 	local C = ns:RegisterModule("trackerPlainTextAchievements", {})
-	C.title   = "Achievement Lines Too"
+	C.title   = "Plain Text Tracked Achievements"
 	C.desc    = "Achievement titles in the tracker stop being clickable as well."
 	C.onText  = "Tracker achievement titles are now plain text."
 	C.offText = "Tracker achievement titles are clickable."
@@ -174,7 +174,7 @@ do
 	C.order   = 71
 	C.parent  = "trackerPlainText"
 
-	ns:RegisterDefaults({ trackerPlainTextAchievements = false })
+	ns:RegisterDefaults({ trackerPlainTextAchievements = true })
 
 	function C:Enable()
 		ensureHook()

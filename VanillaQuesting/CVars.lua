@@ -318,7 +318,21 @@ local function makeModule(rule)
 
 	function M:Disable()
 		local original = ns.db and ns.db.state[rule.cvar]
-		if original == nil or refused[rule.cvar] then return end
+		if original == nil then return end
+
+		-- Forget as we hand back -- the same rule as Minimap.lua, and the same
+		-- bug if it is skipped. Enable only records when there is nothing
+		-- recorded, so a value kept past the hand-back is one that can never be
+		-- replaced: change the variable yourself while the option is off, turn
+		-- the option on and then off again, and it goes back to what it was two
+		-- decisions ago rather than to what you just chose.
+		--
+		-- Cleared ahead of the early returns below, not after them. A refused
+		-- write and a value that never moved both mean this AddOn is no longer
+		-- holding anything down, which is precisely when the memory should go.
+		ns.db.state[rule.cvar] = nil
+
+		if refused[rule.cvar] then return end
 
 		-- Only when it actually moves. ApplyAll re-applies every module on
 		-- every change, so an unconditional restore here writes a value the

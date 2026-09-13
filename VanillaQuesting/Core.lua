@@ -229,6 +229,25 @@ function ns:ApplyAll()
 end
 
 -- Toggling takes effect immediately; no /reload.
+-- What an option is actually DOING, as opposed to what it is set to.
+--
+-- A sub-option whose parent is off changes nothing, so reporting it as "on"
+-- claims something the player can watch not happening. The saved value is
+-- left alone -- the panel greys the child rather than unticking it, which is
+-- Blizzard's own behaviour and keeps the choice for when the parent comes
+-- back -- so "set to" and "in effect" are genuinely two different things and
+-- every player-facing readout wants the second one.
+--
+-- Walks the chain rather than checking one level: nothing is nested two deep
+-- today, and a rule that only works at depth one is a trap for whoever nests
+-- something tomorrow.
+function ns:IsActive(key)
+	if not ns.db or not ns.db.settings[key] then return false end
+	local m = ns.modules and ns.modules[key]
+	if m and m.parent then return ns:IsActive(m.parent) end
+	return true
+end
+
 function ns:Set(key, value)
 	if not ns.db then return end
 	ns.db.settings[key] = value
@@ -279,7 +298,10 @@ local function status()
 	local ordered = ns:SortedModules()
 	for i = 1, #ordered do
 		local m = ordered[i]
-		local on = ns.db and ns.db.settings[m.key]
+		-- What it is doing, not what it is set to. A sub-option under a parent
+		-- that is off is doing nothing, and saying "on" next to a tracker that
+		-- is plainly still clickable is the readout arguing with the game.
+		local on = ns:IsActive(m.key)
 		-- The live CVar readout is for developer eyes; the player wants to
 		-- know what is on.
 		-- Every option name in the same yellow, experimental or not. The
@@ -356,10 +378,20 @@ SlashCmdList["VANILLAQUESTING"] = function(msg)
 				local m = ns.modules[key]
 				-- "showBosses turned on" read as though the portraits were
 				-- being shown. Say what actually happened instead.
-				local effect = m and (want and m.onText or m.offText)
+				-- Report what the AddOn is now doing. Setting a sub-option
+				-- while its parent is off changes the saved value and nothing
+				-- else, and claiming the effect would be a straight untruth --
+				-- so say where it stands and what it is waiting for.
+				local live = ns:IsActive(key)
+				local effect = m and (live and m.onText or m.offText)
+				local waiting = ""
+				if m and m.parent and want and not live then
+					waiting = " Takes effect when " .. C.highlight .. m.parent ..
+						C.close .. " is on."
+				end
 				ns:Print(C.highlight .. key .. C.close .. " " ..
-					(want and (C.on .. "on" .. C.close) or (C.off .. "off" .. C.close)) ..
-					"." .. (effect and (" " .. effect) or ""))
+					(live and (C.on .. "on" .. C.close) or (C.off .. "off" .. C.close)) ..
+					"." .. (effect and (" " .. effect) or "") .. waiting)
 			else
 				ns:Print(C.warning .. "Unknown option '" .. arg .. "'." .. C.close ..
 					" Try " .. C.highlight .. "/vq help" .. C.close .. " for list of commands.")
