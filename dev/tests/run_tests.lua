@@ -25,6 +25,42 @@ check("PLAYER_LOGIN without error", ok, err)
 
 check("no runaway event recursion (depth " .. maxEventDepth() .. ")", maxEventDepth() < 10, maxEventDepth())
 
+-- #13: a clean install is not a change the player made.
+--
+-- The AddOn writes its own CVars on the first pass, every write raises
+-- CVAR_UPDATE, and the two-way mirror then walks every rule -- including ones
+-- never touched -- comparing a long-standing player value against a setting a
+-- few milliseconds old. An option that ships OFF beside a control that ships
+-- ON mismatches every time, and said so in chat on a first ever login.
+if scenario == "normal" or scenario == "outline_off" then
+	-- NOT `(scenario == "outline_off") and false or true`. The and/or idiom
+	-- cannot carry a false branch: `true and false` is false, and `false or
+	-- true` is true, so that expression is true for every scenario and the
+	-- check passes without testing anything.
+	local expected = true
+	if scenario == "outline_off" then expected = false end
+	check("an option that ships off adopts the Blizzard control it shadows",
+		VanillaQuestingDB.settings.outlineMode == expected,
+		tostring(VanillaQuestingDB.settings.outlineMode) ..
+		" for Outline " .. tostring(cvars.Outline))
+	check("adopting does not move the variable",
+		cvars.Outline == ((scenario == "outline_off") and "0" or "2"), cvars.Outline)
+
+	local noisy = {}
+	for _, m in ipairs(chatlog) do
+		local t = tostring(m)
+		if t:find("was changed in Blizzard's options", 1, true)
+			or t:find("was disabled automatically", 1, true) then
+			noisy[#noisy + 1] = t
+		end
+	end
+	check("the first application announces nothing", #noisy == 0,
+		table.concat(noisy, " | "))
+
+	check("and the flag is down once it is over", ns.firstRun == false,
+		tostring(ns.firstRun))
+end
+
 if scenario == "normal" then
 	check("questPOI driven to 0", cvars.questPOI == "0", cvars.questPOI)
 	check("quest POI tracking turned off", tracking[4].active == false, tracking[4].active)

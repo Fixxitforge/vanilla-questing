@@ -544,7 +544,8 @@ _G.__tooltipText = function()
 end
 
 -- ---- scenario tweaks, applied BEFORE the addon loads ----
-if scenario == "cvar_refused" then lockCVar("questPOI")
+if scenario == "outline_off" then cvars.Outline = "0"
+elseif scenario == "cvar_refused" then lockCVar("questPOI")
 elseif scenario == "tracking_refused" then lockTracking()
 elseif scenario == "no_cminimap" then C_Minimap = nil
 elseif scenario == "no_entry" then

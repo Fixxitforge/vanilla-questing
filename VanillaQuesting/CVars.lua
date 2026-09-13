@@ -290,6 +290,29 @@ local function makeModule(rule)
 	-- player types. The CVar name stays an implementation detail in `rule`.
 	ns:RegisterDefaults({ [rule.key] = rule.default })
 
+	-- Clean install only. An option that SHIPS OFF beside a Blizzard control
+	-- takes whatever the player already has instead of pretending to differ
+	-- from it. `outlineMode` is the only one today: it ships off, Blizzard's
+	-- Outline ships on, and that guaranteed mismatch is what announced itself
+	-- in chat on a first login.
+	--
+	-- Options that ship ON are not adopted. A fresh install is supposed to
+	-- give the Vanilla experience, and reading the player's existing settings
+	-- instead of applying ours would quietly stop doing the thing the AddOn
+	-- was installed for. They enforce, the variable moves to match, and the
+	-- mirror finds them in agreement -- which is also silent, for the right
+	-- reason.
+	--
+	-- Rules with no Blizzard control are not adopted either. Nothing in the
+	-- interface claims to own those, so there is no control to agree with.
+	function M:AdoptFirstRun()
+		if not rule.blizzOption or rule.default then return end
+		if type(GetCVar) ~= "function" then return end
+		local current = readCVar(rule.cvar)
+		if current == nil then return end
+		ns.db.settings[rule.key] = ruleIsOn(rule, current)
+	end
+
 	function M:Enable()
 		if type(GetCVar) ~= "function" or type(SetCVar) ~= "function" then
 			ns:Warn("cvar:missing", "GetCVar/SetCVar missing; skipping " .. rule.label .. ".")

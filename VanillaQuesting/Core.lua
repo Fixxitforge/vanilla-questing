@@ -162,6 +162,15 @@ function ns:RegisterDefaults(tbl)
 end
 
 local function initDB()
+	-- A clean install: no saved variables at all, so nothing here is a change
+	-- the player made. Read before the table is created, because creating it
+	-- is what destroys the evidence.
+	--
+	-- Session-only. It is deliberately not saved: "have we run before" is
+	-- answered by the saved variables existing, and a second flag saying the
+	-- same thing is a second thing that can disagree.
+	ns.firstRun = (VanillaQuestingDB == nil)
+
 	VanillaQuestingDB = VanillaQuestingDB or {}
 	local db = VanillaQuestingDB
 
@@ -213,6 +222,30 @@ end
 
 function ns:ApplyAll()
 	if not ns.db then return end
+
+	-- On a clean install, meet the player's configuration before touching it.
+	--
+	-- The AddOn writes its own CVars during this first pass, and every write
+	-- raises CVAR_UPDATE. The two-way mirror then walks EVERY rule, including
+	-- ones never touched, and compares the player's long-standing value
+	-- against a setting a few milliseconds old. For an option that ships off
+	-- beside a Blizzard control that ships on, that comparison always
+	-- mismatches, and the mirror announced it as though the player had just
+	-- done it -- on their first ever login, having changed nothing.
+	--
+	-- Silencing the message was the obvious fix and the wrong one: the mirror
+	-- would still believe a change had happened, and the option would still
+	-- read the opposite of the control it shadows. Adopting removes the
+	-- mismatch instead, so there is nothing to report and nothing to be wrong
+	-- about. `applying` cannot help here either -- it is down by the time an
+	-- event arrives a frame later.
+	if ns.firstRun then
+		for i = 1, #ns.modules do
+			local m = ns.modules[i]
+			if type(m.AdoptFirstRun) == "function" then pcall(m.AdoptFirstRun, m) end
+		end
+	end
+
 	for i = 1, #ns.modules do
 		local m = ns.modules[i]
 		local on = ns.db.settings[m.key]
@@ -226,6 +259,10 @@ function ns:ApplyAll()
 			end
 		end
 	end
+
+	-- Down once the first pass is over. Everything after this really is the
+	-- player doing something, and deserves to be reported as such.
+	ns.firstRun = false
 end
 
 -- Toggling takes effect immediately; no /reload.

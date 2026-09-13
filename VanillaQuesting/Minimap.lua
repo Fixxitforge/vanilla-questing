@@ -103,6 +103,12 @@ end
 -- v0.10.0 and the TODO that sat here asking for this to change outlived the
 -- thing it was waiting for.
 local function notice()
+	-- Never during the first application on a clean install. The AddOn is
+	-- meeting the player's configuration, not reacting to it, and "Track Quest
+	-- POIs was disabled automatically" reads as an accusation when the player
+	-- has done nothing but install the thing. `settled` already covers the
+	-- common path; this covers the rest of the first pass.
+	if ns.firstRun then return end
 	-- Throttled: a burst of tracking events must not turn into a wall of text.
 	local now = (type(GetTime) == "function" and GetTime()) or 0
 	if now - lastNotice < 10 then return end
