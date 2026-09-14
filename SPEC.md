@@ -1404,6 +1404,36 @@ without anyone having to remember. `noCompleteQuestPopup` is experimental and no
 the warning, and is the control in the test: without it, a change that stripped the note from every
 option would pass.
 
+#### A hook that adds nothing must still leave the frame as it found it
+
+The tracking button's tooltip disappeared entirely once the minimap option stood down. Not our
+line — **Blizzard's whole "Tracking" tooltip**.
+
+```lua
+btn:HookScript("OnEnter", function(self)
+    if not ns.db or not ns.db.settings[M.key] then return end   -- <- here
+    ...
+    GameTooltip:AddLine(...)
+    GameTooltip:Show()
+end)
+```
+
+With the option off the hook returned at the top, so it never called `Show()` — and on this client
+that `Show()` was what put the tooltip on screen. The AddOn had quietly become load-bearing for a
+frame it only meant to annotate.
+
+The fix separates the two: add the line only while the AddOn is holding the entry, and call
+`Show()` either way.
+
+**Eleven versions unnoticed, because the state was unreachable.** Until `hideMinimapQuestHelper`
+became shared, ticking Track Quest POIs was overruled within the frame, so nobody ever hovered that
+button with the option off. Standing down properly is what made the state reachable, and this was
+the first thing standing down broke.
+
+Worth generalising: **when an AddOn hooks a frame it does not own, every early return is a promise
+that the frame is unchanged — and "unchanged" includes shown.** `Tooltip.lua` is clean by this
+rule; it post-hooks `Show` via `hooksecurefunc` and never calls it.
+
 ### v0.32 probe
 
 Six sections, five of them answered outright. The run also produced two findings about the probe

@@ -202,23 +202,36 @@ MiniMapTrackingButton = {
 	scripts = {},
 	HookScript = function(self, which, fn) self.scripts[which] = self.scripts[which] or {}; table.insert(self.scripts[which], fn) end,
 }
+-- Hovering runs BLIZZARD's OnEnter first, then the hooks.
+--
+-- Modelled because the AddOn is a `HookScript` guest on a frame Blizzard
+-- already scripted, and the thing that broke was what the guest did on the way
+-- out rather than what it added. Blizzard sets the owner, writes its own
+-- "Tracking" header, and leaves the tooltip NOT yet shown -- the AddOn's
+-- Show() was what put it on screen, which nobody had noticed.
 _G.hoverTrackingButton = function()
 	tooltipOwner = MiniMapTrackingButton
+	GameTooltip:SetOwner(MiniMapTrackingButton)
+	GameTooltip:AddLine("Tracking")
 	local list = MiniMapTrackingButton.scripts.OnEnter or {}
 	for i = 1, #list do list[i](MiniMapTrackingButton) end
 end
 GameTooltip = {
 	-- One stub serves both the minimap tracking tooltip (tooltipLines) and the
 	-- options panel tooltips (_G.__tooltipLines).
-	SetOwner = function() _G.__tooltipLines = {} end,
+	SetOwner = function()
+		_G.__tooltipLines = {}
+		_G.__tooltipShown = false
+	end,
 	AddLine = function(_, text)
 		tooltipLines[#tooltipLines+1] = tostring(text)
 		table.insert(_G.__tooltipLines, tostring(text))
 	end,
-	Show = function() end,
-	Hide = function() end,
+	Show = function() _G.__tooltipShown = true end,
+	Hide = function() _G.__tooltipShown = false end,
 	GetOwner = function() return tooltipOwner end,
 }
+_G.__tooltipShown = false
 
 -- UIParent, for the one flag this AddOn reads off it: variablesLoaded, which
 -- is how Blizzard's own EventUtil.AreVariablesLoaded answers the same question.

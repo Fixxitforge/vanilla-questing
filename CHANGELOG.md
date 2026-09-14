@@ -23,6 +23,7 @@ cost to find, and why it was made that way — is the version history in [`SPEC.
 - Hide Boss Portraits no longer asks for a UI reload.
 - `/vq status <option>` reports one option instead of the whole list, and the command list is five
   lines rather than seven.
+- The minimap tracking button's tooltip no longer disappears when the option is switched off.
 - Changing one option in the options panel no longer re-applies every option. The panel lagged on
   every click, worst on the options that also drive one of Blizzard's own settings.
 - Outline Mode's tooltip no longer warns that it is untested and potentially unstable. It reports

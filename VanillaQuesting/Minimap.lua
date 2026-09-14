@@ -263,19 +263,40 @@ local function attachTooltip()
 
 	local ok = pcall(function()
 		btn:HookScript("OnEnter", function(self)
-			if not ns.db or not ns.db.settings[M.key] then return end
 			if not GameTooltip or type(GameTooltip.AddLine) ~= "function" then return end
 			if GameTooltip.GetOwner and GameTooltip:GetOwner() ~= self then return end
-			-- Blank spacer, then the AddOn name as its own header line so the
-			-- block reads as ours rather than as part of Blizzard's tooltip.
-			-- A tooltip header cannot be made larger: AddLine has no per-line
-			-- font, and the big header font applies only to the tooltip's own
-			-- first line. So separate the block by colour instead, using the
-			-- AddOn's chat blue, which stands clear of Blizzard's white body
-			-- text and yellow highlights.
-			GameTooltip:AddLine(" ")
-			GameTooltip:AddLine(C.title .. "Track Quest POIs" .. C.close .. " " ..
-				C.brand .. "is managed by " .. ns.title .. "." .. C.close)
+
+			-- Our line only while this AddOn is actually holding the entry.
+			-- Saying "managed by Vanilla Questing" about a setting the player
+			-- has taken back would be false.
+			if ns.db and ns.db.settings[M.key] then
+				-- Blank spacer, then the AddOn name as its own header line so
+				-- the block reads as ours rather than as part of Blizzard's
+				-- tooltip. A tooltip header cannot be made larger: AddLine has
+				-- no per-line font, and the big header font applies only to
+				-- the tooltip's own first line. So separate the block by
+				-- colour instead, using the AddOn's chat blue, which stands
+				-- clear of Blizzard's white body text and yellow highlights.
+				GameTooltip:AddLine(" ")
+				GameTooltip:AddLine(C.title .. "Track Quest POIs" .. C.close .. " " ..
+					C.brand .. "is managed by " .. ns.title .. "." .. C.close)
+			end
+
+			-- But the Show() happens either way, and this is the bug.
+			--
+			-- The early return used to sit at the top, so with the option off
+			-- this hook did nothing at all -- including not calling Show(). On
+			-- this client that is what put Blizzard's own "Tracking" tooltip
+			-- on screen, so the whole tooltip vanished rather than just our
+			-- line. An AddOn that adds nothing must leave the frame exactly as
+			-- it found it, and "exactly as it found it" includes shown.
+			--
+			-- It went unnoticed for eleven versions because the option being
+			-- off while hovering that button was not a state anyone reached:
+			-- until this option became SHARED, ticking Track Quest POIs was
+			-- overruled within the frame. Making the AddOn stand down properly
+			-- is what made the state reachable, and the tooltip was the first
+			-- thing standing down broke.
 			GameTooltip:Show()
 		end)
 	end)

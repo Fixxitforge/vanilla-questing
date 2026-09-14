@@ -404,11 +404,40 @@ if scenario == "normal" then
 		cvars.Outline == "3", cvars.Outline)
 
 	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+	-- ---- the tracking button's tooltip ----
+	--
+	-- Reported in play: the whole "Tracking" tooltip vanished once the option
+	-- stood down. The AddOn is a HookScript guest here, and the bug was not
+	-- what it added but what it did on the way out -- with the option off the
+	-- hook returned at the top, so it never called Show(), and on this client
+	-- that Show() was what put BLIZZARD's tooltip on screen.
+	--
+	-- Eleven versions unnoticed because the state was unreachable: until this
+	-- option became shared, ticking Track Quest POIs was overruled within the
+	-- frame, so nobody ever hovered that button with the option off.
 	pcall(SlashCmdList["VANILLAQUESTING"], "off hideMinimapQuestHelper")
 	for i = #tooltipLines, 1, -1 do tooltipLines[i] = nil end
 	pcall(hoverTrackingButton)
-	check("tooltip silent when setting is off", #tooltipLines == 0, #tooltipLines)
+	local ourLines = 0
+	for _, t in ipairs(tooltipLines) do
+		if tostring(t):find("Vanilla Questing", 1, true) then ourLines = ourLines + 1 end
+	end
+	check("the AddOn adds no line when it is not managing the entry", ourLines == 0, ourLines)
+	check("but Blizzard's own tooltip is still there",
+		tooltipLines[1] == "Tracking", tostring(tooltipLines[1]))
+	check("and it is still shown", _G.__tooltipShown == true, tostring(_G.__tooltipShown))
+
 	pcall(SlashCmdList["VANILLAQUESTING"], "on hideMinimapQuestHelper")
+	for i = #tooltipLines, 1, -1 do tooltipLines[i] = nil end
+	pcall(hoverTrackingButton)
+	ourLines = 0
+	for _, t in ipairs(tooltipLines) do
+		if tostring(t):find("Vanilla Questing", 1, true) then ourLines = ourLines + 1 end
+	end
+	check("and it does add its line while it IS managing the entry", ourLines == 1, ourLines)
+	check("Blizzard's header survives that too", tooltipLines[1] == "Tracking",
+		tostring(tooltipLines[1]))
+	check("and it is shown", _G.__tooltipShown == true, tostring(_G.__tooltipShown))
 
 	-- ---- the two-way mirror: SHARED, not owned ----
 	--

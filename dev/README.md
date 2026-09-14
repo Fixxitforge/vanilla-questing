@@ -89,6 +89,24 @@ in a sequence the client does not use:
 
 A new scenario is not finished until it has been run against the broken code and seen to fail.
 
+**A stub that models only our half models nothing.** `hoverTrackingButton` called the AddOn's
+`OnEnter` hooks and nothing else — no Blizzard `OnEnter`, no owner, no header line, and `Show()`
+was an empty function. So the frame the AddOn is a *guest* on did not exist in the model, and the
+question "what does the frame look like when our hook does nothing" could not be asked. It took a
+report from the game: with the option off, the hook returned at the top, never called `Show()`,
+and Blizzard's entire "Tracking" tooltip vanished.
+
+The model now runs Blizzard's `OnEnter` first and tracks whether the tooltip is shown. **Where the
+AddOn hooks someone else's frame, the stub has to include their half**, or every test is a test of
+the guest talking to itself.
+
+**And one more, which is not about the harness: `pcall` of a `nil` does not throw.** It returns
+`false` and `"attempt to call a nil value"`. A probe section that reached for a function this
+client does not have therefore ran to completion and printed the error message where a value
+belonged — no section failed, the report existed, the run looked fine, and the wrong answer came
+back from the client looking like data. `recon_smoke.lua` greps the report for Lua error text for
+exactly this reason.
+
 ## Where bugs live
 
 **GitHub Issues**, not a file in the repository. `BUGS.md` existed briefly and was the wrong
