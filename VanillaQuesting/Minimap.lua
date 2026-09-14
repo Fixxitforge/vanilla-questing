@@ -128,6 +128,20 @@ end
 local VERIFY_ATTEMPTS = 3
 local failedVerifies = 0
 
+-- Have we ever actually seen the entry off?
+--
+-- The chat notice means "you just turned this back on, and it is about to
+-- bounce". Saying that requires knowing it was off in the first place. Until
+-- this AddOn has observed the entry off at least once, an active entry is
+-- either the state the player logged in with or this AddOn's own write not
+-- having landed yet -- and neither is the player doing something.
+--
+-- `settled` is not enough on its own: it only says Enable has run. The patient
+-- verification made the difference visible, because enforce now runs a second
+-- pass while the first write is still in flight, and that pass was printing
+-- the notice on a clean install.
+local confirmedOff = false
+
 local function enforce()
 	if applying or refused then return end
 	if not ns.db or not ns.db.settings[M.key] then return end
@@ -138,11 +152,14 @@ local function enforce()
 		-- Already off: nothing to do, no event to cause, and proof that any
 		-- earlier disagreement was the client being slow rather than refusing.
 		failedVerifies = 0
+		confirmedOff = true
 		return
 	end
 
 	-- The player just turned it on themselves; say why it is about to bounce.
-	if settled then notice() end
+	-- Only sayable once we have seen it off, which is what makes "turned it
+	-- back on" a true description of what happened.
+	if settled and confirmedOff then notice() end
 
 	if not setTracking(index, false) then
 		refused = true
@@ -169,6 +186,7 @@ local function enforce()
 	-- after several passes is a write that is genuinely being ignored, which
 	-- is what `refused` is for.
 	local _, after = findEntry()
+	if after and not after.active then confirmedOff = true end
 	if after and after.active then
 		failedVerifies = failedVerifies + 1
 		if failedVerifies >= VERIFY_ATTEMPTS then

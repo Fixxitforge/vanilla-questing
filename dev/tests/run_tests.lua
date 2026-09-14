@@ -384,6 +384,8 @@ elseif scenario == "cvar_refused" then
 	check("minimap side still worked", tracking[4].active == false, tracking[4].active)
 
 elseif scenario == "tracking_slow" then
+	-- The client finally gets round to the write, after the whole login.
+	pcall(__settleTracking)
 	-- A client that applies the write a moment late, which is what the API
 	-- actually promises: SetTracking returns nothing and the change is
 	-- announced by MINIMAP_UPDATE_TRACKING.
@@ -398,6 +400,33 @@ elseif scenario == "tracking_slow" then
 		if tostring(m):find("would not turn off") then warns = warns + 1 end
 	end
 	check("and is never called refused", warns == 0, warns)
+
+	-- And it does not accuse the player on the way. The notice means "you just
+	-- turned this back on"; a slow client means enforce runs a second pass
+	-- while the first write is still in flight, and that pass was printing it
+	-- on a clean install, where nobody had turned anything anywhere.
+	local notices = 0
+	for _, m in ipairs(chatlog) do
+		if tostring(m):find("was disabled automatically", 1, true) then
+			notices = notices + 1
+		end
+	end
+	check("and says nothing about the player having turned it on", notices == 0,
+		notices)
+
+	-- The notice still has to work once the AddOn has seen the entry off,
+	-- because that is the only moment "turned it back on" is a true
+	-- description. Otherwise this is a mute rather than a fix.
+	advanceTime(20)
+	tracking[4].active = true
+	pcall(fire, "MINIMAP_UPDATE_TRACKING")
+	notices = 0
+	for _, m in ipairs(chatlog) do
+		if tostring(m):find("was disabled automatically", 1, true) then
+			notices = notices + 1
+		end
+	end
+	check("but does say so when the player really does", notices == 1, notices)
 
 elseif scenario == "tracking_refused" then
 	check("tracking unchanged", tracking[4].active == true)

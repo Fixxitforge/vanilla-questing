@@ -305,44 +305,25 @@ local trackingLocked = false
 local trackingSlow, trackingPending, trackingStaleReads = false, nil, 0
 C_Minimap = {
 	GetNumTrackingTypes = function() return #tracking end,
-	GetTrackingInfo = function(i)
-		-- A slow client answers from before the write for one read.
-		--
-		-- C_Minimap.SetTracking returns nothing and the change is announced by
-		-- MINIMAP_UPDATE_TRACKING, so the value is not guaranteed to be
-		-- visible on the very next line. Modelling it as instant is what let
-		-- the AddOn ship a read-back that could not fail here and did fail in
-		-- game.
-		if trackingPending and trackingStaleReads > 0 then
-			trackingStaleReads = trackingStaleReads - 1
-			local snapshot = {}
-			for k, v in pairs(tracking[i] or {}) do snapshot[k] = v end
-			if i == trackingPending.index then snapshot.active = trackingPending.was end
-			return snapshot
-		end
-		if trackingPending then
-			local p = trackingPending
-			trackingPending = nil
-			if tracking[p.index] then
-				tracking[p.index].active = p.on
-				fire("MINIMAP_UPDATE_TRACKING")
-			end
-		end
-		return tracking[i]
-	end,
+	-- A slow client holds the write until the game gets round to it.
+	--
+	-- C_Minimap.SetTracking returns nothing and the change is announced by
+	-- MINIMAP_UPDATE_TRACKING, so the new value is not guaranteed to be
+	-- visible on the next line -- or on the next event, or during the rest of
+	-- the login. Modelling it as instant is what let the AddOn ship a
+	-- read-back that could not fail here and failed in game.
+	--
+	-- Settling is under the test's control (`__settleTracking`) rather than
+	-- counted in reads. Counting reads was the first attempt and it settled
+	-- part-way through the login, so the second ApplyAll never saw the entry
+	-- still on -- which is exactly the pass that was printing the accusation.
+	GetTrackingInfo = function(i) return tracking[i] end,
 	SetTracking = function(i, on)
 		if trackingLocked then return true end
 		if not tracking[i] then return true end
 		if tracking[i].active == (on and true or false) then return true end
 		if trackingSlow then
-			trackingPending = { index = i, on = on and true or false,
-				was = tracking[i].active }
-			-- A whole lookup pass, not one read. findEntry walks the list from
-			-- index 1 looking for the entry by name, so a single stale read is
-			-- spent on an unrelated row and the verification sees the new
-			-- value anyway -- which made this scenario pass with the bug in
-			-- place on the first attempt at it.
-			trackingStaleReads = #tracking
+			trackingPending = { index = i, on = on and true or false }
 			return true
 		end
 		tracking[i].active = on and true or false
@@ -353,6 +334,15 @@ C_Minimap = {
 _G.tracking = tracking
 _G.lockTracking = function() trackingLocked = true end
 _G.slowTracking = function() trackingSlow = true end
+_G.__settleTracking = function()
+	local p = trackingPending
+	if not p then return end
+	trackingPending = nil
+	if tracking[p.index] and tracking[p.index].active ~= p.on then
+		tracking[p.index].active = p.on
+		fire("MINIMAP_UPDATE_TRACKING")
+	end
+end
 
 
 -- ---- objective tracker (Tier 2) ----
