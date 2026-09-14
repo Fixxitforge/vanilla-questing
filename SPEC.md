@@ -100,6 +100,68 @@ this file that says "the client does X" can now be sourced two ways — a probe 
 a line in Blizzard's code — and the first thing reading it turned up was an error in this file
 (known limitation 1, below).
 
+### Every option, and what it does
+
+Thirteen options. The behaviour columns are taken from the suite, not from reading the code: the
+CVar and tracking rows were produced by switching each option on and off against the harness and
+recording what moved.
+
+**Kind** is the distinction everything else follows from:
+
+- **Owned** — nothing in Blizzard's interface shows this variable. The option *is* the control, so
+  its off state has to mean something, and it declares an `offValue`.
+- **Mirrored** — Blizzard has a control for it. The option follows that control in both directions
+  and hands back the player's own value when switched off.
+- **Mirror** — `outlineMode` alone. It has no default and never enforces; it reports Blizzard's
+  setting and lets the player change it from here. Exempt from `/vq on`, `/vq off`, Defaults and
+  both presets.
+- **Lua** — no console variable at all; the AddOn hides or unhooks something directly.
+
+| Option | Group | Ships | Kind | On | Off |
+| --- | --- | --- | --- | --- | --- |
+| `hideMapQuestHelper` | Map and minimap | on | owned | `questPOI` → `0` | `questPOI` → `1` |
+| `hideMinimapQuestHelper` | Map and minimap | on | Lua | Track Quest POIs tracking entry off, re-asserted on every tracking change | the entry goes back to the value the player had |
+| `hideBossPortraits` | Map and minimap | on | owned | `showBosses` → `0` | `showBosses` → `1` |
+
+| `noInstantQuestText` | Quests | on | mirrored | `instantQuestText` → `0` | back to the player's value |
+| `hideCharacterFrame` | Quests | on | Lua | the questgiver portrait frame is hidden | shown again |
+| `noAutoQuestTracking` | Quest Tracker | on | mirrored | `autoQuestWatch` → `0` | back to the player's value |
+| `trackerPlainText` | Quest Tracker | on | Lua | quest link buttons take `EnableMouse(false)` | clicks handed back |
+| `trackerPlainTextAchievements` | Quest Tracker | on | Lua | achievement link buttons silenced too | achievement lines clickable |
+| `hideTrackerItemButtons` | Quest Tracker | on | Lua | `WatchFrameItem<N>` hidden | shown again |
+| `hideTooltipsQuestProgress` | UI | on | Lua | quest lines removed from tooltips, height re-fitted in the same frame | lines return; the frame stays owned until the next reload |
+| `noBagItemHighlight` | UI | on | Lua | the quest texture on bag slots is hidden | shown again |
+| `outlineMode` | Experimental | **follows the client** | mirror | `Outline` → `2` if it was `0`; a `1` or `3` is left where the player put it | `Outline` → `0` |
+| `noCompleteQuestPopup` | Experimental | off | Lua | turn-in pop-ups removed as they arrive | pop-ups return |
+
+`hideMapQuestHelper` is the only option that needs a UI reload, and therefore the only one behind
+Blizzard's Apply button. `hideBossPortraits` used to be as well, and is not: the boss pins are drawn
+by the world map's own data provider when the map opens, and the map cannot be open while the
+options panel is — both are UI panels and the settings panel takes the screen. A player changing it
+there has no map to update, and the next one they open is built from the current value.
+
+#### On a first install
+
+Eleven of the thirteen ship **on**, and are applied on the first login after the client's own saved
+variables have arrived. The AddOn records what each variable was before it touched it, so every one
+of them can be handed back.
+
+`noCompleteQuestPopup` ships **off** and is never switched on by the Vanilla (Default) preset.
+
+`outlineMode` has no ship state at all: it reads `Outline` and reports it. Blizzard's default is
+`2`, so on a fresh client it shows as **on** — that is the mirror working, not a default being
+applied.
+
+`trackerPlainTextAchievements` is a sub-option of `trackerPlainText`. It ships on, and while its
+parent is off it is inactive and every readout says so.
+
+#### What "off" restores
+
+Only the options that moved something have anything to restore, and only while the AddOn is
+installed to do it. See the design rule below. The memory is dropped as each option is handed back,
+so a value the player sets between two toggles is the one that comes back — not the one from before
+they touched it.
+
 ### Off means the player's last known setting — and one option is a mirror
 
 **Switching an option off returns the variable to whatever the player last chose** — not to a value

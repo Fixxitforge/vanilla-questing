@@ -1303,11 +1303,18 @@ if scenario == "native" or scenario == "no_tooltipfunc" or scenario == "no_templ
 		_G.__hookApply(function(_, on) _G.__applyEnabled = on end)
 
 		-- What Blizzard's Defaults does: write each value through, no parking.
+		--
+		-- The value is in place BEFORE the callback fires, which is what
+		-- SetValueToDefault does. Setting it to the opposite first and
+		-- restoring it afterwards -- the previous shape of this loop -- meant
+		-- the first reload-needing option saw its own value still matching the
+		-- baseline, and the check only passed because a second one came later
+		-- in the order and saw the first one's restored value. It was testing
+		-- the option list, not the rebuild.
 		for _, c in ipairs(boxes) do
 			local key = c.setting:GetVariable():gsub("VanillaQuesting_", "")
-			ns.db.settings[key] = not (ns.defaults[key] and true or false)
-			pcall(c.setting.__cb, c.setting, ns.defaults[key])
 			ns.db.settings[key] = ns.defaults[key] and true or false
+			pcall(c.setting.__cb, c.setting, ns.defaults[key])
 		end
 		check("a Defaults-style reset rebuilds straight away",
 			_G.__reloads == r0 + 1, _G.__reloads - r0)

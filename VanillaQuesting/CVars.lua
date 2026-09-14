@@ -98,7 +98,22 @@ local RULES = {
 		wanted     = "0",
 		-- Owned outright, like questPOI. Same reasoning, same need.
 		offValue   = "1",
-		needsApply = true,
+		-- No `needsApply`, deliberately, and this is the difference from
+		-- hideMapQuestHelper.
+		--
+		-- `needsApply` means "this cannot take effect until the UI reloads",
+		-- which puts the option behind Blizzard's Apply button and prompts for
+		-- a reload. The boss pins are drawn by the world map's own data
+		-- provider when the map opens -- and the map cannot be open while the
+		-- options panel is, because both are UI panels and the settings panel
+		-- takes the screen. So a player changing this in the panel has no map
+		-- on screen to update, and the next time they open one it is built
+		-- from the current value.
+		--
+		-- Changing it from chat with the map already open is the one case that
+		-- can look stale, and it is the same accepted behaviour as every other
+		-- map-dependent option: the pins are right the next time the map is
+		-- opened.
 		default = true,
 		label   = "boss portraits",
 		onText  = "Boss portraits removed from the world map.",
