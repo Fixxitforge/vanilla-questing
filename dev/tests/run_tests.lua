@@ -924,32 +924,36 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 		ns.db.state.questPOI = "1"
 		SetCVar("questPOI", "0")
 
+		-- ---- the AddOn does not redraw Blizzard's frames itself ----
+		--
+		-- `refreshQuestUI` used to call `WatchFrame_Update()` and
+		-- `QuestMapFrame_UpdateAll()`. Both are gone. Calling a Blizzard
+		-- function from AddOn Lua runs it in OUR execution context, and
+		-- `WatchFrame_Update` writes the global TABLE WATCHFRAME_NUM_POPUPS --
+		-- which makes the taint permanent for the session and spreads it to
+		-- code this AddOn never touches.
+		--
+		-- Gating those calls on `ns.byRequest` was tried first. It cleared the
+		-- taint from login and left it on the first slash command: a smaller
+		-- surface and the same permanent damage. The second taint log is what
+		-- showed that, and it is why the calls had to go rather than move.
+		--
+		-- Nothing is lost. Blizzard's own CVAR_UPDATE handler does exactly
+		-- these calls for questPOI, in its own context, untainted --
+		-- Blizzard_UIPanels_Game/Wrath/QuestMapFrame.lua:253 in the 5.5.4
+		-- drop. This AddOn was duplicating it and paying in taint.
 		_G.openWorldMap()
 		local q0 = _G.__questPaneUpdates
+		local w0 = _G.__watchUpdates
 		pcall(SlashCmdList["VANILLAQUESTING"], "off hideMapQuestHelper")
-		check("turning the world map helper off redraws the map's quest pane",
-			_G.__questPaneUpdates > q0, _G.__questPaneUpdates .. " vs " .. q0)
+		check("a user-initiated change does not redraw the quest pane itself",
+			_G.__questPaneUpdates == q0, _G.__questPaneUpdates .. " vs " .. q0)
+		check("and does not call WatchFrame_Update either",
+			_G.__watchUpdates == w0, _G.__watchUpdates .. " vs " .. w0)
 
-		-- The cycle above leaves the map closed, so it has to be reopened
-		-- before the other direction can be checked on an open map.
-		_G.openWorldMap()
-		local q1 = _G.__questPaneUpdates
-		pcall(SlashCmdList["VANILLAQUESTING"], "on hideMapQuestHelper")
-		check("and turning it back on redraws it too",
-			_G.__questPaneUpdates > q1, _G.__questPaneUpdates .. " vs " .. q1)
-
-		-- With the map shut there is nothing on screen to redraw, so the pane
-		-- is left alone.
-		_G.closeWorldMap()
-		local q2 = _G.__questPaneUpdates
-		pcall(SlashCmdList["VANILLAQUESTING"], "off hideMapQuestHelper")
-		check("but a closed map's pane is not redrawn",
-			_G.__questPaneUpdates == q2, _G.__questPaneUpdates .. " vs " .. q2)
-
-		-- The tracker is redrawn too, but deliberately NOT asserted here:
-		-- ns:Set re-applies every module, and the tracker module calls
-		-- WatchFrame_Update itself, so a counter on it goes up whether or not
-		-- refreshQuestUI exists. A check that cannot fail is not a check.
+		-- What it DOES do is cycle the map, which is the only thing that makes
+		-- the on-screen quest helper pick a questPOI change up. That is
+		-- asserted by sequence below rather than by a counter.
 
 		-- Cycling the map. Asking the tracker to redraw was NOT enough: in
 		-- play the on-screen quest helper only picks a questPOI change up when

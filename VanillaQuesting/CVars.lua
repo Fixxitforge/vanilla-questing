@@ -284,20 +284,54 @@ local function readCVar(name)
 	return v
 end
 
--- Redraw the frames whose contents depend on a variable we just changed.
+-- Let the game redraw what it redraws, and cycle the map when it will not.
 --
--- Changing questPOI with the world map pane open updated the map but left the
--- quest tracker showing its old POI numbers: nothing tells the tracker that a
--- variable it reads has moved, so it keeps whatever it last drew until some
--- other event makes it rebuild. A reload fixed it, which is not a fix.
+-- This used to call `WatchFrame_Update()` and `QuestMapFrame_UpdateAll()`.
+-- **Both are gone, and the taint log is why.**
 --
--- Both of these are confirmed present on this client by the probe (v0.9 log)
--- rather than assumed. Existence-checked and pcall'd anyway, per safety rule
--- 5: a client without one of them loses the redraw, not the feature.
+-- Calling a Blizzard function from AddOn Lua runs it in OUR execution context,
+-- so everything it writes is marked as ours. `WatchFrame_Update` writes the
+-- global TABLE `WATCHFRAME_NUM_POPUPS`, which makes the taint permanent for the
+-- session -- and the log shows it spreading to WorldStateFrame's timers and
+-- QuestMapFrame, code this AddOn never touches:
 --
--- The map is only refreshed when it is actually on screen. The tracker is
--- refreshed unconditionally -- it is always visible, and WatchFrame_Update is
--- what every other part of this AddOn already calls to make it rebuild.
+--   Tainted value written to global WATCHFRAME_NUM_POPUPS by VanillaQuesting
+--     Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:478
+--     pcall() / VanillaQuesting/CVars.lua:387 refreshQuestUI()
+--     applyModule() / ApplyAll() / Core.lua:627
+--     ChatFrame1EditBox:ParseText()
+--
+-- Note where it starts: `/vq on`. A first attempt gated these calls on
+-- `ns.byRequest`, which cleared the taint from login and left it on the first
+-- slash command -- a smaller surface and the same permanent damage. **A gate
+-- was never going to be enough; the call had to go.**
+--
+-- Nothing is lost by removing it, and the reason is in Blizzard's own source
+-- for this build. `Blizzard_UIPanels_Game/Wrath/QuestMapFrame.lua:253`:
+--
+--   elseif ( event == "CVAR_UPDATE" ) then
+--       if ( arg1 == "questPOI" ) then
+--           WatchFrame_Update();
+--           QuestLog_UpdateMapButton();
+--           QuestMapFrame:GetParent():HandleUserActionToggleQuestLog();
+--           QuestMapFrame_CloseQuestDetails();
+--           QuestMapFrame_UpdateAll();
+--
+-- **The client already does this, in its own context, untainted**, for the one
+-- variable that needs it. `SetCVar` raises `CVAR_UPDATE`, so writing questPOI
+-- is what triggers it -- this AddOn was duplicating Blizzard's own handler and
+-- paying for it in taint.
+--
+-- The other five variables do not need a redraw at all: `autoQuestWatch`
+-- decides whether FUTURE quests are tracked and changes nothing on screen,
+-- `instantQuestText` is text speed, and `showBosses`, `Outline` and
+-- `ShowQuestObjectHighlightEffect` are read when the map or the world is next
+-- drawn.
+--
+-- The map cycle stays. `HideUIPanel`/`ShowUIPanel` do not appear anywhere in
+-- the taint log, and it is the only thing that makes the on-screen quest
+-- helper pick up a questPOI change -- established the hard way across several
+-- passes of #11 and #19.
 local function mapIsOpen()
 	if type(WorldMapFrame) ~= "table" or type(WorldMapFrame.IsShown) ~= "function" then
 		return false
@@ -362,34 +396,8 @@ local function cycleWorldMap()
 end
 
 local function refreshQuestUI(rule)
-	-- Nothing at all unless a person just asked for it.
-	--
-	-- Every call below is a Blizzard function run from AddOn Lua, which means
-	-- Blizzard's code executes in OUR context and everything it writes is
-	-- marked as ours. `WatchFrame_Update` writes the global table
-	-- `WATCHFRAME_NUM_POPUPS`, so the taint is permanent for the session and
-	-- every later read of it by Blizzard's own code inherits it -- the taint
-	-- log shows exactly that, reaching WorldStateFrame's timers and
-	-- QuestMapFrame, none of which this AddOn touches.
-	--
-	-- At login there is nothing to refresh anyway: the tracker and the map are
-	-- being built from scratch, after this runs, from the values it just
-	-- wrote. The refresh is only worth anything when the player changes an
-	-- option with the UI already on screen -- and that is exactly when they
-	-- are watching for it.
-	--
-	-- This does not make the calls taint-free when they do run. It confines
-	-- them to a deliberate action, which is the smaller surface and the one a
-	-- player can connect to what they did. See the note in Tracker.lua.
-	if not ns.byRequest then return end
-
-	if type(WatchFrame_Update) == "function" then
-		pcall(WatchFrame_Update)
-	end
-	if type(QuestMapFrame_UpdateAll) == "function" and mapIsOpen() then
-		pcall(QuestMapFrame_UpdateAll)
-	end
-	-- Only the rules the map and the tracker actually read.
+	-- Only the rules the map and the tracker actually read, and only when a
+	-- person just asked for it.
 	--
 	-- Cycling the map for a variable it does not look at would be a visible
 	-- jolt for nothing. Cycling it on a loading screen is worse than that: it
@@ -402,7 +410,7 @@ local function refreshQuestUI(rule)
 	-- down, so the write still happens and the map is simply left alone. It is
 	-- right the next time it is opened, which on a loading screen is the only
 	-- time anyone sees it anyway.
-	if rule and rule.cyclesMap then cycleWorldMap() end
+	if rule and rule.cyclesMap and ns.byRequest then cycleWorldMap() end
 end
 
 local function writeCVar(rule, value)

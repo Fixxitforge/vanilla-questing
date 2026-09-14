@@ -1492,10 +1492,60 @@ Five calls removed, and the pattern is the one the bags and the item buttons alr
   nothing to refresh: the tracker and the map are built from scratch *after* this runs, from the
   values it just wrote.
 
-That last one **does not make the calls taint-free when they do run.** It confines them to a
-deliberate action — the smaller surface, and the one a player can connect to something they did.
-Removing them outright is the real fix and wants its own round, because the refresh they provide was
-established over several passes of #11 and #19.
+That last one **did not make the calls taint-free when they ran.** It confined them to a deliberate
+action, which was the smaller surface — and a second taint log, `dev/logs/taint-2026-09-15-v1.1.0-5.log`,
+showed that smaller surface is still permanent damage:
+
+```
+Tainted value written to global WATCHFRAME_NUM_POPUPS by VanillaQuesting
+  - Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:478
+    pcall() / VanillaQuesting/CVars.lua:387 refreshQuestUI()
+    applyModule() / ApplyAll() / Core.lua:627
+    ChatFrame1EditBox:ParseText()
+```
+
+**Login is clean; the first `/vq on` taints instead.** `WATCHFRAME_NUM_POPUPS` is a table, so one
+write is as permanent as a thousand. **A gate was never going to be enough — the call had to go.**
+
+#### So both calls are gone, and nothing is lost
+
+Blizzard's own source for this build, `Blizzard_UIPanels_Game/Wrath/QuestMapFrame.lua:253`:
+
+```lua
+elseif ( event == "CVAR_UPDATE" ) then
+    if ( arg1 == "questPOI" ) then
+        WatchFrame_Update();
+        QuestLog_UpdateMapButton();
+        QuestMapFrame:GetParent():HandleUserActionToggleQuestLog();
+        QuestMapFrame_CloseQuestDetails();
+        QuestMapFrame_UpdateAll();
+```
+
+**The client already does this, in its own context, untainted**, for the one variable that needs it —
+and `SetCVar` is what raises `CVAR_UPDATE`. This AddOn was duplicating Blizzard's own handler and
+paying for it in permanent taint.
+
+The other five variables need no redraw: `autoQuestWatch` decides whether *future* quests are
+tracked, `instantQuestText` is text speed, and `showBosses`, `Outline` and
+`ShowQuestObjectHighlightEffect` are read when the map or the world is next drawn.
+
+**The map cycle stays.** `HideUIPanel` and `ShowUIPanel` appear **nowhere** in either taint log, and
+the cycle is the only thing that makes the on-screen quest helper pick up a `questPOI` change —
+established the hard way across several passes of #11 and #19. Which also means #17's central
+claim, that the panel manager is what this AddOn was tainting, was wrong twice over.
+
+#### What this round cost, and the rule out of it
+
+Two fixes shipped on reasoning about a mechanism, neither aimed at the code doing the damage. The
+rule is not about taint:
+
+> **Reasoning about a mechanism is not evidence of which code triggers it.**
+
+And a second one, from removing the calls: deleting the comment block above `refreshQuestUI` took
+`mapIsOpen`, `doCycleWorldMap`, `inCombat` and `cycleWorldMap` with it, because they sat between the
+comment and the function. `luac -p` accepted the result — a call to a missing local is a nil global,
+which is legal Lua. **luacheck caught it on the next run**, four days after being added for exactly
+this class of thing.
 
 #### What this means for [#11](https://github.com/Fixxitforge/vanilla-questing/issues/11)
 
