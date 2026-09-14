@@ -809,6 +809,10 @@ end
 -- itself, so this builds only the body. Same text and same colours as the
 -- canvas panel, including the grey slash handle at the foot: tooltip lines
 -- cannot be resized, so the handle is set apart by colour instead.
+-- Exposed on the namespace as well, so the suite can ask what a tooltip body
+-- WOULD say for a given module without building a panel. The mirror
+-- suppression has no rule to point at today -- nothing is a mirror -- and a
+-- rule nobody can exercise is a rule that has quietly stopped working.
 local function tooltipFor(m)
 	local tip = YELLOW .. (m.desc or "") .. "|r"
 	-- A known cost of the option, stated where the player decides rather than
@@ -823,6 +827,8 @@ local function tooltipFor(m)
 	-- option row it read as clutter rather than help.
 	return tip
 end
+
+ns.TooltipBodyFor = tooltipFor
 
 -- White heading, a white colon, then the yellow body on the same row. The
 -- leading break keeps the first heading off the tooltip's own white title.

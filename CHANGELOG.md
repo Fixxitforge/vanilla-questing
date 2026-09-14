@@ -8,6 +8,13 @@ cost to find, and why it was made that way — is the version history in [`SPEC.
 
 ## 1.0.1
 
+- **New: Remove loot sparkles on quest objectives.** The sparkle on a quest object is gone. It also
+  removes the sparkle on profession nodes — herbs, mining veins — which is what both looked like in
+  the original game.
+- **Outline Mode is now No Outline Mode**, and it removes outlines rather than turning them on. It
+  sits under UI & Graphics with the other graphics options, is on by default, and is no longer
+  experimental. Switching it off restores Blizzard's own setting.
+- The **UI** group is now **UI & Graphics**.
 - A clean install no longer announces anything in chat on first login. The AddOn was reading the
   game's console variables before the client had loaded them, and mistook its own first pass for
   the player changing something.

@@ -8,6 +8,25 @@ local ADDON_NAME, ns = ...
 
 local C = ns.color
 
+-- `mirrorOnly` is kept although no rule sets it, deliberately.
+--
+-- A mirror is an option that has NO default, never enforces, and exists only
+-- to report a Blizzard setting and let the player change it from here. It is
+-- exempt from `/vq on`, `/vq off`, Defaults and both presets, because a
+-- command meaning "stop removing things" has nothing to say about an option
+-- that removes nothing.
+--
+-- `outlineMode` was the only one, for four versions, and it stopped being a
+-- mirror once `ShowQuestObjectHighlightEffect` gave this AddOn a reason to
+-- have an opinion about outlines. Deleting the machinery with it would mean
+-- re-deriving the whole argument -- and it took six rounds to get right -- the
+-- next time an option turns out to be something Blizzard owns and we only
+-- report. The write-up is in SPEC.md under the options audit; this is the
+-- code half of the same note.
+--
+-- Everything that reads it still works: `SyncFromClient` in this file, the
+-- bulk loop and `ResetDefaults` in Core, and `derivedPreset`/`applyPreset` in
+-- Options. Setting `mirrorOnly = true` on a rule is all it takes.
 local RULES = {
 	{
 		-- Removes the numbered quest pins, the blue quest area
@@ -139,71 +158,89 @@ local RULES = {
 		desc    = "Hides the boss portraits on the world map.",
 	},
 	{
-		-- EXPERIMENTAL and off by default.
+		-- The sparkles themselves, switched off at the source.
 		--
-		-- Unusually for this AddOn it turns something ON. Quest objects and
-		-- herbs get either an outline or a sparkle, never both, so switching
-		-- the outline on is what suppresses the glimmer -- but only on clients
-		-- that can actually render outlines. On the development client the
-		-- CVar changes correctly and nothing renders, including through
-		-- Blizzard's own options window, so this is a graphics-side fault
-		-- rather than anything an AddOn can fix. Offered as a maybe, never
-		-- promised, and never part of "turn everything on".
-		key          = "outlineMode",
-		cvar         = "Outline",
-		-- A MIRROR, not a setting this AddOn has an opinion about.
+		-- Probe v0.33 [G34] found this by reading the `help` column of
+		-- ConsoleGetAllCommands rather than by guessing a name. The client's
+		-- own words:
 		--
-		-- The only reason this option exists is to show what Blizzard's
-		-- Outline Mode is set to and let the player change it from here. It
-		-- has no default of its own: the default is whatever the player's
-		-- Outline already is, on a clean install and on every login after.
+		--   "Determines if quest objects in the world should be highlighted
+		--    (e.g., sparkles, outline, etc.)."
 		--
-		-- Which means it never enforces. Every other option applies a saved
-		-- choice at login; this one reads the client and follows. The saved
-		-- value exists only so the panel has something to draw between the
-		-- read and the next change.
+		-- Confirmed in game: it removes the glimmer outright. No outline, no
+		-- sparkle -- which is what a quest object looked like in Vanilla, and
+		-- what four versions of Outline Mode were trying to reach the long
+		-- way round.
 		--
-		-- And bulk commands leave it alone. `/vq off` means "stop removing
-		-- things", and this option removes nothing -- it reflects a Blizzard
-		-- setting. Driving it to 0 there would change a graphics option on
-		-- someone who is on their way to uninstalling, which is the opposite
-		-- of what that command is for. This is a deliberate exception to
-		-- "Disabled means nothing is on" from v0.14.3, for this rule only.
-		mirrorOnly   = true,
-		-- Not a boolean. Outline has four settings on this client, and 1, 2
-		-- and 3 are all "outlines are on", differing in what they apply to.
-		-- Only 0 is off, so only 0 leaves this option unticked, and a value
-		-- the player already chose is never dragged down to `wanted`.
-		onValues     = { ["1"] = true, ["2"] = true, ["3"] = true },
-		blizzOption  = "Outline Mode",
-		-- 2 is Blizzard's own default for this option, so switching it on
-		-- from off lands where the game would have put it rather than on the
-		-- narrowest setting.
-		wanted       = "2",
-		-- The one rule with an explicit OFF value, and the only rule that
-		-- needs one.
+		-- OURS. Nothing in Blizzard's options exposes it, and the
+		-- settings-registry walk has never named it, so the option is the only
+		-- control the player has for it here.
+		key        = "noQuestSparkles",
+		cvar       = "ShowQuestObjectHighlightEffect",
+		wanted     = "0",
+		-- The client's own default, read back by GetCVarDefault rather than
+		-- assumed.
+		offValue   = "1",
+		default    = true,
+		label      = "quest object sparkles",
+		onText     = "Loot sparkles removed from quest objects.",
+		offText    = "Loot sparkles on quest objects restored.",
+		group      = "UI & Graphics",
+		order      = 105,
+		title      = "Remove loot sparkles on quest objectives",
+		desc       = "Removes the sparkle effect on quest objects in the world.",
+		-- Stated because it is a real cost the player should read before
+		-- choosing, not a defect. The client draws both effects from one
+		-- switch: there is no separate variable for profession nodes, so
+		-- turning one off turns both off.
 		--
-		-- Everywhere else, "off" means give the player back what they had, and
-		-- that works because the AddOn's on-state and the player's off-state
-		-- are the same two values. Outline has four, of which three count as
-		-- on -- so for most players "what they had" is 2, which is still
-		-- outlines. Restoring it makes switching the option off do nothing
-		-- visible, which is not a switch.
+		-- It is also Vanilla behaviour -- neither had a glimmer in the
+		-- original game -- which is why it is an acceptable limitation rather
+		-- than a reason not to ship the option.
+		limitation = "Also removes the loot sparkles on profession loot nodes (i.e. herbs, mining veins, etc).",
+	},
+	{
+		-- SHARED, the same shape as Instant Quest Text and Automatic Quest
+		-- Tracking: Blizzard has a control for it, so the two agree with each
+		-- other rather than one of them winning.
 		--
-		-- Only applied when this AddOn was the one holding the variable, which
-		-- is what `state` records. A player who has never switched Outline
-		-- Mode on never has their Outline touched, including by `/vq off`.
-		offValue     = "0",
-		default      = false,
-		experimental = true,
-		label        = "outline mode",
-		onText       = "Rendering outlines on quest objects.",
-		offText      = "Rendering sparkles on quest objects.",
-		group        = "Experimental",
-		order        = 110,
-		title        = "Outline Mode",
-		desc         = "Removes the loot sparkles on quest objects, showing an outline instead.",
-		limitation   = "Known limitation: either an outline or loot sparkles must be shown. If the outline fails to render, loot sparkles are shown automatically.",
+		-- This rule was a MIRROR for four versions and is the reason the
+		-- mirror machinery exists. What changed is that the AddOn now has an
+		-- opinion: `ShowQuestObjectHighlightEffect` removes the glimmer
+		-- outright, so there is no longer any reason to want outlines ON. The
+		-- Vanilla-correct value is 0, and this option asks for it.
+		--
+		-- Note the polarity, which is the opposite of the old rule: ON means
+		-- Outline 0. The option is named for what it removes, like every other
+		-- option here.
+		--
+		-- `mirrorOnly` is deliberately NOT set. No rule uses it any more, and
+		-- the machinery is kept on purpose -- see the note above RULES.
+		key         = "noOutlineMode",
+		cvar        = "Outline",
+		blizzOption = "Outline Mode",
+		wanted      = "0",
+		-- 2 is Blizzard's own default, confirmed by GetCVarDefault in probe
+		-- v0.33 [G32] rather than assumed. Switching the option off hands the
+		-- player back the value the game would have had.
+		--
+		-- No `onValues` any more. The old rule treated 1, 2 and 3 all as "on"
+		-- because it was reporting whether outlines were showing; this one
+		-- asks a single question -- is Outline 0 -- so the plain
+		-- `value == wanted` test is the right one.
+		offValue    = "2",
+		default     = true,
+		label       = "outline mode",
+		onText      = "Outlines removed from quest objects.",
+		offText     = "Outlines on quest objects restored.",
+		group       = "UI & Graphics",
+		order       = 110,
+		title       = "No Outline Mode",
+		desc        = "Stops quest objects being drawn with an outline.",
+		-- No `limitation`. The old one explained that outlines and sparkles
+		-- were an either/or and that outlines did not render here. Neither is
+		-- a cost of THIS option: it removes outlines, and the sparkles have
+		-- their own switch now.
 	},
 }
 
@@ -371,9 +408,11 @@ local function makeModule(rule)
 
 	-- Clean install only. An option that SHIPS OFF beside a Blizzard control
 	-- takes whatever the player already has instead of pretending to differ
-	-- from it. `outlineMode` is the only one today: it ships off, Blizzard's
-	-- Outline ships on, and that guaranteed mismatch is what announced itself
-	-- in chat on a first login.
+	-- from it. No rule ships off today -- `outlineMode` was the one, and it
+	-- ships on as `noOutlineMode` now -- so this path is dormant rather than
+	-- dead. It is kept with the rest of the mirror machinery, and for the same
+	-- reason: the mismatch it exists to prevent is what announced itself in
+	-- chat on a first login, and rediscovering that would be expensive.
 	--
 	-- Options that ship ON are not adopted. A fresh install is supposed to
 	-- give the Vanilla experience, and reading the player's existing settings

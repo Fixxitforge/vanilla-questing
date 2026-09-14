@@ -50,7 +50,7 @@ dropdown, the real Apply and Defaults buttons.
 | Feature | Option | What is unproven |
 | --- | --- | --- |
 | Turn-in pop-up bubbles | `noCompleteQuestPopup` | No pop-up has been seen in play, so the removal has never run. Ships **experimental and off**. The one unverified assumption is stated in `Tracker.lua`: the first return of `GetAutoQuestPopUp` is taken to be the questID `RemoveAutoQuestPopUp` wants. |
-| Quest object outline | `outlineMode` | The CVar writes fine and changes nothing, because the client cannot render the outline. Kept as an experiment in case a future build fixes it. |
+| Quest object outline | `noOutlineMode` | The CVar writes fine and, on this client, changes nothing visible either way — the outline is not rendered. The option asks for `Outline` 0, which is correct whether or not the client draws one, so nothing depends on the answer. What actually removes the glimmer is `noQuestSparkles`. |
 
 ### In flight
 
@@ -132,14 +132,24 @@ and the least explaining.
 | `trackerPlainText` | Quest Tracker | on | frames | ours | quest link buttons take `EnableMouse(false)` | clicks handed back |
 | `trackerPlainTextAchievements` | Quest Tracker | on | frames | ours | achievement link buttons silenced too | clicks handed back |
 | `hideTrackerItemButtons` | Quest Tracker | on | frames | ours | `WatchFrameItem<N>` hidden | shown |
-| `hideTooltipsQuestProgress` | UI | on | frames | ours | quest lines removed from tooltips, height refitted in the same frame | lines return; the frame stays owned until the next reload |
-| `noBagItemHighlight` | UI | on | frames | ours | quest texture on bag slots hidden | shown |
-| `outlineMode` | Experimental | **follows the client** | CVar | **mirror** | `Outline` → `2` if it was `0`; a `1` or `3` is left where the player put it | `Outline` → `0` |
+| `hideTooltipsQuestProgress` | UI & Graphics | on | frames | ours | quest lines removed from tooltips, height refitted in the same frame | lines return; the frame stays owned until the next reload |
+| `noBagItemHighlight` | UI & Graphics | on | frames | ours | quest texture on bag slots hidden | shown |
+| `noQuestSparkles` | UI & Graphics | on | CVar | ours | `ShowQuestObjectHighlightEffect` → `0` | → `1` |
+| `noOutlineMode` | UI & Graphics | on | CVar | shared | `Outline` → `0` | → `2`, Blizzard's default |
 | `noCompleteQuestPopup` | Experimental | off | frames | ours | turn-in pop-ups removed as they arrive | pop-ups return |
 
-`outlineMode` is the one option in neither column. It is a **pure mirror**: no default, never
-enforces, reports Blizzard's setting and lets the player change it from here. Exempt from `/vq on`,
-`/vq off`, Defaults and both presets. See below.
+**No option is a mirror any more, and the category is kept anyway.** A mirror has no default, never
+enforces, and exists only to report a Blizzard setting and let the player change it from here;
+it is exempt from `/vq on`, `/vq off`, Defaults and both presets, because a command meaning "stop
+removing things" has nothing to say about an option that removes nothing.
+
+`outlineMode` was the only one, for four versions, and it stopped being a mirror the moment
+`ShowQuestObjectHighlightEffect` gave this AddOn a reason to have an opinion about outlines — see
+the v1.0.1 history below. The `mirrorOnly` machinery stays in `CVars.lua`, `Core.lua` and
+`Options.lua`, with the suite exercising the rule by making a module a mirror for the length of one
+call. **An exemption nothing exercises is an exemption that has quietly stopped working**, and the
+argument behind it took six rounds to settle — the next option that turns out to be something
+Blizzard owns and we only report should not have to re-derive it.
 
 #### What decides "ours" from "shared": is there another control?
 
@@ -194,10 +204,12 @@ a setting the player never asked this AddOn to touch.
 
 #### On a first install
 
-Eleven of the thirteen ship **on**, applied on the first login after the client's own saved
+Thirteen of the fourteen ship **on**, applied on the first login after the client's own saved
 variables have arrived. `noCompleteQuestPopup` ships **off** and is never switched on by the
-Vanilla (Default) preset. `outlineMode` has no ship state at all: it reads `Outline` and reports it,
-so on a fresh client it shows as **on**, because Blizzard's default is `2`.
+Vanilla (Default) preset, and it is the only option that does.
+
+That is a change: `outlineMode` used to have no ship state at all, reading `Outline` and reporting
+it. As `noOutlineMode` it ships on and enforces like everything else.
 
 `trackerPlainTextAchievements` is a sub-option of `trackerPlainText`. It ships on, and while its
 parent is off it is inactive and every readout says so.
@@ -237,11 +249,16 @@ That case is a regression from the fix for handing a CVar back forgetting what i
 the stale first-ever reading happened to be `1`, so the option appeared to work. Both are wanted;
 they only coexist once owned and mirrored rules are told apart.
 
-#### `outlineMode` is a mirror
+#### What a mirror is — kept for the next one
 
-Unique among the options, and the flag is `mirrorOnly` on its rule. **The only reason it exists is
-to show what Blizzard's Outline Mode is set to and let the player change it from here.** Everything
-else follows from that sentence:
+**No option is a mirror today.** `outlineMode` was, for four versions, and this section is kept
+deliberately: the reasoning took six rounds to settle, the `mirrorOnly` machinery is still in the
+code, and the next option that turns out to be something Blizzard owns and we only report should
+not have to re-derive any of it. Read in the past tense.
+
+The flag is `mirrorOnly` on a rule. **The only reason that option existed was to show what
+Blizzard's Outline Mode was set to and let the player change it from here.** Everything else
+followed from that sentence:
 
 | | |
 | --- | --- |
@@ -261,10 +278,11 @@ Two things it deliberately does **not** do:
 - **Remember the preferred on-value.** After an off/on cycle a `1` or `3` becomes `2`. Accepted
   rather than solved: keeping it needs a second remembered slot, distinct from the pre-AddOn value.
 
-**This is a deliberate exception to "Disabled means nothing is on"** from v0.14.3, for this rule
-only. That rule still holds for `noCompleteQuestPopup`, the other experimental option — which is
-why the suite tests "experimental" on that one and tests the mirror separately. Using `outlineMode`
-as the stand-in for "experimental" tests the exception instead of the rule.
+**This was a deliberate exception to "Disabled means nothing is on"** from v0.14.3, for that rule
+only. The rule itself still holds, and `noCompleteQuestPopup` is now the only experimental option,
+so the suite tests "experimental" on it and tests the mirror exemption separately — by making a
+module a mirror for the length of one call. **An exemption nothing exercises is an exemption that
+has quietly stopped working**, and with no mirror shipping, that is the only way left to assert it.
 
 ### The client's CVars are not loaded at `ADDON_LOADED`
 
@@ -317,13 +335,21 @@ client will not let an AddOn do cleanly, not things left undone.
    The old behaviour is still available, because "a tracker that is entirely text" is a
    reasonable thing to want: `trackerPlainTextAchievements`, off by default, the AddOn's first
    sub-option.
-2. **Quest objects show either an outline or loot sparkles — never neither.** The two are
-   alternatives in the engine, so sparkles cannot simply be removed; the most an AddOn can do is
-   ask for the outline instead, which is what `outlineMode` does. Where a client fails to render
-   the outline it falls back to loot sparkles on its own. Stated on the option's own tooltip.
-   `particleDensity` and `ffxGlow` were both tried as ways round it and rejected: the first takes
-   the particles off lootable bodies too, which *is* Classic behaviour, and the second does not
-   touch them at all.
+2. ~~**Quest objects show either an outline or loot sparkles — never neither.**~~ **Withdrawn.**
+   `ShowQuestObjectHighlightEffect` removes the highlight outright, and the client documents it as
+   doing exactly that. Found by probe v0.32's full CVar enumeration and confirmed in game.
+
+   Kept struck through rather than deleted, because the reasoning that made it look permanent is
+   the thing worth remembering. Everything in it was true — the two *are* alternatives, the outline
+   *does* fail to render here, `particleDensity` *does* take the particles off lootable bodies and
+   `ffxGlow` *does* nothing. **The error was concluding from "every lever I know about fails" that
+   no lever exists.** Four versions of work sat on that, and what broke it was not a better idea
+   but a better question: stop asking the client about names we already suspected, and ask it for
+   the whole list.
+
+   The limitation that replaces it is a genuine one and is stated on the option: the same switch
+   governs profession nodes, so removing the sparkle from a quest object removes it from herbs and
+   mining veins too. Vanilla behaviour for both, which is why it is acceptable rather than a defect.
 
 ## Architecture
 
@@ -621,10 +647,13 @@ is one claim too many, and the stricter of the two is the one a reader believes.
 
 Its **Known limitations** section must include, at minimum:
 
-- **Quest objects show either an outline or loot sparkles — never neither.** The two are
-  alternatives in the engine, so the sparkles cannot simply be taken away. The `outlineMode`
-  option is offered as an **experimental** way to ask for the outline instead; where a client
-  fails to render it, loot sparkles are shown automatically.
+- **Removing the quest object sparkles also removes them from profession nodes.** Herbs and mining
+  veins lose their glimmer too, because the game draws both from one switch. Neither had one in the
+  original game.
+
+  This replaces the old "either an outline or loot sparkles, never neither" entry, which is
+  withdrawn — see the known-limitations section above. **The listing must be updated to match**;
+  it still carries the old text.
 - Anything else discovered to be unreachable gets listed here rather than quietly omitted.
 
 ## Version history
@@ -1404,6 +1433,58 @@ without anyone having to remember. `noCompleteQuestPopup` is experimental and no
 the warning, and is the control in the test: without it, a change that stripped the note from every
 option would pass.
 
+### The sparkles had their own switch all along
+
+`ShowQuestObjectHighlightEffect`, found by probe v0.32's full enumeration and read in v0.33 through
+the client's own help column:
+
+> Determines if quest objects in the world should be highlighted (e.g., sparkles, outline, etc.).
+
+**Confirmed in game: it removes the glimmer outright.** No outline, no sparkle. And it covers
+profession nodes as well as quest objects — herbs, mining veins — from the same switch, which is
+Vanilla behaviour for both and therefore an acceptable limitation rather than a defect. It is
+stated on the option because it is a real cost the player should read before choosing.
+
+#### What that does to Outline Mode
+
+Four versions of `outlineMode` rest on one finding: a quest object gets **either** an outline **or**
+a sparkle, never both — so switching the outline **on** was the only lever that suppressed the
+glimmer. Outlines do not render on this client, so the glimmer stayed, and the option shipped
+experimental with a stated limitation and no default of its own.
+
+Every part of that argument is now obsolete, and the option is better for it:
+
+| | was | is |
+| --- | --- | --- |
+| name | Outline Mode | **No Outline Mode** |
+| owner | mirror | **shared**, like Instant Quest Text |
+| on means | `Outline` → `2` | **`Outline` → `0`** |
+| off means | `Outline` → `0` | **`Outline` → `2`**, Blizzard's default |
+| ships | following the client | **on** |
+| group | Experimental | **UI & Graphics** |
+| limitation | either/or, may not render | **none** |
+
+**The polarity is the change to notice.** The option is named for what it removes, like every other
+option here, and it is no longer the one place in the AddOn that turned something on.
+
+`onValues` is gone with it. The old rule treated `1`, `2` and `3` alike because it was reporting
+*whether outlines were showing*; the new one asks a single question — is `Outline` 0 — so the plain
+`value == wanted` test is correct.
+
+#### The migration does not carry the old value across
+
+`dbVersion` 4 drops `settings.outlineMode` and `state.Outline` rather than inverting them.
+
+The old value was a **reading**, not a choice: a mirror recorded what Blizzard's Outline Mode
+happened to be, and the player never expressed a preference through it. Inverting that into a
+preference would be inventing an opinion on their behalf. The new option takes its default like any
+other new option.
+
+For the same reason `outlineMode` is **not** aliased to `noOutlineMode` in `RENAMED_IN_V2`. The
+polarity flipped, so `/vq on outlineMode` under the old meaning asked for outlines and under the new
+one removes them. An alias that does the opposite of what the typist means is worse than an
+"Unknown option" that points at `/vq help`.
+
 ### v0.33 probe
 
 #### G32 — nothing this AddOn drives is locked, and two of the five are per-character — ANSWERED
@@ -1990,7 +2071,14 @@ Tested and rejected as fixes:
 **kept** on lootable bodies. Nothing found so far separates those three, and the one CVar that
 would cannot render here.
 
-**Shipped anyway as `outlineMode`, experimental, default off.** Turning `Outline` *on* is
+> **Reached, three probe passes later.** `ShowQuestObjectHighlightEffect` does exactly this: off
+> for quest objects and profession nodes, lootable bodies untouched. The target was written down
+> before anything was known to satisfy it, and it turned out to be met precisely — which is the
+> argument for writing the target down.
+
+**Shipped at the time as `outlineMode`, experimental, default off** — since replaced by
+`noOutlineMode`, which asks for `Outline` 0 and is neither experimental nor off. Read the rest of
+this paragraph as history. Turning `Outline` *on* was
 a semi-fix for anyone whose client can render outlines (1 is enough; 2 and 3 also work). It is
 the one rule in `CVars.lua` that turns something **on** rather than off. It is never enabled by
 default and is deliberately skipped by a bare `/vq on`, which enables the Classic set but leaves

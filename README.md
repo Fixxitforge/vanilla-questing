@@ -41,7 +41,8 @@ or `/reload`, then type `/vq` to open the options.
 
 `hideMapQuestHelper` · `hideMinimapQuestHelper` · `hideBossPortraits` · `noInstantQuestText` ·
 `hideCharacterFrame` · `hideTooltipsQuestProgress` · `noAutoQuestTracking` · `trackerPlainText` ·
-`hideTrackerItemButtons` · `noBagItemHighlight` · `outlineMode` · `noCompleteQuestPopup` ·
+`hideTrackerItemButtons` · `noBagItemHighlight` · `noQuestSparkles` · `noOutlineMode` ·
+`noCompleteQuestPopup` ·
 `trackerPlainTextAchievements`
 
 ## What it removes
@@ -68,31 +69,30 @@ You have full control, disable as much or as little as you like.
   under it to keep those clickable
 - No quest item use buttons beside tracked quests.
 
-**UI**
+**UI & Graphics**
 
 - Quest progress appended to tooltips — mousing a creature no longer tells you which quest it
   belongs to or how many you still need
 - The yellow highlight on quest items in your bags, and the `!` on items that start a
   quest — one option, since Blizzard draws both with the same texture
+- The loot sparkles on quest objects. This also removes them from profession nodes — herbs, mining
+  veins — because the game draws both from one switch. Neither had a glimmer in the original game
+- The outline on quest objects, where a client draws one
 
 **Experimental**
 
 These are never switched on by the **Vanilla (Default)** preset. Turn them on yourself.
 
 - Removes the Complete Quest popups
-- Loot sparkles on quest objects, replaced with an outline — see Known limitations
 
 ## Known limitations
 
-### Quest objects show either an outline or loot sparkles — never neither
+### Removing the quest object sparkles also removes them from herbs and ore
 
-The two are alternatives in the engine, so the loot sparkles on quest objects cannot simply be
-taken away. What an AddOn can do is ask for the outline instead, which is what **Outline Mode**
-does. Where a client fails to render the outline, loot sparkles are shown automatically.
-
-Two other ways round it were tried and rejected. `particleDensity` removes the sparkle — and the
-particles on lootable corpses with it, which *is* Vanilla behaviour. `ffxGlow` does not touch it
-at all.
+The game draws both from one switch, so there is no way to take the sparkle off a quest object and
+leave it on a mining vein. Neither had one in the original game, so this is the right answer for
+Classic questing — but it is a real change to gathering, and worth knowing before you turn the
+option on.
 
 ## Compatibility
 

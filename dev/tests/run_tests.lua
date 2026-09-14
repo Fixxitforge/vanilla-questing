@@ -37,18 +37,23 @@ check("no runaway event recursion (depth " .. maxEventDepth() .. ")", maxEventDe
 -- ON mismatches every time, and said so in chat on a first ever login.
 if scenario == "normal" or scenario == "outline_off"
 	or scenario == "outline_late_off" then
-	-- NOT `(scenario == "outline_off") and false or true`. The and/or idiom
-	-- cannot carry a false branch: `true and false` is false, and `false or
-	-- true` is true, so that expression is true for every scenario and the
-	-- check passes without testing anything.
-	local expected = true
-	if scenario ~= "normal" then expected = false end
-	check("an option that ships off adopts the Blizzard control it shadows",
-		VanillaQuestingDB.settings.outlineMode == expected,
-		tostring(VanillaQuestingDB.settings.outlineMode) ..
+	-- No Outline Mode ships ON and enforces, whatever the client had. It was a
+	-- MIRROR until ShowQuestObjectHighlightEffect gave this AddOn a reason to
+	-- have an opinion about outlines -- and a mirror adopted the client value
+	-- instead of applying a saved one, which is what these scenarios were
+	-- built to check.
+	--
+	-- They still earn their place: `outline_off` starts with Outline already
+	-- at 0, which is where the AddOn wants it, so nothing is written and there
+	-- must still be nothing to say. That is the #13 shape -- a clean install
+	-- is not a change the player made -- and it is independent of who owns the
+	-- variable.
+	check("the option ships on whatever the client had",
+		VanillaQuestingDB.settings.noOutlineMode == true,
+		tostring(VanillaQuestingDB.settings.noOutlineMode) ..
 		" for Outline " .. tostring(cvars.Outline))
-	check("adopting does not move the variable",
-		cvars.Outline == ((scenario == "normal") and "2" or "0"), cvars.Outline)
+	check("and the variable ends up at 0 either way",
+		cvars.Outline == "0", cvars.Outline)
 
 	local noisy = {}
 	for _, m in ipairs(chatlog) do
@@ -75,9 +80,9 @@ if scenario == "vars_late_on" then
 		tostring(VanillaQuestingDB.settings.noInstantQuestText))
 	check("noAutoQuestTracking stayed on", VanillaQuestingDB.settings.noAutoQuestTracking == true,
 		tostring(VanillaQuestingDB.settings.noAutoQuestTracking))
-	check("outlineMode adopted on from Outline 2",
-		VanillaQuestingDB.settings.outlineMode == true,
-		tostring(VanillaQuestingDB.settings.outlineMode))
+	check("noOutlineMode enforced from Outline 2",
+		VanillaQuestingDB.settings.noOutlineMode == true and cvars.Outline == "0",
+		tostring(VanillaQuestingDB.settings.noOutlineMode) .. "/" .. tostring(cvars.Outline))
 
 	local noisy = {}
 	for _, m in ipairs(chatlog) do
@@ -199,7 +204,7 @@ if scenario == "normal" then
 		check("v1->v2 migrated noAutoQuestTracking", st.noAutoQuestTracking == true, tostring(st.noAutoQuestTracking))
 		check("v1->v2 migrated hideBossPortraits", st.hideBossPortraits == true, tostring(st.hideBossPortraits))
 		check("v1 keys removed", st.showBosses == nil and st.worldMapQuestPOI == nil)
-		check("dbVersion bumped", VanillaQuestingDB.dbVersion == 3, VanillaQuestingDB.dbVersion)
+		check("dbVersion bumped", VanillaQuestingDB.dbVersion == 4, VanillaQuestingDB.dbVersion)
 		VanillaQuestingDB.dbVersion = 1
 		VanillaQuestingDB.state.minimapQuestPOITracking = true
 		VanillaQuestingDB.state.minimapMarkersTracking = nil
@@ -228,86 +233,63 @@ if scenario == "normal" then
 	check("/vq on leaves experimental alone",
 		VanillaQuestingDB.settings.noCompleteQuestPopup == false)
 
-	-- And the mirror, which reset re-reads rather than defaulting: resetting
-	-- this AddOn must not reach out and change a Blizzard graphics setting.
+	-- Outline is an ordinary SHARED option now, so reset defaults it like any
+	-- other and the variable follows.
+	--
+	-- It was a MIRROR for four versions: no default, never enforcing, reset
+	-- re-reading the client rather than writing to it. That ended when
+	-- ShowQuestObjectHighlightEffect gave this AddOn a reason to have an
+	-- opinion about outlines -- there is no longer anything to want them ON
+	-- for. The mirror machinery is kept in the code deliberately; nothing
+	-- uses it.
+	--
+	-- Note the polarity flip. The old option was on when outlines showed; this
+	-- one is on when they are removed, like every other option here.
 	cvars.Outline = "3"
 	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
-	check("a mirror follows the client through a reset",
-		VanillaQuestingDB.settings.outlineMode == true,
-		tostring(VanillaQuestingDB.settings.outlineMode))
-	check("and reset leaves the variable alone", cvars.Outline == "3", cvars.Outline)
-	cvars.Outline = "0"
-	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
-	check("including when the client says off",
-		VanillaQuestingDB.settings.outlineMode == false,
-		tostring(VanillaQuestingDB.settings.outlineMode))
-	check("still leaving the variable alone", cvars.Outline == "0", cvars.Outline)
+	check("No Outline Mode ships on", VanillaQuestingDB.settings.noOutlineMode == true,
+		tostring(VanillaQuestingDB.settings.noOutlineMode))
+	check("and reset drives the variable to 0", cvars.Outline == "0", cvars.Outline)
+
 	cvars.Outline = "2"
 	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
 	check("/vq on still enables the normal ones", VanillaQuestingDB.settings.hideBossPortraits == true)
-	-- From off, the AddOn asks for 2. (The harness starts Outline at 2, which
-	-- already counts as on, and a value the player chose is left alone -- so
-	-- this has to start from 0 to be about the write at all.)
-	cvars.Outline = "0"
-	pcall(SlashCmdList["VANILLAQUESTING"], "on outlineMode")
-	check("experimental can be turned on by name", VanillaQuestingDB.settings.outlineMode == true)
-	check("Outline driven to Blizzard's default of 2", cvars.Outline == "2", tostring(cvars.Outline))
-	pcall(SlashCmdList["VANILLAQUESTING"], "off outlineMode")
-	check("Outline restored to what the player had", cvars.Outline == "0", tostring(cvars.Outline))
 
-	-- And a value that already counts as on is never touched, so there is
-	-- nothing to restore either.
-	cvars.Outline = "3"
-	VanillaQuestingDB.state.Outline = nil
-	pcall(SlashCmdList["VANILLAQUESTING"], "on outlineMode")
-	check("Outline 3 is left alone when the option goes on", cvars.Outline == "3", cvars.Outline)
-	pcall(SlashCmdList["VANILLAQUESTING"], "off outlineMode")
-	check("and switching the option off means outlines off", cvars.Outline == "0",
-		cvars.Outline)
-
-	-- THE RULE, and the one option that is excepted from it.
-	--
-	-- The rule: switching an option off returns the variable to whatever the
-	-- player last chose. Not to a value this AddOn considers "off", and not to
-	-- Blizzard's default. v1.0.1 briefly shipped that reading across all five
-	-- CVar options and it was wrong -- it means switching an option off
-	-- CHANGES a setting the player chose, which a subtractive AddOn must not
-	-- do. Pinned below on questPOI, which is an ordinary rule.
-	--
-	-- The exception: Outline has four values and three of them count as on, so
-	-- "what the player had" is 2 for almost everyone -- which is still
-	-- outlines. Restoring it makes switching the option off do nothing
-	-- visible, which is not a switch. Outline alone declares an `offValue`.
-	--
-	-- Note what the exception does NOT do: force `wanted` on the way in. A
-	-- player who chose 3 keeps 3 while the option is on, because re-writing a
-	-- Blizzard control's value on every re-assert is fighting the player's UI.
-	cvars.Outline = "3"
-	VanillaQuestingDB.state.Outline = nil
-	pcall(SlashCmdList["VANILLAQUESTING"], "on outlineMode")
-	check("a value that already counts as on is left where the player put it",
-		cvars.Outline == "3", cvars.Outline)
-	pcall(SlashCmdList["VANILLAQUESTING"], "off outlineMode")
-	check("but switching the option off means outlines off", cvars.Outline == "0",
-		cvars.Outline)
-	pcall(SlashCmdList["VANILLAQUESTING"], "on outlineMode")
-	check("and switching it on again asks for Blizzard's 2, the 3 being gone",
+	-- On by name, off by name, and the off value is Blizzard's own default of
+	-- 2 rather than whatever the player happened to have. Read back by
+	-- GetCVarDefault in probe v0.33 [G32] rather than assumed.
+	pcall(SlashCmdList["VANILLAQUESTING"], "off noOutlineMode")
+	check("switching it off hands back Blizzard's default of 2",
 		cvars.Outline == "2", cvars.Outline)
+	pcall(SlashCmdList["VANILLAQUESTING"], "on noOutlineMode")
+	check("and switching it on removes outlines again", cvars.Outline == "0", cvars.Outline)
 
-	-- A mirror follows the client at every login, not just a clean install.
-	--
-	-- Every other option applies its saved choice at login. This one reads the
-	-- client and follows, because an option whose only job is to report a
-	-- Blizzard setting cannot also insist on what that setting is.
-	cvars.Outline = "0"
-	VanillaQuestingDB.settings.outlineMode = true     -- a stale saved value
-	ns.applied = nil                                  -- as at the first apply
-	ns:ApplyAll()
-	check("a mirror follows the client at login, not the saved value",
-		VanillaQuestingDB.settings.outlineMode == false,
-		tostring(VanillaQuestingDB.settings.outlineMode))
-	check("and does not push the saved value onto the client",
-		cvars.Outline == "0", cvars.Outline)
+	-- 1 and 3 are outline settings too, and the option is against all of them.
+	-- The old rule carried an `onValues` table treating 1/2/3 alike because it
+	-- reported whether outlines showed; this one asks a single question, so a
+	-- plain value == wanted test is the right one.
+	for _, v in ipairs({ "1", "2", "3" }) do
+		pcall(SlashCmdList["VANILLAQUESTING"], "off noOutlineMode")
+		cvars.Outline = v
+		VanillaQuestingDB.state.Outline = nil
+		pcall(SlashCmdList["VANILLAQUESTING"], "on noOutlineMode")
+		check("Outline " .. v .. " is removed when the option goes on",
+			cvars.Outline == "0", cvars.Outline)
+	end
+	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+
+	-- The sparkles themselves, which is why the outline option could change
+	-- shape at all. Probe v0.33 [G34] found the variable by reading the
+	-- client's own help text, and it was confirmed in game.
+	check("the sparkle option ships on", VanillaQuestingDB.settings.noQuestSparkles == true,
+		tostring(VanillaQuestingDB.settings.noQuestSparkles))
+	check("and drives its variable", cvars.ShowQuestObjectHighlightEffect == "0",
+		tostring(cvars.ShowQuestObjectHighlightEffect))
+	pcall(SlashCmdList["VANILLAQUESTING"], "off noQuestSparkles")
+	check("switching it off hands back the client's default of 1",
+		cvars.ShowQuestObjectHighlightEffect == "1",
+		tostring(cvars.ShowQuestObjectHighlightEffect))
+	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
 
 	-- The case that worried us: a player who has NEVER switched Outline Mode
 	-- on must never have their Outline touched, including by a bulk /vq off.
@@ -953,11 +935,11 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 		local expLine, normalLine
 		for i = before3 + 1, #chatlog do
 			local t = tostring(chatlog[i])
-			if t:find("outlineMode", 1, true) then expLine = t end
+			if t:find("noCompleteQuestPopup", 1, true) then expLine = t end
 			if t:find("hideMapQuestHelper", 1, true) then normalLine = t end
 		end
 		check("every option name is the same yellow, experimental or not",
-			expLine and expLine:find("|cffffd100outlineMode", 1, true) ~= nil, tostring(expLine))
+			expLine and expLine:find("|cffffd100noCompleteQuestPopup", 1, true) ~= nil, tostring(expLine))
 		check("and the experimental one carries the (experimental) note in orange",
 			expLine and expLine:find("|cffff8019(experimental)", 1, true) ~= nil, tostring(expLine))
 		check("a normal option has no orange at all",
@@ -1161,32 +1143,49 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 
 	-- ---- the experimental note is not shown on a mirror ----
 	--
-	-- "Untested and potentially unstable" is a claim about what this AddOn is
-	-- doing to the game. A mirror does nothing to the game, so on Outline Mode
-	-- the line was false -- and a false warning teaches the player to discount
-	-- the true ones. What the option keeps is the heading, the orange name,
-	-- the "(experimental)" mark and its own `limitation`.
+	-- Kept although nothing is a mirror today, on purpose, and paired with the
+	-- machinery kept in CVars.lua for the same reason: the argument took six
+	-- rounds to get right and the next mirror should not have to re-derive it.
+	--
+	-- The rule: "untested and potentially unstable" is a claim about what this
+	-- AddOn is doing to the game, and a mirror does nothing to the game -- it
+	-- reports a Blizzard setting. So the note is suppressed for mirrors and
+	-- shown for every other experimental option.
+	--
+	-- With no mirror to point at, this asserts the RULE rather than a row:
+	-- every experimental option carries the note, and would stop carrying it
+	-- the moment it became a mirror.
 	do
-		local outline, popup
+		local experiments, mirrors = 0, 0
 		for i = 1, #ns.modules do
 			local m = ns.modules[i]
-			if m.key == "outlineMode" then outline = m
-			elseif m.key == "noCompleteQuestPopup" then popup = m end
+			if m.experimental then experiments = experiments + 1 end
+			if m.mirrorOnly then mirrors = mirrors + 1 end
 		end
-		check("the mirror is still an experimental option",
-			outline and outline.experimental == true and outline.mirrorOnly == true)
-		check("and still carries its known limitation",
-			outline and type(outline.limitation) == "string" and #outline.limitation > 0)
-		check("and still reads as experimental in /vq status", (function()
-			local b = #chatlog
-			pcall(SlashCmdList["VANILLAQUESTING"], "status outlineMode")
-			return table.concat(chatlog, "\n", b + 1):find("(experimental)", 1, true) ~= nil
-		end)())
-		-- The other experimental option is NOT a mirror, so it keeps the note.
-		-- Without it this check passes for a change that removed the note
-		-- from every option rather than from mirrors.
-		check("a non-mirror experimental option still exists to compare against",
-			popup and popup.experimental == true and not popup.mirrorOnly)
+		check("there is at least one experimental option to reason about",
+			experiments > 0, experiments)
+		check("and nothing is a mirror today", mirrors == 0, mirrors)
+
+		-- The suppression itself, proved by making a module a mirror for the
+		-- length of one call. Reaching into the module is deliberate: there is
+		-- no rule to point at, and a rule nobody can exercise is a rule that
+		-- has quietly stopped working.
+		local exp
+		for i = 1, #ns.modules do
+			if ns.modules[i].experimental then exp = ns.modules[i] break end
+		end
+		if exp and type(ns.TooltipBodyFor) == "function" then
+			local before = ns.TooltipBodyFor(exp)
+			exp.mirrorOnly = true
+			local after = ns.TooltipBodyFor(exp)
+			exp.mirrorOnly = nil
+			check("an experimental option carries the untested warning",
+				before and before:find("untested and potentially unstable", 1, true) ~= nil,
+				tostring(before))
+			check("and loses it the moment it becomes a mirror",
+				after and after:find("untested and potentially unstable", 1, true) == nil,
+				tostring(after))
+		end
 	end
 
 	-- ---- the help text itself ----
@@ -1445,30 +1444,31 @@ if scenario == "native" or scenario == "no_tooltipfunc" or scenario == "no_templ
 	check("the experimental tooltip paints orange", sawOrange)
 	check("the experimental note warns it is untested", sawPresetWording)
 
-	-- ...but not on a mirror. Outline Mode is experimental AND a mirror, and
-	-- "untested and potentially unstable" is a claim about what this AddOn is
-	-- doing to the game -- which, for a mirror, is nothing. It reports
-	-- Blizzard's own setting, and Blizzard's Outline Mode is neither.
-	--
-	-- noCompleteQuestPopup is the control: experimental and NOT a mirror, so
-	-- it keeps the note. Without that half, a change that stripped the note
-	-- from every option would pass this.
+	-- The limitation line, which is a different thing from the experimental
+	-- warning and is the one that carries a real cost.
 	local tips = {}
 	for _, c in ipairs(boxes) do
 		tips[c.setting:GetVariable():gsub("VanillaQuesting_", "")] = c.tooltip
 	end
-	check("the mirror's tooltip drops the experimental warning",
-		tips.outlineMode and
-		tips.outlineMode:find("untested and potentially unstable", 1, true) == nil,
-		tips.outlineMode)
-	check("but keeps its known limitation, which is the real cost",
-		tips.outlineMode and
-		tips.outlineMode:find("Known limitation", 1, true) ~= nil,
-		tips.outlineMode)
-	check("a non-mirror experimental option still carries the warning",
-		tips.noCompleteQuestPopup and
-		tips.noCompleteQuestPopup:find("untested and potentially unstable", 1, true) ~= nil,
-		tips.noCompleteQuestPopup)
+	check("the sparkle option states what else it removes",
+		tips.noQuestSparkles and
+		tips.noQuestSparkles:find("profession loot nodes", 1, true) ~= nil,
+		tips.noQuestSparkles)
+	check("and does not claim to be experimental",
+		tips.noQuestSparkles and
+		tips.noQuestSparkles:find("untested and potentially unstable", 1, true) == nil,
+		tips.noQuestSparkles)
+	-- No Outline Mode lost its limitation with its old shape: the old text
+	-- explained that outlines and sparkles were an either/or and that outlines
+	-- did not render here. Neither is a cost of an option that REMOVES
+	-- outlines, and the sparkles have their own switch now.
+	check("No Outline Mode carries no limitation any more",
+		tips.noOutlineMode and
+		tips.noOutlineMode:find("Known limitation", 1, true) == nil,
+		tips.noOutlineMode)
+	check("nor the experimental warning", tips.noOutlineMode and
+		tips.noOutlineMode:find("untested and potentially unstable", 1, true) == nil,
+		tips.noOutlineMode)
 	check("a tooltip still uses grey where it should", sawGrey or true)
 	local noSlash = true
 	for _, c in ipairs(boxes) do
@@ -2046,20 +2046,32 @@ if scenario == "normal" then
 			ns.db.settings.noInstantQuestText == true)
 	end
 
-	-- An option that ships OFF must mirror too. Outline was completely inert
-	-- in v0.14.0 for exactly this reason.
+	-- Outline is SHARED now, so it mirrors exactly as the other two do:
+	-- whichever way the player moves Blizzard's control, the option follows.
+	-- The polarity is the flip -- Outline 0 means the option is ON.
 	ns:ResetDefaults(true)
-	check("the experimental outline option ships off",
-		ns.db.settings.outlineMode == false)
-	cvars.Outline = "1"          -- what this AddOn would ask for
+	check("No Outline Mode ships on", ns.db.settings.noOutlineMode == true)
+	cvars.Outline = "2"
 	fire("CVAR_UPDATE")
-	check("setting Blizzard's Outline Mode turns the option on",
-		ns.db.settings.outlineMode == true,
-		tostring(ns.db.settings.outlineMode))
+	check("the player restoring outlines turns the option off",
+		ns.db.settings.noOutlineMode == false,
+		tostring(ns.db.settings.noOutlineMode))
+	check("and the variable is left where they put it", cvars.Outline == "2", cvars.Outline)
 	cvars.Outline = "0"
 	fire("CVAR_UPDATE")
-	check("and only 0 turns the option off again",
-		ns.db.settings.outlineMode == false)
+	check("and taking them away again turns it back on",
+		ns.db.settings.noOutlineMode == true)
+
+	-- 1 and 3 are outline settings too, and the option is against all of them.
+	for _, v in ipairs({ "1", "2", "3" }) do
+		cvars.Outline = v
+		fire("CVAR_UPDATE")
+		check("Outline = " .. v .. " unticks the option",
+			ns.db.settings.noOutlineMode == false, tostring(ns.db.settings.noOutlineMode))
+		cvars.Outline = "0"
+		fire("CVAR_UPDATE")
+		check("and 0 ticks it again", ns.db.settings.noOutlineMode == true)
+	end
 
 	ns:ResetDefaults(true)
 end
@@ -2082,60 +2094,61 @@ if scenario == "normal" then
 	end
 	check("and still turns every normal option on", normalOn)
 
-	-- Disabled means nothing is on, experiments included -- with one exception.
+	-- Disabled means nothing is on, experiments included.
 	--
-	-- A mirror reports a Blizzard setting rather than removing anything, so
-	-- neither bulk command has anything to say about it. `/vq off` in
-	-- particular is what people type on their way to uninstalling, which is
-	-- the worst moment to change someone's graphics options.
-	cvars.Outline = "2"
-	ns.db.settings.outlineMode = true
+	-- The exception this block used to carry is gone with the mirror: a mirror
+	-- reported a Blizzard setting rather than removing anything, so neither
+	-- bulk command had anything to say about it. No Outline Mode removes
+	-- something, so `/vq off` takes it like any other option -- and handing
+	-- Outline back to Blizzard's default of 2 is exactly what someone on their
+	-- way to uninstalling wants.
+	--
+	-- The mirror carve-out is still asserted below, because the machinery is
+	-- kept and an exemption nothing exercises is an exemption that has quietly
+	-- stopped working.
 	pcall(SlashCmdList["VANILLAQUESTING"], "off")
-	local anyOn, mirrorsLeftAlone = false, true
+	local anyOn = false
 	for i = 1, #ns.modules do
-		local m = ns.modules[i]
-		if ns.db.settings[m.key] then
-			if m.mirrorOnly then
-				-- expected
-			else
-				anyOn = true
-			end
-		elseif m.mirrorOnly then
-			mirrorsLeftAlone = false
-		end
+		if ns.db.settings[ns.modules[i].key] then anyOn = true end
 	end
 	check("/vq off takes the experiments too", not anyOn)
-	check("but never a mirror", mirrorsLeftAlone)
-	check("and does not touch the variable a mirror reports",
-		cvars.Outline == "2", cvars.Outline)
+	check("and Outline goes back to Blizzard's default", cvars.Outline == "2", cvars.Outline)
+	check("and the sparkles come back", cvars.ShowQuestObjectHighlightEffect == "1",
+		tostring(cvars.ShowQuestObjectHighlightEffect))
 	ns:ResetDefaults(true)
 
-	-- Outline is not a boolean: 1, 2 and 3 all mean outlines are on.
-	ns:ResetDefaults(true)
-	for _, v in ipairs({ "1", "2", "3" }) do
-		cvars.Outline = v
-		fire("CVAR_UPDATE")
-		check("Outline = " .. v .. " ticks the option",
-			ns.db.settings.outlineMode == true, tostring(ns.db.settings.outlineMode))
+	-- The mirror carve-out, exercised by making one module a mirror for the
+	-- length of a bulk command. Nothing is a mirror today; this asserts the
+	-- rule the machinery implements rather than a row that happens to use it.
+	do
+		local m = ns.modules["noCompleteQuestPopup"]
+		if m then
+			ns:ResetDefaults(true)
+			ns.db.settings.noCompleteQuestPopup = true
+			m.mirrorOnly = true
+			pcall(SlashCmdList["VANILLAQUESTING"], "off")
+			check("a mirror is exempt from /vq off",
+				ns.db.settings.noCompleteQuestPopup == true,
+				tostring(ns.db.settings.noCompleteQuestPopup))
+			ns.db.settings.noCompleteQuestPopup = false
+			pcall(SlashCmdList["VANILLAQUESTING"], "on")
+			check("and from /vq on",
+				ns.db.settings.noCompleteQuestPopup == false,
+				tostring(ns.db.settings.noCompleteQuestPopup))
+			m.mirrorOnly = nil
+			ns:ResetDefaults(true)
+		end
 	end
-	cvars.Outline = "0"
-	fire("CVAR_UPDATE")
-	check("Outline = 0 unticks it", ns.db.settings.outlineMode == false)
 
-	-- And a value the player chose is not dragged down to the one the AddOn
-	-- would have asked for. Each leg starts clean: the remembered pre-AddOn
-	-- value carries over otherwise and decides the answer instead.
-	ns:Set("outlineMode", false)
+	-- The option asks for 0 from every outline setting, and hands back 2.
+	ns:Set("noOutlineMode", false)
 	VanillaQuestingDB.state.Outline = nil
 	cvars.Outline = "3"
-	ns:Set("outlineMode", true)
-	check("turning the option on leaves Outline = 3 alone", cvars.Outline == "3", cvars.Outline)
-
-	ns:Set("outlineMode", false)
-	VanillaQuestingDB.state.Outline = nil
-	cvars.Outline = "0"
-	ns:Set("outlineMode", true)
-	check("but from off it asks for 2, Blizzard's own default", cvars.Outline == "2", cvars.Outline)
+	ns:Set("noOutlineMode", true)
+	check("turning the option on removes an Outline of 3", cvars.Outline == "0", cvars.Outline)
+	ns:Set("noOutlineMode", false)
+	check("and switching it off hands back Blizzard's default, not the 3",
+		cvars.Outline == "2", cvars.Outline)
 	ns:ResetDefaults(true)
 
 	-- ---- adopting an option on must claim the variable ----
@@ -2153,9 +2166,9 @@ if scenario == "normal" then
 	-- This shipped, was fixed, and was then lost again to a revert, because
 	-- no scenario covered adopt-on-then-switch-off. It does now.
 	for _, case in ipairs({
-		{ key = "outlineMode",        cvar = "Outline",          on = "1", off = "0" },
-		{ key = "outlineMode",        cvar = "Outline",          on = "2", off = "0" },
-		{ key = "outlineMode",        cvar = "Outline",          on = "3", off = "0" },
+		-- The polarity flipped when this stopped being a mirror: ON is now
+		-- Outline 0, and the off value is Blizzard's default of 2.
+		{ key = "noOutlineMode",      cvar = "Outline",          on = "0", off = "2" },
 		{ key = "noInstantQuestText", cvar = "instantQuestText", on = "0", off = "1" },
 		{ key = "noAutoQuestTracking", cvar = "autoQuestWatch",  on = "0", off = "1" },
 	}) do
@@ -2559,7 +2572,7 @@ if scenario == "native" or scenario == "no_tooltipfunc" or scenario == "no_templ
 	end
 	check("every option sits under its own category heading", wrong == nil, tostring(wrong))
 	check("the categories are the five agreed",
-		table.concat(headings, ", "):find("Map and minimap, Quests, Quest Tracker, UI, Experimental", 1, true) ~= nil,
+		table.concat(headings, ", "):find("Map and minimap, Quests, Quest Tracker, UI & Graphics, Experimental", 1, true) ~= nil,
 		table.concat(headings, ", "))
 end
 

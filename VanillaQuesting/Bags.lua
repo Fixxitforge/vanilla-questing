@@ -21,7 +21,7 @@ M.title = "No Quest Item Highlight In Bags"
 M.desc  = "Quest items in your bags stop being outlined in yellow, and items that start a quest lose their exclamation mark."
 M.onText  = "Bag quest item highlight removed."
 M.offText = "Bag quest item highlight restored."
-M.group = "UI"
+M.group = "UI & Graphics"
 M.order = 100
 
 ns:RegisterDefaults({ noBagItemHighlight = true })

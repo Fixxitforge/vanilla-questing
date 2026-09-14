@@ -137,7 +137,7 @@ end
 ---------------------------------------------------------------------
 
 -- Account-wide (see the .toc): someone who wants this wants it everywhere.
-local DB_VERSION = 3
+local DB_VERSION = 4
 
 -- v1 gave every feature two names: a display key ("hideBossPortraits") and
 -- a saved-setting name mirroring the CVar ("showBosses"). That was a mistake.
@@ -196,6 +196,23 @@ local function initDB()
 				db.state.minimapMarkersTracking = db.state.minimapQuestPOITracking
 			end
 			db.state.minimapQuestPOITracking = nil
+		end
+		if db.dbVersion < 4 then
+			-- `outlineMode` became `noOutlineMode`, and the polarity flipped
+			-- with it: the old option was ON when outlines were showing, the
+			-- new one is ON when they are removed.
+			--
+			-- The old value is NOT carried across, in either direction. It was
+			-- a MIRROR -- a reading of what Blizzard's Outline Mode happened
+			-- to be, not a choice the player expressed -- so inverting it into
+			-- a preference would be inventing an opinion on their behalf. The
+			-- new option takes its default like any other new option.
+			--
+			-- The ownership marker goes too. It recorded that the AddOn was
+			-- holding `Outline` for the old polarity; the first Enable of the
+			-- new rule records it again for this one.
+			db.settings.outlineMode = nil
+			db.state.Outline = nil
 		end
 		if db.dbVersion < 3 then
 			-- The preset was stored as well as derived, and the stored copy

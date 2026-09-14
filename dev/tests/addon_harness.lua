@@ -238,7 +238,9 @@ _G.__tooltipShown = false
 UIParent = UIParent or { variablesLoaded = true }
 
 -- ---- CVars ----
-local cvars = { questPOI = "1", autoQuestWatch = "1", showBosses = "1", Outline = "2", instantQuestText = "1" }
+local cvars = { questPOI = "1", autoQuestWatch = "1", showBosses = "1", Outline = "2", instantQuestText = "1",
+	-- Default 1, read off the client by probe v0.33 [G34] rather than assumed.
+	ShowQuestObjectHighlightEffect = "1" }
 local lockedCVars = {}
 
 -- The player's saved values do not exist yet at ADDON_LOADED.

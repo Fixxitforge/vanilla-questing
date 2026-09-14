@@ -30,7 +30,7 @@ M.title = "Hide Quest Progress In Tooltips"
 M.desc  = "Hovering a creature or object no longer tells you which quest it belongs to or your progress."
 M.onText  = "Quest progress removed from tooltips."
 M.offText = "Quest progress in tooltips restored."
-M.group = "UI"
+M.group = "UI & Graphics"
 M.order = 90
 
 ns:RegisterDefaults({ hideTooltipsQuestProgress = true })

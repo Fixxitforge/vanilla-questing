@@ -156,9 +156,10 @@ Blizzard paints the first line — the option's name — white by itself. Everyt
 3. A blank line, then `EXPERIMENTAL_NOTE` if it is experimental **and not a mirror**, in
    `COLOR.EXPERIMENTAL`. A mirror does nothing to the game — it reports a Blizzard setting — so
    "untested and potentially unstable" is a claim about this AddOn that is not true of it. This
-   exempts `outlineMode` and nothing else today. The option stays experimental in every other
-   respect: orange name, Experimental heading, `(experimental)` in `/vq status`, out of the
-   Vanilla preset, and it keeps its `LIMIT_*` line, which is the real cost.
+   **exempts nothing today** — `outlineMode` was the only mirror and is now the shared
+   `noOutlineMode`. The rule is kept because the machinery is; a mirror that appears later gets the
+   same answer without anyone having to remember. An experimental option that is not a mirror keeps
+   the note, and keeps its `LIMIT_*` line too, which is the real cost.
 4. A blank line, then `/<optionKey>` in `COLOR.MUTED`.
 
 | ID | Text |
@@ -345,16 +346,31 @@ The **key** column is what the player types after `/vq on`, `/vq off` or `/vq st
 | `OFF_noCompleteQuestPopup` | `Complete quest popup restored.` |
 | `LABEL_noCompleteQuestPopup` | `complete quest popup` |
 
-### outlineMode  *(experimental)*
+### noQuestSparkles
 
 | ID | Text |
 | --- | --- |
-| `TITLE_outlineMode` | `Outline Mode` |
-| `DESC_outlineMode` | `Removes the loot sparkles on quest objects, showing an outline instead.` |
-| `LIMIT_outlineMode` | `Known limitation: either an outline or loot sparkles must be shown. If the outline fails to render, loot sparkles are shown automatically.` |
-| `ON_outlineMode` | `Rendering outlines on quest objects.` |
-| `OFF_outlineMode` | `Rendering sparkles on quest objects.` |
-| `LABEL_outlineMode` | `outline mode` |
+| `TITLE_noQuestSparkles` | `Remove loot sparkles on quest objectives` |
+| `DESC_noQuestSparkles` | `Removes the sparkle effect on quest objects in the world.` |
+| `LIMIT_noQuestSparkles` | `Also removes the loot sparkles on profession loot nodes (i.e. herbs, mining veins, etc).` |
+| `ON_noQuestSparkles` | `Loot sparkles removed from quest objects.` |
+| `OFF_noQuestSparkles` | `Loot sparkles on quest objects restored.` |
+| `LABEL_noQuestSparkles` | `quest object sparkles` |
+
+### noOutlineMode
+
+Was `outlineMode`, *Outline Mode*, and the polarity flipped with the rename — the old option was on
+when outlines were **showing**, this one is on when they are **removed**. Its old `LIMIT_` line is
+gone: it explained that outlines and sparkles were an either/or and that outlines did not render on
+this client, and neither is a cost of an option that removes outlines.
+
+| ID | Text |
+| --- | --- |
+| `TITLE_noOutlineMode` | `No Outline Mode` |
+| `DESC_noOutlineMode` | `Stops quest objects being drawn with an outline.` |
+| `ON_noOutlineMode` | `Outlines removed from quest objects.` |
+| `OFF_noOutlineMode` | `Outlines on quest objects restored.` |
+| `LABEL_noOutlineMode` | `outline mode` |
 
 ### Group names
 
