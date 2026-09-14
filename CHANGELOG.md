@@ -8,41 +8,46 @@ cost to find, and why it was made that way — is the version history in [`dev/S
 
 ## 1.1.0
 
-- The world map no longer opens and closes by itself on a loading screen. It still refreshes when
-  you change a map option yourself.
-- The quest item buttons beside tracked quests are now made invisible rather than hidden, which
-  keeps the AddOn clear of the game's protected-action rules in combat.
-- A console variable that refuses one write is given another chance at the next loading screen,
-  instead of that option staying dead for the rest of the session.
-- Switching an option off now always tries to put its setting back, even if a write failed earlier.
-- Turning off the bag item highlight puts the highlights back at once, with your bags open, instead
-  of waiting for the next time the game redrew them.
-- **New: Remove loot sparkles on quest objectives.** The sparkle on a quest object is gone. It also
-  removes the sparkle on profession nodes — herbs, mining veins — which is what both looked like in
-  the original game.
+### New
+
+- **Remove Loot Sparkles.** The sparkle on quest objects is gone. It also removes the sparkle on
+  gathering nodes such as herbs and mining veins, because the game draws both from one switch —
+  neither had one in the original game. Under **UI & Graphics**, on by default.
+- **Plain Text Achievements**, a sub-option under Plain Text Quest Tracker. Tracked achievement
+  lines go plain text along with quests; untick it to keep achievements clickable.
+- **`/vq status <option>`** reports one option instead of the whole list.
+
+### Changed
+
 - **Outline Mode is now No Outline Mode**, and it removes outlines rather than turning them on. It
-  sits under UI & Graphics with the other graphics options, is on by default, and is no longer
-  experimental. Switching it off restores Blizzard's own setting.
+  sits under **UI & Graphics**, is on by default, and is no longer experimental. Switching it off
+  restores Blizzard's own setting. Its old known limitation is gone: the sparkles have their own
+  option now.
+- **Ticking *Track Quest POIs* in the minimap dropdown is no longer overruled.** The minimap option
+  follows it instead, the way the Instant Quest Text and Automatic Quest Tracking options follow
+  Blizzard's own checkboxes. Turning the option off still puts *Track Quest POIs* back.
 - The **UI** group is now **UI & Graphics**.
-- A clean install no longer announces anything in chat on first login. The AddOn was reading the
+- The command list is five lines rather than seven: `/vq on [option]`, `/vq off [option]` and
+  `/vq status [option]` are one command each, not two.
+- Hide Boss Portraits no longer asks for a UI reload.
+
+### Fixed
+
+- **A clean install no longer says anything in chat on first login.** The AddOn was reading the
   game's console variables before the client had loaded them, and mistook its own first pass for
   the player changing something.
-- **Plain Text Achievements**, a new sub-option under Plain Text Tracker, takes the links out of
-  tracked achievement lines as well as quests.
-- Ticking *Track Quest POIs* in the minimap tracking dropdown is no longer overruled. The minimap
-  option follows it instead, the way the Instant Quest Text and Automatic Quest Tracking options
-  follow Blizzard's checkboxes. Turning the option off still puts *Track Quest POIs* back.
-- Switching an option off now always switches its effect off, including when the option had
-  turned itself on to follow a change made in Blizzard's own options.
-- Hide Boss Portraits no longer asks for a UI reload.
-- `/vq status <option>` reports one option instead of the whole list, and the command list is five
-  lines rather than seven.
-- The minimap tracking button's tooltip no longer disappears when the option is switched off.
-- Changing one option in the options panel no longer re-applies every option. The panel lagged on
-  every click, worst on the options that also drive one of Blizzard's own settings.
-- Outline Mode's tooltip no longer warns that it is untested and potentially unstable. It reports
-  Blizzard's own setting rather than changing anything, so the warning was not true of it. Its
-  known limitation stays, and it is still an experimental option in every other respect.
+- **The options panel no longer lags on every click.** Changing one option re-applied all of them.
+- **The world map no longer opens and closes by itself on a loading screen.** It still refreshes
+  when you change a map option yourself.
+- Switching an option off now always switches its effect off — including when the option had turned
+  itself on to follow a change made in Blizzard's options.
+- Switching an option off now always tries to put its setting back, even if an earlier write
+  failed. A setting the game refuses once is given another chance at the next loading screen
+  instead of that option staying dead for the session.
+- Turning off the bag item highlight puts the highlights back at once, with your bags open.
+- The minimap tracking button's tooltip no longer disappears when the option is off.
+- The quest item buttons beside tracked quests are made invisible rather than hidden, which keeps
+  the AddOn clear of the game's protected-action rules in combat.
 
 ## 1.0.0
 

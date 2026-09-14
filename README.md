@@ -40,10 +40,9 @@ or `/reload`, then type `/vq` to open the options.
 `[option]` is one of the names below — `/vq status` lists them in game:
 
 `hideMapQuestHelper` · `hideMinimapQuestHelper` · `hideBossPortraits` · `noInstantQuestText` ·
-`hideCharacterFrame` · `hideTooltipsQuestProgress` · `noAutoQuestTracking` · `trackerPlainText` ·
-`hideTrackerItemButtons` · `noBagItemHighlight` · `noQuestSparkles` · `noOutlineMode` ·
-`noCompleteQuestPopup` ·
-`trackerPlainTextAchievements`
+`hideCharacterFrame` · `noAutoQuestTracking` · `trackerPlainText` ·
+`trackerPlainTextAchievements` · `hideTrackerItemButtons` · `hideTooltipsQuestProgress` ·
+`noBagItemHighlight` · `noQuestSparkles` · `noOutlineMode` · `noCompleteQuestPopup`
 
 ## What it removes
 
@@ -65,7 +64,7 @@ You have full control, disable as much or as little as you like.
 
 - No automatic tracking of newly accepted quests
 - No clickable quest titles — no click-to-open-map, no right-click menu. Classic's tracker was text
-  you read. Tracked achievements go plain text too; untick **Plain Text Tracked Achievements**
+  you read. Tracked achievements go plain text too; untick **Plain Text Achievements**
   under it to keep those clickable
 - No quest item use buttons beside tracked quests.
 
