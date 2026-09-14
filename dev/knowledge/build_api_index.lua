@@ -65,7 +65,8 @@ local collected = {}
 -- only answers __index loads 530 files and dies on those three.
 local stub
 stub = setmetatable({}, {
-	__index = function(t, k) return t end,
+	-- The key is deliberately ignored: any field of the stub is the stub.
+	__index = function(t) return t end,
 	__call = function() return stub end,
 	__tostring = function() return "<stub>" end,
 	__len = function() return 0 end,

@@ -2593,7 +2593,9 @@ local function sectionQuestFrameAndTooltip()
 	add("   Every registered setting mentioning tooltip, quest or objective:")
 	local seen, found = {}, 0
 
-	local function inspect(setting, where)
+	-- `where` was passed and never read; dropped rather than kept as a
+	-- parameter nobody fills in (#37).
+	local function inspect(setting)
 		if type(setting) ~= "table" or seen[setting] then return end
 		seen[setting] = true
 		local name, var, vtype
@@ -2621,7 +2623,7 @@ local function sectionQuestFrameAndTooltip()
 						local init = inits[i]
 						if type(init) == "table" and type(init.GetSetting) == "function" then
 							local ok, st = pcall(init.GetSetting, init)
-							if ok then inspect(st, "") end
+							if ok then inspect(st) end
 						end
 					end
 				end
@@ -2877,10 +2879,18 @@ local function sectionTrackingType()
 		pcall(function() info = C_Minimap.GetTrackingInfo(i) end)
 		if type(info) ~= "table" then
 			-- The older five-return form, in case this client has that instead.
+			-- Every field, texture included. It was captured and dropped, which
+			-- luacheck flagged (#37) -- and the honest fix in a section whose
+			-- whole job is "dump every field of every entry" is to print it
+			-- rather than to find a tidier way of throwing it away.
 			local name, texture, active, category, nested
-			pcall(function() name, texture, active, category, nested = GetTrackingInfo(i) end)
-			add(string.format("   [%2d] (flat form) name=%s active=%s category=%s nested=%s",
-				i, tostring(name), tostring(active), tostring(category), tostring(nested)))
+			pcall(function()
+				name, texture, active, category, nested = GetTrackingInfo(i)
+			end)
+			add(string.format(
+				"   [%2d] (flat form) name=%s active=%s category=%s nested=%s texture=%s",
+				i, tostring(name), tostring(active), tostring(category),
+				tostring(nested), tostring(texture)))
 		else
 			local keys = {}
 			for k in pairs(info) do keys[#keys + 1] = tostring(k) end

@@ -46,7 +46,11 @@ jobs:
       - name: Run the test suite
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq lua5.1
+          # luacheck too, not just the interpreter. run.sh skips it with a
+          # notice when it is absent, which is right on a developer's machine
+          # and wrong here: a release must not slip past a static check because
+          # the runner happened not to have the tool.
+          sudo apt-get install -y -qq lua5.1 lua-check
           cd dev/tests && ./run.sh
 
       - name: Build the AddOn zip

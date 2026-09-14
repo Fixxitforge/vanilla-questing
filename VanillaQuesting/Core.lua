@@ -613,8 +613,11 @@ SlashCmdList["VANILLAQUESTING"] = function(msg)
 		ns:Print(ns.title .. " v" .. tostring(ns.version) .. " - List of commands")
 		-- The game font is not monospaced, so padding to a column would still
 		-- come out ragged. A fixed separator makes every gap identical instead.
-		local function line(cmd, what)
-			ns:Print("  " .. C.highlight .. cmd .. C.close .. "  -  " .. what)
+		-- `command`, not `cmd`: the enclosing handler already has a `cmd`
+		-- holding what the player typed, and one name for two things inside
+		-- forty lines is how the next reader gets it wrong.
+		local function line(command, what)
+			ns:Print("  " .. C.highlight .. command .. C.close .. "  -  " .. what)
 		end
 		line("/vq", "Open the options panel")
 		line("/vq on [option]", "Enable all vanilla options, or one [option]")

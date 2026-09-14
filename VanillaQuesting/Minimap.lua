@@ -38,15 +38,21 @@ local refused = false
 
 local tooltipHooked = false
 
+-- `mm`, not `C`. `C` is the colour table at the top of this file, and calling
+-- the tracking API by the same name meant one letter stood for two unrelated
+-- things a few lines apart -- in `applyOff` it was C_Minimap, in `mirror` it
+-- was the palette. No bug came of it, because the two never met in one
+-- function, but that is luck rather than design and luacheck flagged it as
+-- shadowing the moment it was switched on (#37).
 local function api()
-	local C = C_Minimap
-	if type(C) ~= "table"
-		or type(C.GetNumTrackingTypes) ~= "function"
-		or type(C.GetTrackingInfo) ~= "function"
-		or type(C.SetTracking) ~= "function" then
+	local mm = C_Minimap
+	if type(mm) ~= "table"
+		or type(mm.GetNumTrackingTypes) ~= "function"
+		or type(mm.GetTrackingInfo) ~= "function"
+		or type(mm.SetTracking) ~= "function" then
 		return nil
 	end
-	return C
+	return mm
 end
 
 -- Resolve the entry by NAME, never by a hardcoded index.
@@ -57,8 +63,8 @@ end
 -- would appear to work there and silently toggle some unrelated tracking
 -- type on the next character.
 local function findEntry()
-	local C = api()
-	if not C then
+	local mm = api()
+	if not mm then
 		ns:Warn("mm:api", "C_Minimap tracking API missing; minimap markers are untouched.")
 		return nil
 	end
@@ -69,14 +75,14 @@ local function findEntry()
 		return nil
 	end
 
-	local ok, count = pcall(C.GetNumTrackingTypes)
+	local ok, count = pcall(mm.GetNumTrackingTypes)
 	if not ok or type(count) ~= "number" then
 		ns:Warn("mm:count", "could not read the tracking list; minimap markers are untouched.")
 		return nil
 	end
 
 	for i = 1, count do
-		local gotInfo, info = pcall(C.GetTrackingInfo, i)
+		local gotInfo, info = pcall(mm.GetTrackingInfo, i)
 		if gotInfo and type(info) == "table" and info.name == wanted then
 			return i, info
 		end
@@ -88,10 +94,10 @@ local function findEntry()
 end
 
 local function setTracking(index, enabled)
-	local C = api()
-	if not C then return false end
+	local mm = api()
+	if not mm then return false end
 	applying = true
-	local ok = pcall(C.SetTracking, index, enabled)
+	local ok = pcall(mm.SetTracking, index, enabled)
 	applying = false
 	return ok
 end
@@ -160,8 +166,8 @@ local function applyOff(index, info)
 	-- line and believing a negative is exactly the bug that turned a slow
 	-- client into a permanent refusal; counting disagreements is the mirror's
 	-- job, where there is an event to count them against.
-	local C = api()
-	local gotAfter, after = pcall(C.GetTrackingInfo, index)
+	local mm = api()
+	local gotAfter, after = pcall(mm.GetTrackingInfo, index)
 	if gotAfter and type(after) == "table" and not after.active then
 		confirmedOff = true
 	end

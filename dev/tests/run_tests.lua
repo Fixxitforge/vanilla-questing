@@ -815,6 +815,7 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 	-- stepping from Disabled must turn the non-experimental ones on only
 	if presetText then
 		ok, err = pcall(rawget(presetText, "script_OnClick"), presetText)
+		check("clicking the preset label runs", ok, err)
 		check("preset arrow runs", ok, err)
 		local on, expOn = 0, 0
 		for i = 1, #ns.modules do
@@ -833,6 +834,7 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 		check("Full Classic turned the normal options on", on == expectNormal, on)
 		check("Full Classic left experimental off", expOn == 0, expOn)
 		ok, err = pcall(rawget(presetText, "script_OnClick"), presetText)
+		check("clicking the preset label runs", ok, err)
 		local anyOn = false
 		for i = 1, #ns.modules do
 			if VanillaQuestingDB.settings[ns.modules[i].key] then anyOn = true end
@@ -1074,6 +1076,7 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 	check("silent reset runs", ok, err)
 	check("silent reset printed nothing", #chatlog == before, #chatlog - before)
 	ok, err = pcall(ns.ResetDefaults, ns)
+	check("loud reset runs", ok, err)
 	check("loud reset still prints for /vq reset", #chatlog > before)
 
 	-- ---- reload confirmation at the moment of change ----
@@ -1255,16 +1258,16 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 			if ns.modules[i].experimental then exp = ns.modules[i] break end
 		end
 		if exp and type(ns.TooltipBodyFor) == "function" then
-			local before = ns.TooltipBodyFor(exp)
+			local withNote = ns.TooltipBodyFor(exp)
 			exp.mirrorOnly = true
-			local after = ns.TooltipBodyFor(exp)
+			local asMirror = ns.TooltipBodyFor(exp)
 			exp.mirrorOnly = nil
 			check("an experimental option carries the untested warning",
-				before and before:find("untested and potentially unstable", 1, true) ~= nil,
-				tostring(before))
+				withNote and withNote:find("untested and potentially unstable", 1, true) ~= nil,
+				tostring(withNote))
 			check("and loses it the moment it becomes a mirror",
-				after and after:find("untested and potentially unstable", 1, true) == nil,
-				tostring(after))
+				asMirror and asMirror:find("untested and potentially unstable", 1, true) == nil,
+				tostring(asMirror))
 		end
 	end
 
@@ -1406,8 +1409,9 @@ if scenario == "native" or scenario == "no_tooltipfunc" or scenario == "no_templ
 		table.concat(headers, "\1"):find(EXPERIMENTAL_NOTE_TEXT, 1, true) == nil,
 		table.concat(headers, " | "))
 	local expHeader, verHeader
-	for _, h in ipairs(headers) do
-		if h:find("Experimental", 1, true) then expHeader = h else verHeader = h end
+	-- `head`, not `h`: `h` at the top of this file is the harness loader.
+	for _, head in ipairs(headers) do
+		if head:find("Experimental", 1, true) then expHeader = head else verHeader = head end
 	end
 
 	-- The note is a DESCRIPTION ROW, drawn with the template the AddOn ships
@@ -1512,7 +1516,13 @@ if scenario == "native" or scenario == "no_tooltipfunc" or scenario == "no_templ
 	-- Tooltips. Bodies are yellow, as the canvas panel drew them; the
 	-- experimental warning is orange; the slash handle is grey. Painting the
 	-- body white was a regression and this is the guard against repeating it.
-	local sawOrange, sawGrey, sawYellow, sawWhiteBody = false, false, false, false
+	-- `sawWhiteBody` was collected here and never asserted -- a guard that was
+	-- not guarding, found by luacheck (#37) as a variable never accessed. It
+	-- is gone rather than given an assertion: white inside a body is
+	-- deliberate now (one description names a Blizzard control in white), so
+	-- there is nothing left to forbid. What must not happen is a body that is
+	-- white INSTEAD of yellow, and `sawYellow` is what says that.
+	local sawOrange, sawGrey, sawYellow = false, false, false
 	local sawPresetWording = false
 	for _, c in ipairs(boxes) do
 		if c.tooltip:find("|cffff8019", 1, true) then sawOrange = true end
@@ -1521,7 +1531,6 @@ if scenario == "native" or scenario == "no_tooltipfunc" or scenario == "no_templ
 		end
 		if c.tooltip:find("|cff808080", 1, true) then sawGrey = true end
 		if c.tooltip:find("|cffffd100", 1, true) then sawYellow = true end
-		if c.tooltip:find("|cffffffff", 1, true) then sawWhiteBody = true end
 	end
 	check("option tooltip bodies are yellow", sawYellow)
 	-- White inside a body is now deliberate: one description names a Blizzard
@@ -1984,22 +1993,54 @@ if scenario == "normal" then
 	check("turning it off does not drive Blizzard's container code",
 		_G.__bagRedraws == redraws, _G.__bagRedraws - redraws)
 
-	-- The highlights come back on the next redraw the game does anyway, which
-	-- is what the accepted staleness means: they stay missing on a bag that is
-	-- already open until something touches it.
-	local anyBackYet = false
-	for _, t in ipairs(_G.__bagTextures) do if t:IsShown() then anyBackYet = true end end
-	check("so an open bag is briefly stale, as accepted", not anyBackYet)
-
-	ContainerFrame_Update(ContainerFrame1)
+	-- ...and yet the highlights come back AT ONCE, with the bags open.
+	--
+	-- Reported in play, and the asymmetry is the whole point: switching the
+	-- option on removed them immediately, switching it off did nothing until
+	-- an item moved. An option that acts at once in one direction and not the
+	-- other reads as broken, whatever the reasoning behind it.
+	--
+	-- `scrub` hides only textures the game had SHOWN, so it knows exactly what
+	-- it took. Putting those back is one Show() per Hide(), on a texture --
+	-- not a redraw, and not Blizzard's container code.
 	local anyBack = false
 	for _, t in ipairs(_G.__bagTextures) do if t:IsShown() then anyBack = true end end
-	check("and the next redraw gives the highlight back", anyBack)
+	check("the highlights come back immediately, bags open", anyBack)
 
+	-- And nothing is invented. Slot 2 holds no quest item, so the game never
+	-- draws its highlight and neither may the restore. Recording every texture
+	-- rather than only the ones the game had shown would put one there, and
+	-- that is the trap this has to avoid.
+	--
+	-- Asserted against the GAME's answer, not against a snapshot taken after a
+	-- previous restore: a snapshot inherits whatever the last restore got
+	-- wrong, and this check passed against the broken version for exactly that
+	-- reason before it was written this way.
+	local invented = {}
+	for i, t in ipairs(_G.__bagTextures) do
+		if t:IsShown() ~= (i ~= 2) then invented[#invented + 1] = i end
+	end
+	check("and no slot the game never highlighted gains one",
+		#invented == 0, table.concat(invented, ","))
+
+	ns:Set("noBagItemHighlight", true)
+	ns:Set("noBagItemHighlight", false)
+	invented = {}
+	for i, t in ipairs(_G.__bagTextures) do
+		if t:IsShown() ~= (i ~= 2) then invented[#invented + 1] = i end
+	end
+	check("and an off/on/off cycle leaves the same slots lit",
+		#invented == 0, table.concat(invented, ","))
+
+	-- And the AddOn stays out of the way afterwards: a later redraw leaves the
+	-- game's own answer alone. Which is not "everything shown" -- slot 2 holds
+	-- no quest item and the game hides its texture on every pass.
 	ContainerFrame_Update(ContainerFrame1)
 	local stayBack = true
-	for _, t in ipairs(_G.__bagTextures) do if not t:IsShown() then stayBack = false end end
-	check("and it stays back on later redraws", stayBack)
+	for i, t in ipairs(_G.__bagTextures) do
+		if t:IsShown() ~= (i ~= 2) then stayBack = false end
+	end
+	check("and a later redraw is the game's answer, untouched", stayBack)
 
 	ns:ResetDefaults(true)
 end
@@ -2659,8 +2700,16 @@ if scenario == "normal" then
 	-- Track Quest POIs is on by default in the game, so switching this option
 	-- off should hand back the default rather than whatever the entry happened
 	-- to be when the AddOn was installed.
+	-- `ClassicQuestingMoPDB = nil` stood here: the SavedVariables name from
+	-- before the rename to VanillaQuestingDB. It set a global nothing reads,
+	-- so it did nothing at all, and the test had been passing for a different
+	-- reason than it claimed ever since. Found by luacheck (#37) as a
+	-- non-standard global, which is precisely the argument for having it.
+	--
+	-- What was meant: start with this AddOn owning nothing, so the restore is
+	-- the AddOn handing back rather than replaying a remembered value.
 	tracking[4].active = false
-	ClassicQuestingMoPDB = nil
+	VanillaQuestingDB.state.minimapMarkersTracking = nil
 	ns:Set("hideMinimapQuestHelper", true)
 	check("the option turns tracking off", tracking[4].active == false)
 	ns:Set("hideMinimapQuestHelper", false)

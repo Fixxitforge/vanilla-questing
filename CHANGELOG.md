@@ -11,8 +11,8 @@ cost to find, and why it was made that way — is the version history in [`dev/S
 - A console variable that refuses one write is given another chance at the next loading screen,
   instead of that option staying dead for the rest of the session.
 - Switching an option off now always tries to put its setting back, even if a write failed earlier.
-- Turning off the bag item highlight no longer redraws your open bags; the highlights return the
-  next time the game redraws them for its own reasons.
+- Turning off the bag item highlight puts the highlights back at once, with your bags open, instead
+  of waiting for the next time the game redrew them.
 - **New: Remove loot sparkles on quest objectives.** The sparkle on a quest object is gone. It also
   removes the sparkle on profession nodes — herbs, mining veins — which is what both looked like in
   the original game.

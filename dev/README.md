@@ -66,12 +66,32 @@ frames — and `run_tests.lua` drives the real AddOn files against it.
 cd dev/tests && ./run.sh
 ```
 
-Needs `lua5.1`, the client's own Lua version, so the same forward-reference and scoping rules
+Needs `lua5.1`, the client's own Lua version, and `luacheck` (`apt-get install lua-check`) for the
+static pass — the suite runs without it and says so, but CI installs it, so the same forward-reference and scoping rules
 apply here as in game — a trap this project has hit twice.
 
 Twelve scenarios, including the ones that matter for a subtractive AddOn: a client with no Settings
 API, one that refuses a CVar write, one with no `C_Minimap`, and one where registration half
 succeeds and the panel must fall back rather than half-work.
+
+**Three static checks run before any scenario**, because each catches something the others cannot:
+
+| | catches |
+| --- | --- |
+| `lint_forward_refs.py` | a call to a `local function` declared further down, which resolves as a nil global. Written here because nothing off the shelf does it, and this project has hit it four times |
+| `luac -p` | syntax, including in the probe, which no scenario loads |
+| `luacheck` | unused and shadowed locals, undefined globals, assignments nobody reads |
+
+`luacheck` reads one file at a time and knows nothing about the forward-reference trap, so it
+replaces neither of the others. Its WoW globals are an explicit **allowlist** in `.luacheckrc`
+rather than a blanket ignore: on a client where the usual assumptions do not hold, a name that
+looks right and is not is exactly the mistake worth catching, and `std = "+wow"` would wave it
+through.
+
+It earned its place on the first run: `C` standing for both the colour table and `C_Minimap` in one
+file, a `nativeCategory` assigned and never read, a `sawWhiteBody` guard collected and never
+asserted, and `ClassicQuestingMoPDB = nil` — the SavedVariables name from before the rename, doing
+nothing inside a test that was passing for a reason it did not state.
 
 **The suite models the client, so a gap in the model is a gap in the testing.** It once passed
 412 checks on a build that froze the game, because it had no `SettingsPanel` and so never called

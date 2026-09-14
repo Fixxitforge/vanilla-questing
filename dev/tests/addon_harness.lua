@@ -397,9 +397,15 @@ end
 -- what makes re-applying on every rebuild work.
 -- Bags. [G18] found no CVar: the highlight is a texture per slot, put back on
 -- every redraw, so the AddOn has to survive repeated ContainerFrame_Update.
+--
+-- NOT every slot carries one. The model used to show all three textures on
+-- every redraw, which made "put back exactly what was taken" and "show
+-- everything" indistinguishable -- so a restore that invented a highlight on
+-- an empty slot would have passed. Slot 2 holds no quest item and its texture
+-- stays hidden, which is what the game does.
 local bagTextures = {}
-local function mkTex(name)
-	local t = { __name = name, __shown = true }
+local function mkTex(name, hasQuest)
+	local t = { __name = name, __hasQuest = hasQuest, __shown = hasQuest }
 	function t:Hide() self.__shown = false end
 	function t:Show() self.__shown = true end
 	function t:IsShown() return self.__shown end
@@ -407,7 +413,7 @@ local function mkTex(name)
 end
 for slot = 1, 3 do
 	local n = "ContainerFrame1Item" .. slot .. "IconQuestTexture"
-	bagTextures[slot] = mkTex(n)
+	bagTextures[slot] = mkTex(n, slot ~= 2)
 	_G[n] = bagTextures[slot]
 end
 _G.__bagTextures = bagTextures
@@ -488,8 +494,10 @@ WatchFrameAutoQuest_ClearPopUp = function() end
 
 ContainerFrame_Update = function(frame)
 	_G.__bagRedraws = _G.__bagRedraws + 1
-	-- The game decides which slots carry a highlight and puts them all back.
-	for _, t in ipairs(bagTextures) do t.__shown = true end
+	-- The game decides which slots carry a highlight and redraws accordingly --
+	-- which is not "all of them". A slot with no quest item gets its texture
+	-- hidden, every time.
+	for _, t in ipairs(bagTextures) do t.__shown = t.__hasQuest end
 	for _, fn in ipairs(postHooks["ContainerFrame_Update"] or {}) do fn(frame) end
 end
 

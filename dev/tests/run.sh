@@ -20,6 +20,33 @@ lintfail=0
     "VanillaQuesting/*.lua" "dev/UnmarkedRecon/*.lua" \
     "dev/knowledge/*.lua" ) || lintfail=1
 
+# luacheck: unused and shadowed locals, undefined globals, assignments nobody
+# reads. Added for #37, from the Questie audit -- it would have caught the
+# duplicate `local applyingPreset` (#22) as a shadowed variable, where it took
+# a human reading an audit.
+#
+# It found four things on the first run it was pointed at: `C` standing for
+# both the colour table and C_Minimap in one file, a `nativeCategory` assigned
+# and never read, a `sawWhiteBody` guard that was collected and never asserted,
+# and `ClassicQuestingMoPDB = nil` -- the SavedVariables name from before the
+# rename, doing nothing in a test that was passing for a reason it did not
+# state.
+#
+# Config in .luacheckrc, and the WoW globals are an explicit ALLOWLIST rather
+# than a blanket ignore: on a client where the usual assumptions do not hold, a
+# name that looks right and is not is exactly the mistake worth catching.
+if command -v luacheck >/dev/null 2>&1; then
+    lcout=$( cd ../.. && luacheck . --no-color --codes 2>&1 )
+    if [ $? -eq 0 ]; then
+        printf 'luacheck       ok\n'
+    else
+        lintfail=1
+        printf '%s\n' "$lcout"
+    fi
+else
+    printf 'luacheck      not installed -- skipping (apt-get install lua-check)\n'
+fi
+
 # And the probe has to at least compile. It is not covered by any scenario --
 # it never loads here -- so a syntax error in it would otherwise reach the
 # client before it reached this suite.

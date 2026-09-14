@@ -773,7 +773,8 @@ end
 -- step fails, registerNative returns false and the hand-built canvas panel
 -- takes over unchanged, so the worst case is the panel we already had.
 
-local nativeCategory
+-- `nativeCategory` was here, assigned once and never read. The category is
+-- reachable as ns.optionsCategory, which is what everything actually uses.
 local nativeLayout
 local nativeSettings = {}   -- module key -> Blizzard setting object
 local nativePresetSetting
@@ -1320,7 +1321,6 @@ local function registerNative()
 
 	if not pcall(Settings.RegisterAddOnCategory, category) then return false end
 
-	nativeCategory = category
 	ns.optionsCategory = category
 	ns.optionsNative = true
 
