@@ -7,7 +7,7 @@ local pass, fail = 0, 0
 -- The description line under the Experimental heading. Held here as a literal
 -- on purpose: change the wording in the AddOn and this goes red, which is the
 -- reminder that STRINGS.md is part of the same change.
-local EXPERIMENTAL_NOTE_TEXT = "These are not turned on by the Vanilla preset."
+local EXPERIMENTAL_NOTE_TEXT = "These are not enabled by the Vanilla preset."
 local function check(label, cond, detail)
 	if cond then pass = pass + 1; print("  [ok]   " .. label)
 	else fail = fail + 1; print("  [FAIL] " .. label .. (detail and ("  -> " .. tostring(detail)) or "")) end
@@ -108,10 +108,22 @@ if scenario == "normal" then
 	check("original questPOI remembered", VanillaQuestingDB.state.questPOI == "1")
 	check("original tracking state remembered", VanillaQuestingDB.state.minimapMarkersTracking == true)
 
-	-- user flips the tracking entry back on via Blizzard's dropdown
+	-- The player flips the tracking entry back on via Blizzard's dropdown.
+	-- SHARED: the dropdown is their control, so the entry stays where they put
+	-- it and the option follows. This used to re-assert.
 	tracking[4].active = true
 	ok, err = pcall(fire, "MINIMAP_UPDATE_TRACKING")
-	check("re-assert after dropdown toggle", ok and tracking[4].active == false, err or tracking[4].active)
+	check("the dropdown is left where the player put it",
+		ok and tracking[4].active == true, err or tracking[4].active)
+	check("and the option follows it off",
+		ns.db.settings.hideMinimapQuestHelper == false,
+		tostring(ns.db.settings.hideMinimapQuestHelper))
+	-- Put it back, so the checks after this start from the option being on.
+	tracking[4].active = false
+	pcall(fire, "MINIMAP_UPDATE_TRACKING")
+	check("and unticking it turns the option back on",
+		ns.db.settings.hideMinimapQuestHelper == true,
+		tostring(ns.db.settings.hideMinimapQuestHelper))
 
 	-- something else changes a CVar
 	cvars.questPOI = "1"
@@ -398,30 +410,79 @@ if scenario == "normal" then
 	check("tooltip silent when setting is off", #tooltipLines == 0, #tooltipLines)
 	pcall(SlashCmdList["VANILLAQUESTING"], "on hideMinimapQuestHelper")
 
-	-- chat notice on a player-initiated toggle, throttled
-	local function noticeCount()
+	-- ---- the two-way mirror: SHARED, not owned ----
+	--
+	-- The dropdown is the player's own control for this entry, so ticking
+	-- Track Quest POIs is the player using their interface, not something to
+	-- be overruled. Every version up to v1.0.1 forced it back off and printed
+	-- an accusation; it now follows, exactly as instantQuestText does.
+	local function mirrorLines()
 		local n = 0
 		for _, m in ipairs(chatlog) do
 			local t = tostring(m)
-			if t:find("was disabled automatically", 1, true) and t:find("Track Quest POIs", 1, true) then n = n + 1 end
+			if t:find("was changed in Blizzard's options", 1, true)
+				and t:find("hideMinimapQuestHelper", 1, true) then n = n + 1 end
 		end
 		return n
 	end
-	-- Step clear of the throttle window left by the earlier dropdown test.
-	advanceTime(20)
-	local before = noticeCount()
+	local function enforcementLines()
+		local n = 0
+		for _, m in ipairs(chatlog) do
+			if tostring(m):find("was disabled automatically", 1, true) then n = n + 1 end
+		end
+		return n
+	end
+
+	local said = mirrorLines()
 	tracking[4].active = true
 	pcall(fire, "MINIMAP_UPDATE_TRACKING")
-	check("notice printed when player re-enables", noticeCount() == before + 1, noticeCount() - before)
-	for i = 1, 4 do
+	check("the player ticking the entry is NOT overruled",
+		tracking[4].active == true, tostring(tracking[4].active))
+	check("the option follows them off",
+		ns.db.settings.hideMinimapQuestHelper == false,
+		tostring(ns.db.settings.hideMinimapQuestHelper))
+	check("and says so", mirrorLines() == said + 1, mirrorLines() - said)
+	check("and the entry is handed back as it goes",
+		ns.db.state.minimapMarkersTracking == nil,
+		tostring(ns.db.state.minimapMarkersTracking))
+
+	-- The other direction. One yield must not deafen it -- the bug the CVar
+	-- mirror had in v0.14.0, which is worth not repeating here.
+	said = mirrorLines()
+	tracking[4].active = false
+	pcall(fire, "MINIMAP_UPDATE_TRACKING")
+	check("unticking it turns the option back on",
+		ns.db.settings.hideMinimapQuestHelper == true,
+		tostring(ns.db.settings.hideMinimapQuestHelper))
+	check("and says so too", mirrorLines() == said + 1, mirrorLines() - said)
+	check("and adopting on claims the entry",
+		ns.db.state.minimapMarkersTracking ~= nil,
+		tostring(ns.db.state.minimapMarkersTracking))
+
+	for round = 1, 3 do
 		tracking[4].active = true
 		pcall(fire, "MINIMAP_UPDATE_TRACKING")
+		check("round " .. round .. ": follows the player off",
+			ns.db.settings.hideMinimapQuestHelper == false)
+		tracking[4].active = false
+		pcall(fire, "MINIMAP_UPDATE_TRACKING")
+		check("round " .. round .. ": follows the player back on",
+			ns.db.settings.hideMinimapQuestHelper == true)
 	end
-	check("notice throttled across a burst", noticeCount() == before + 1, noticeCount() - before)
-	advanceTime(20)
-	tracking[4].active = true
+
+	-- Adopt on, then switch the option off: the entry must come back. Same
+	-- shape as the CVar regression, which reached the client because nothing
+	-- covered it.
+	tracking[4].active = false
 	pcall(fire, "MINIMAP_UPDATE_TRACKING")
-	check("notice returns after the throttle window", noticeCount() == before + 2, noticeCount() - before)
+	pcall(SlashCmdList["VANILLAQUESTING"], "off hideMinimapQuestHelper")
+	check("one untick after adopting on is enough to hand the entry back",
+		tracking[4].active == true, tostring(tracking[4].active))
+
+	check("and the old enforcement line is gone for good",
+		enforcementLines() == 0, enforcementLines())
+
+	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
 
 	-- #27: switching the option off restores what the player had, including
 	-- OFF. Until v1.0.1 this turned Track Quest POIs back ON regardless, which
@@ -442,13 +503,14 @@ if scenario == "normal" then
 	check("switching the option off brings the markers back, whatever it found",
 		tracking[4].active == true, tostring(tracking[4].active))
 
-	-- Owned, like questPOI and showBosses. The option is the only control the
-	-- player has for the entry here, so its off state has to mean something.
+	-- Shared, but Disable still hands the entry back. The AddOn turned it off,
+	-- so the AddOn turns it on again on the way out -- that is a restore, not
+	-- enforcement, and it is what `/vq off` has always done here.
 	--
-	-- Third position on this. v0.18.0 forced it on, #27 argued for the
-	-- remembered value and that shipped, and the audit of all thirteen options
-	-- settled it: this was the only option the AddOn owns outright that did not
-	-- behave this way, for no reason it could state.
+	-- Fourth position on this. v0.18.0 forced it on, #27 argued for the
+	-- remembered value and that shipped, the audit made it owned and forced it
+	-- on again, and routing it as shared is what the taxonomy actually implies:
+	-- the dropdown is a control, so the option shares it rather than winning.
 	tracking[4].active = true
 	pcall(SlashCmdList["VANILLAQUESTING"], "on hideMinimapQuestHelper")
 	check("the AddOn hides it while the option is on", tracking[4].active == false,
@@ -499,32 +561,35 @@ elseif scenario == "tracking_slow" then
 	end
 	check("and is never called refused", warns == 0, warns)
 
-	-- And it does not accuse the player on the way. The notice means "you just
-	-- turned this back on"; a slow client means enforce runs a second pass
-	-- while the first write is still in flight, and that pass was printing it
-	-- on a clean install, where nobody had turned anything anywhere.
-	local notices = 0
-	for _, m in ipairs(chatlog) do
-		if tostring(m):find("was disabled automatically", 1, true) then
-			notices = notices + 1
+	-- And it does not tell the player they changed something. A slow client
+	-- means the mirror runs while the first write is still in flight, and an
+	-- entry that is still showing then is OUR write not having landed -- not
+	-- the player ticking it. Getting this wrong printed a line on a clean
+	-- install, where nobody had touched anything.
+	local function mirrorLines()
+		local n = 0
+		for _, m in ipairs(chatlog) do
+			local t = tostring(m)
+			if t:find("was changed in Blizzard's options", 1, true)
+				and t:find("hideMinimapQuestHelper", 1, true) then n = n + 1 end
 		end
+		return n
 	end
-	check("and says nothing about the player having turned it on", notices == 0,
-		notices)
+	check("and says nothing about the player having changed it", mirrorLines() == 0,
+		mirrorLines())
+	check("and the option is still on", ns.db.settings.hideMinimapQuestHelper == true,
+		tostring(ns.db.settings.hideMinimapQuestHelper))
 
-	-- The notice still has to work once the AddOn has seen the entry off,
-	-- because that is the only moment "turned it back on" is a true
-	-- description. Otherwise this is a mute rather than a fix.
-	advanceTime(20)
+	-- The mirror still has to work once the AddOn has seen the entry off,
+	-- because that is the only moment "you ticked it" is a true description.
+	-- Otherwise this is a mute rather than a gate.
 	tracking[4].active = true
 	pcall(fire, "MINIMAP_UPDATE_TRACKING")
-	notices = 0
-	for _, m in ipairs(chatlog) do
-		if tostring(m):find("was disabled automatically", 1, true) then
-			notices = notices + 1
-		end
-	end
-	check("but does say so when the player really does", notices == 1, notices)
+	check("but does follow the player when they really do change it",
+		mirrorLines() == 1 and ns.db.settings.hideMinimapQuestHelper == false,
+		mirrorLines() .. "/" .. tostring(ns.db.settings.hideMinimapQuestHelper))
+	check("and leaves the entry where they put it",
+		tracking[4].active == true, tostring(tracking[4].active))
 
 elseif scenario == "tracking_refused" then
 	check("tracking unchanged", tracking[4].active == true)
@@ -994,6 +1059,36 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 	end
 	check("/vq help lists commands", helpSeen)
 
+	-- ---- the experimental note is not shown on a mirror ----
+	--
+	-- "Untested and potentially unstable" is a claim about what this AddOn is
+	-- doing to the game. A mirror does nothing to the game, so on Outline Mode
+	-- the line was false -- and a false warning teaches the player to discount
+	-- the true ones. What the option keeps is the heading, the orange name,
+	-- the "(experimental)" mark and its own `limitation`.
+	do
+		local outline, popup
+		for i = 1, #ns.modules do
+			local m = ns.modules[i]
+			if m.key == "outlineMode" then outline = m
+			elseif m.key == "noCompleteQuestPopup" then popup = m end
+		end
+		check("the mirror is still an experimental option",
+			outline and outline.experimental == true and outline.mirrorOnly == true)
+		check("and still carries its known limitation",
+			outline and type(outline.limitation) == "string" and #outline.limitation > 0)
+		check("and still reads as experimental in /vq status", (function()
+			local b = #chatlog
+			pcall(SlashCmdList["VANILLAQUESTING"], "status outlineMode")
+			return table.concat(chatlog, "\n", b + 1):find("(experimental)", 1, true) ~= nil
+		end)())
+		-- The other experimental option is NOT a mirror, so it keeps the note.
+		-- Without it this check passes for a change that removed the note
+		-- from every option rather than from mirrors.
+		check("a non-mirror experimental option still exists to compare against",
+			popup and popup.experimental == true and not popup.mirrorOnly)
+	end
+
 	-- ---- the help text itself ----
 	--
 	-- Held as literals on purpose, the same way EXPERIMENTAL_NOTE_TEXT is:
@@ -1249,6 +1344,31 @@ if scenario == "native" or scenario == "no_tooltipfunc" or scenario == "no_templ
 	check("option tooltip bodies still open in yellow", sawYellow)
 	check("the experimental tooltip paints orange", sawOrange)
 	check("the experimental note warns it is untested", sawPresetWording)
+
+	-- ...but not on a mirror. Outline Mode is experimental AND a mirror, and
+	-- "untested and potentially unstable" is a claim about what this AddOn is
+	-- doing to the game -- which, for a mirror, is nothing. It reports
+	-- Blizzard's own setting, and Blizzard's Outline Mode is neither.
+	--
+	-- noCompleteQuestPopup is the control: experimental and NOT a mirror, so
+	-- it keeps the note. Without that half, a change that stripped the note
+	-- from every option would pass this.
+	local tips = {}
+	for _, c in ipairs(boxes) do
+		tips[c.setting:GetVariable():gsub("VanillaQuesting_", "")] = c.tooltip
+	end
+	check("the mirror's tooltip drops the experimental warning",
+		tips.outlineMode and
+		tips.outlineMode:find("untested and potentially unstable", 1, true) == nil,
+		tips.outlineMode)
+	check("but keeps its known limitation, which is the real cost",
+		tips.outlineMode and
+		tips.outlineMode:find("Known limitation", 1, true) ~= nil,
+		tips.outlineMode)
+	check("a non-mirror experimental option still carries the warning",
+		tips.noCompleteQuestPopup and
+		tips.noCompleteQuestPopup:find("untested and potentially unstable", 1, true) ~= nil,
+		tips.noCompleteQuestPopup)
 	check("a tooltip still uses grey where it should", sawGrey or true)
 	local noSlash = true
 	for _, c in ipairs(boxes) do

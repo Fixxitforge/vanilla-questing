@@ -13,8 +13,9 @@ cost to find, and why it was made that way — is the version history in [`SPEC.
   the player changing something.
 - **Plain Text Achievements**, a new sub-option under Plain Text Tracker, takes the links out of
   tracked achievement lines as well as quests.
-- Turning the minimap option off now puts Blizzard's *Track Quest POIs* back, and says nothing
-  while doing it.
+- Ticking *Track Quest POIs* in the minimap tracking dropdown is no longer overruled. The minimap
+  option follows it instead, the way the Instant Quest Text and Automatic Quest Tracking options
+  follow Blizzard's checkboxes. Turning the option off still puts *Track Quest POIs* back.
 - Outline Mode now only reports Blizzard's own setting rather than holding an opinion about it.
   `/vq on`, `/vq off`, Defaults and both presets all leave it alone.
 - Switching an option off now always switches its effect off, including when the option had
@@ -22,6 +23,9 @@ cost to find, and why it was made that way — is the version history in [`SPEC.
 - Hide Boss Portraits no longer asks for a UI reload.
 - `/vq status <option>` reports one option instead of the whole list, and the command list is five
   lines rather than seven.
+- Outline Mode's tooltip no longer warns that it is untested and potentially unstable. It reports
+  Blizzard's own setting rather than changing anything, so the warning was not true of it. Its
+  known limitation stays, and it is still an experimental option in every other respect.
 
 ## 1.0.0
 

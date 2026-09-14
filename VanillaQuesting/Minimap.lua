@@ -19,6 +19,14 @@ M.group = "Map and minimap"
 M.title = "Hide Minimap Quest Helper"
 M.order = 20
 M.desc = "Keeps the " .. C.title .. "Track Quest POIs" .. C.close .. " tracking switched off, removing both the quest markers and the blue objective areas from the minimap."
+-- SHARED, not owned. The player has a control of their own for this -- the
+-- minimap tracking dropdown -- so the two agree with each other rather than
+-- one of them winning. Named here for the same reason a CVar rule names its
+-- `blizzOption`: the mirror's chat line has to say which control moved.
+--
+-- Not `blizzVariable`, which is for annotating a row in Blizzard's settings
+-- panel. This one lives in a dropdown on the minimap and there is no row.
+M.blizzOption = "Track Quest POIs"
 
 -- One name: module key, saved-settings key and typed handle are all the same.
 ns:RegisterDefaults({
@@ -28,15 +36,7 @@ ns:RegisterDefaults({
 local applying = false
 local refused = false
 
--- Enforcement only explains itself once the AddOn has settled. The very
--- first turn-off at login is ours and needs no announcement; a later one
--- means the player just clicked the entry and deserves to know why it
--- bounced back.
-local settled = false
 local tooltipHooked = false
--- Far enough in the past that the first notice is never swallowed by the
--- throttle window, whatever GetTime() happens to return.
-local lastNotice = -math.huge
 
 local function api()
 	local C = C_Minimap
@@ -96,31 +96,6 @@ local function setTracking(index, enabled)
 	return ok
 end
 
--- Names the slash command rather than the options panel, deliberately. This
--- line is chat, and a player reading chat is already typing; "/vq off
--- hideMinimapQuestHelper" can be copied straight out of it, where "open the
--- options panel and find the third checkbox" cannot. The panel shipped in
--- v0.10.0 and the TODO that sat here asking for this to change outlived the
--- thing it was waiting for.
-local function notice()
-	-- Never during the first application on a clean install. The AddOn is
-	-- meeting the player's configuration, not reacting to it, and "Track Quest
-	-- POIs was disabled automatically" reads as an accusation when the player
-	-- has done nothing but install the thing. `settled` already covers the
-	-- common path; this covers the rest of the first pass.
-	if ns.firstRun then return end
-	-- Throttled: a burst of tracking events must not turn into a wall of text.
-	local now = (type(GetTime) == "function" and GetTime()) or 0
-	if now - lastNotice < 10 then return end
-	lastNotice = now
-	-- Name the tracking entry explicitly so the line can be scanned at a
-	-- glance, and say "automatically" so it reads as the AddOn acting rather
-	-- than the click failing.
-	ns:Print(C.highlight .. "Track Quest POIs" .. C.close ..
-		" was disabled automatically. To allow it, use " ..
-		C.highlight .. "/vq off hideMinimapQuestHelper" .. C.close .. ".")
-end
-
 -- How many passes may disagree before the write is called refused. Three is
 -- not a magic number: it is "more than a frame or two", which is all the race
 -- needs, while still standing down on a client that truly ignores the call
@@ -130,19 +105,27 @@ local failedVerifies = 0
 
 -- Have we ever actually seen the entry off?
 --
--- The chat notice means "you just turned this back on, and it is about to
--- bounce". Saying that requires knowing it was off in the first place. Until
--- this AddOn has observed the entry off at least once, an active entry is
--- either the state the player logged in with or this AddOn's own write not
--- having landed yet -- and neither is the player doing something.
+-- `C_Minimap.SetTracking` returns nothing, and the change is announced by
+-- MINIMAP_UPDATE_TRACKING -- the same event the mirror runs on. So an early
+-- pass can be answering from before this AddOn's own write landed, and an
+-- entry that is still showing looks exactly like the player having just
+-- ticked it.
 --
--- `settled` is not enough on its own: it only says Enable has run. The patient
--- verification made the difference visible, because enforce now runs a second
--- pass while the first write is still in flight, and that pass was printing
--- the notice on a clean install.
+-- This is what separates them. Until the entry has been seen off at least
+-- once, an active entry is the state we are still waiting to change, not the
+-- player changing it back. Latching on a single reading turned a slow client
+-- into a permanent refusal once already: the AddOn stood down, printed an
+-- accusation in chat, and left the markers showing on a setting that would
+-- have worked.
 local confirmedOff = false
 
-local function enforce()
+-- Ask once.
+--
+-- Called from Enable only. This AddOn asks for the entry the way it asks for
+-- `instantQuestText` -- once, on the way in -- and the mirror below handles
+-- whatever the player does afterwards. There is no re-assert loop any more
+-- and no read-back here: the event says whether it landed.
+local function applyOff()
 	if applying or refused then return end
 	if not ns.db or not ns.db.settings[M.key] then return end
 
@@ -156,47 +139,106 @@ local function enforce()
 		return
 	end
 
-	-- The player just turned it on themselves; say why it is about to bounce.
-	-- Only sayable once we have seen it off, which is what makes "turned it
-	-- back on" a true description of what happened.
-	if settled and confirmedOff then notice() end
-
 	if not setTracking(index, false) then
 		refused = true
 		ns:Warn("mm:set", "could not change quest POI tracking; minimap markers are untouched.")
 		return
 	end
 
-	-- Verify, but not on the very next line.
+	-- Read back, but only ever to CONFIRM.
 	--
-	-- `C_Minimap.SetTracking` returns nothing, and the client raises
-	-- MINIMAP_UPDATE_TRACKING when the change lands -- so an immediate
-	-- read-back can be answering from before the write. At login it often is,
-	-- while the tracking list is still being built.
+	-- On a client that applies the write immediately this is where we learn
+	-- the entry is off, and the mirror needs that before it can tell "the
+	-- player ticked it" from "our write has not landed". On a slow client the
+	-- read is stale, we simply learn nothing here, and MINIMAP_UPDATE_TRACKING
+	-- tells us a moment later.
 	--
-	-- Latching on that one reading turned a slow client into a permanent
-	-- refusal: the AddOn stood down, printed an accusation in chat, and left
-	-- the markers showing on a setting that would have worked. Reported from
-	-- play, and the code had been that way since the feature existed -- it
-	-- only surfaced once the entry happened to be ON at login, because this
-	-- function returns above when it is already off.
-	--
-	-- So one disagreement is not evidence. `enforce` runs again on every
-	-- MINIMAP_UPDATE_TRACKING and on every world entry; an entry still showing
-	-- after several passes is a write that is genuinely being ignored, which
-	-- is what `refused` is for.
+	-- What this must never do is latch a failure. Reading back on the next
+	-- line and believing a negative is exactly the bug that turned a slow
+	-- client into a permanent refusal; counting disagreements is the mirror's
+	-- job, where there is an event to count them against.
 	local _, after = findEntry()
 	if after and not after.active then confirmedOff = true end
-	if after and after.active then
+end
+
+-- The two-way mirror, and the whole of what makes this option SHARED.
+--
+-- v1.0.1 and everything before it OWNED the entry: the player ticking Track
+-- Quest POIs in the dropdown was overruled, and told so in chat. That is the
+-- right shape for an option whose effect has no other control -- `questPOI`,
+-- `showBosses` -- and the wrong one here, because the dropdown IS a control
+-- and forcing a Blizzard control to stay where this AddOn wants it is the one
+-- thing the ours/shared/mirror split exists to stop.
+--
+-- So it now behaves exactly as Instant Quest Text and Automatic Quest
+-- Tracking do: whichever way the player moves it, the option follows and says
+-- so. Nothing is forced back.
+--
+-- What does NOT change: `/vq off` still leaves Track Quest POIs ticked. That
+-- is Disable handing the entry back, not enforcement.
+local function mirror()
+	if applying or not ns.db then return end
+	if refused then return end
+
+	-- Nothing before the first ApplyAll, for the same reason CVAR_UPDATE is
+	-- gated: the client announces tracking state as it builds the list, and
+	-- that is the game reporting what the player already had rather than the
+	-- player changing anything.
+	if not ns.applied then return end
+
+	local index, info = findEntry()
+	if not index then return end
+
+	local shouldBeOn = not info.active
+	local on = ns.db.settings[M.key] and true or false
+
+	if shouldBeOn then confirmedOff = true end
+	if shouldBeOn == on then
+		failedVerifies = 0
+		return
+	end
+
+	if not shouldBeOn and not confirmedOff then
+		-- The entry is showing while the option says it should not be, and we
+		-- have never seen it off -- so this is our own write still in flight,
+		-- or one that is being ignored. Several passes tell those apart.
 		failedVerifies = failedVerifies + 1
 		if failedVerifies >= VERIFY_ATTEMPTS then
 			refused = true
 			ns:Warn("mm:refused",
 				"quest POI tracking would not turn off; minimap markers are untouched.")
 		end
+		return
+	end
+
+	ns.db.settings[M.key] = shouldBeOn
+
+	if shouldBeOn then
+		-- Adopted rather than applied: the player turned the entry off
+		-- themselves, so this AddOn wrote nothing. It still has to mark the
+		-- entry as ours, or switching the option off afterwards finds no
+		-- ownership and hands back nothing -- the same bug the CVar mirror
+		-- had, for the same reason. The mirror writes `settings` directly,
+		-- so Enable never runs to mark it.
+		if ns.db.state.minimapMarkersTracking == nil then
+			ns.db.state.minimapMarkersTracking = false
+		end
 	else
+		-- Handed back. The player owns the entry again, so the marker goes
+		-- and the next Enable is the one that reclaims it. Leaving it behind
+		-- would let a later Disable turn tracking on under a player who had
+		-- deliberately left it on.
+		ns.db.state.minimapMarkersTracking = nil
+		confirmedOff = false
 		failedVerifies = 0
 	end
+
+	ns:Print(C.highlight .. M.blizzOption .. C.close ..
+		" was changed in Blizzard's options, so " .. C.highlight ..
+		M.key .. C.close .. " is now " ..
+		(shouldBeOn and (C.on .. "on" .. C.close) or (C.off .. "off" .. C.close)) .. ".")
+
+	if ns.RefreshOptions then ns.RefreshOptions() end
 end
 
 -- Adding a line to the tracking button's tooltip is the polite way to
@@ -245,35 +287,37 @@ function M:Enable()
 		ns.db.state.minimapMarkersTracking = info.active and true or false
 	end
 
-	enforce()
+	applyOff()
 	attachTooltip()
-	settled = true
 end
 
 -- Switching this option OFF turns Track Quest POIs back ON.
 --
--- This AddOn OWNS the entry, the same way it owns `questPOI` and `showBosses`:
--- the option is the only control the player has for it here, so its off state
--- has to mean something. A switch that can be turned off with nothing
--- happening is not a switch.
+-- This is Disable handing the entry back, not enforcement, and it is the one
+-- part of the owned behaviour that survives being SHARED: the AddOn turned
+-- the entry off, so the AddOn turns it on again on the way out. `/vq off`
+-- leaves the dropdown ticked, which is what it did before and what people
+-- type on their way to uninstalling.
+--
+-- Only when the marker is set. An option that was never switched on holds
+-- nothing, so a bulk `/vq off` moves nothing -- and neither does a Disable
+-- that follows the mirror having already handed the entry back.
 --
 -- The case this gives up on: a player who had turned Track Quest POIs off by
 -- hand BEFORE installing gets it back on when they switch the option off.
--- Deliberate. They are far likelier to have forgotten they ever touched it
--- than to be relying on it, and "turn the AddOn off and the quest helper comes
--- back" is the promise that matters. Restoring their 0 would have the AddOn
--- quietly holding a setting down after being told to stop.
+-- Deliberate, and much smaller than it was -- now that the mirror follows the
+-- dropdown, they can simply untick it again and the option follows them.
 --
--- This is the third position on this question. v0.18.0 forced it on, #27
--- argued for the remembered value and that shipped in v1.0.1, and the audit of
--- all thirteen options is what settled it: every other option this AddOn owns
--- outright behaves this way, and this one was the exception for no reason it
--- could state.
+-- Fourth position on this question, and the one the taxonomy actually
+-- implies. v0.18.0 forced it on; #27 argued for the remembered value and that
+-- shipped; the audit made it owned and forced it on again; and forcing a
+-- Blizzard control to stay where this AddOn wants it is precisely what
+-- "shared" exists to stop. The dropdown is a control. This option shares it.
 --
--- No chat line. Announcing that a setting is where the player expects it is
--- noise.
+-- No chat line here. The mirror says everything that needs saying, and
+-- announcing that a setting is where the player expects it is noise.
 function M:Disable()
-	settled = false
+	confirmedOff = false
 	local index, info = findEntry()
 	if not index then return end
 
@@ -295,8 +339,8 @@ function M:Status()
 		(info.active and (C.off .. "showing" .. C.close) or "hidden")
 end
 
--- The tracking dropdown stays fully functional; we simply put it back. Flipping
--- "Track Quest POIs" on from Blizzard's menu fires this and it turns off again,
--- which makes the menu entry effectively inert while this module is on without
--- reaching into Blizzard's menu code and risking taint.
-ns:RegisterEvent("MINIMAP_UPDATE_TRACKING", enforce)
+-- The dropdown is the player's control and stays fully functional. Ticking
+-- "Track Quest POIs" fires this, and the option follows rather than fighting
+-- it -- which needs nothing from Blizzard's menu code and so stays clear of
+-- the taint risk in safety rule 2, exactly as the old re-assert did.
+ns:RegisterEvent("MINIMAP_UPDATE_TRACKING", mirror)

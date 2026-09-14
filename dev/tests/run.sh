@@ -37,6 +37,19 @@ for f in ../../VanillaQuesting/*.xml ../../dev/UnmarkedRecon/*.xml; do
         || { echo "  [XML] $f is not well-formed"; lintfail=1; }
 done
 [ "$lintfail" -eq 0 ] && printf 'compiles       ok\n'
+
+# The probe runs too. It is not covered by any scenario -- it never loads in
+# them -- and it has cost two wasted round trips by shipping in a state where
+# it produced nothing at all. This does not check what it FINDS, which lives
+# in the client; it checks that it RUNS, which is the part that failed.
+smoke=$(lua5.1 recon_smoke.lua 2>&1)
+if printf '%s\n' "$smoke" | grep -q '\[FAIL\]'; then
+    lintfail=1
+    printf 'probe runs     FAILED\n'
+    printf '%s\n' "$smoke" | grep '\[FAIL\]\|lua5.1:'
+else
+    printf 'probe runs     ok\n'
+fi
 printf '\n'
 for s in $SCENARIOS; do
     out=$(lua5.1 run_tests.lua "$s" 2>&1)

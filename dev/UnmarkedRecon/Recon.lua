@@ -2743,12 +2743,17 @@ local function sectionHiddenCVars()
 	head("[G29] showQuestTrackingTooltips and friends -- do they exist, and do they take a write?")
 
 	local function tryWrite(name, testValue)
-		local before = GetCVar(name)
-		if before == nil then
-			mark(false, name .. " -- does not exist here")
+		-- Every call pcall'd. GetCVar ERRORS on an unknown name on this
+		-- client rather than returning nil -- which is the whole point of a
+		-- section asking whether these exist, and which killed the entire
+		-- v0.31 run at the first name that was not there.
+		local gotBefore, before = pcall(GetCVar, name)
+		if not gotBefore or before == nil then
+			mark(false, name .. " -- does not exist here" ..
+				(gotBefore and "" or " (the read itself errored)"))
 			return
 		end
-		local _, default, ssa, ssc, locked, secure, readonly = GetCVarInfo(name)
+		local _, _, default, ssa, ssc, locked, secure, readonly = pcall(GetCVarInfo, name)
 		add("   OK   " .. name .. " = " .. tostring(before) ..
 			"  (default " .. tostring(default) .. ")")
 		add("        storedServerAccount=" .. tostring(ssa) ..
@@ -2761,12 +2766,13 @@ local function sectionHiddenCVars()
 		-- the prediction.
 		local target = (tostring(before) == tostring(testValue)) and "1" or testValue
 		local wrote = pcall(SetCVar, name, target)
-		local after = GetCVar(name)
+		local _, after = pcall(GetCVar, name)
 		add("        wrote " .. tostring(target) .. " -> now " .. tostring(after) ..
 			(tostring(after) == tostring(target) and "   TOOK THE WRITE" or "   REFUSED"))
 		if tostring(after) ~= tostring(before) then
 			pcall(SetCVar, name, before)
-			add("        put back to " .. tostring(GetCVar(name)))
+			local _, back = pcall(GetCVar, name)
+			add("        put back to " .. tostring(back))
 		end
 		add("        (SetCVar pcall returned " .. tostring(wrote) .. ")")
 	end
@@ -2860,19 +2866,20 @@ local function sectionUnitCircles()
 	}) do probeCVar(c) end
 	add("")
 
-	local before = GetCVar("ShowQuestUnitCircles")
-	if before == nil then
+	local gotBefore, before = pcall(GetCVar, "ShowQuestUnitCircles")
+	if not gotBefore or before == nil then
 		add("   ShowQuestUnitCircles is absent under both spellings. Closed negative,")
 		add("   unless G28's full list turns it up under a third name.")
 		return
 	end
 	local target = (tostring(before) == "0") and "1" or "0"
 	pcall(SetCVar, "ShowQuestUnitCircles", target)
-	local after = GetCVar("ShowQuestUnitCircles")
+	local _, after = pcall(GetCVar, "ShowQuestUnitCircles")
 	add("   wrote " .. target .. " -> now " .. tostring(after) ..
 		(tostring(after) == target and "   TOOK THE WRITE" or "   REFUSED"))
 	pcall(SetCVar, "ShowQuestUnitCircles", before)
-	add("   put back to " .. tostring(GetCVar("ShowQuestUnitCircles")))
+	local _, back = pcall(GetCVar, "ShowQuestUnitCircles")
+	add("   put back to " .. tostring(back))
 	add("")
 	add("   If it took the write: stand near a quest mob, set it to 0 by hand,")
 	add("   and check whether Blizzard's nameplate settings put it back.")
@@ -2912,7 +2919,7 @@ local function sectionCVarWriteResult()
 	-- variable its own current value is still a write as far as the API is
 	-- concerned.
 	local probeVar = "questPOI"
-	local current = GetCVar(probeVar)
+	local _, current = pcall(GetCVar, probeVar)
 	add("   Writing " .. probeVar .. " its own current value (" .. tostring(current) .. "):")
 
 	local r1 = { pcall(SetCVar, probeVar, current) }
@@ -2932,7 +2939,7 @@ local function sectionCVarWriteResult()
 	for _, c in ipairs({
 		"questPOI", "autoQuestWatch", "instantQuestText", "showBosses", "Outline",
 	}) do
-		local value, default, ssa, ssc, locked, secure, readonly = GetCVarInfo(c)
+		local _, value, default, ssa, ssc, locked, secure, readonly = pcall(GetCVarInfo, c)
 		add(string.format("      %-18s = %-6s default=%-6s locked=%-5s secure=%-5s readOnly=%-5s",
 			c, tostring(value), tostring(default),
 			tostring(locked), tostring(secure), tostring(readonly)))
@@ -3014,6 +3021,31 @@ local function sectionTrackerButtonProtection()
 	add("   whether SPEC.md records a near miss or a live bug.")
 end
 
+---------------------------------------------------------------------
+-- Never let one section take the whole run down.
+--
+-- v0.31 went out and produced nothing at all. GetCVar ERRORS on an unknown
+-- name on this client rather than returning nil, the new sections called it
+-- bare, and `collect()` was called unprotected -- so the error surfaced as
+-- "/unrecon copy does nothing" and the round trip returned zero findings.
+--
+-- A section that throws now leaves its error IN the report, where it is a
+-- finding rather than a silence, and every other section still runs. The
+-- existing `probeCVar` helper had wrapped GetCVar in pcall since v0.3, which
+-- means the knowledge was already in this file and the new code did not read
+-- it -- so the guard goes here, where nobody has to remember.
+---------------------------------------------------------------------
+local function section(active, fn, label)
+	if not active then return end
+	local ok, err = pcall(fn)
+	if not ok then
+		add("")
+		add("== " .. label .. " -- SECTION FAILED ==")
+		add("   " .. tostring(err))
+		add("   Every other section still ran. This one is the finding.")
+	end
+end
+
 local function collect()
 	wipe(lines)
 
@@ -3082,44 +3114,44 @@ local function collect()
 
 	-- ---- v0.3 gap sections ----
 
-	if ACTIVE.g1  then sectionMinimapSurface()  end
-	if ACTIVE.g2  then sectionTracking()        end
-	if ACTIVE.g3  then sectionDataProviders()   end
-	if ACTIVE.g4  then sectionSettings()        end
-	if ACTIVE.g5  then sectionCVarDetail()      end
-	if ACTIVE.g6  then sectionCVarDiscovery()   end
-	if ACTIVE.g6  then sectionTrackingDetail()  end
-	if ACTIVE.g7  then sectionMapClutter()      end
-	if ACTIVE.g8  then sectionSettingsRegistry() end
-	if ACTIVE.g9  then sectionBlips()           end
-	if ACTIVE.g10 then sectionBlipAtlas()       end
-	if ACTIVE.g11 then sectionOutline()         end
-	if ACTIVE.g12 then sectionQuestTooltip()    end
-	if ACTIVE.g13 then sectionSelector()        end
-	if ACTIVE.g13 then sectionSettingSignature() end
+	section(ACTIVE.g1, sectionMinimapSurface, "G1")
+	section(ACTIVE.g2, sectionTracking, "G2")
+	section(ACTIVE.g3, sectionDataProviders, "G3")
+	section(ACTIVE.g4, sectionSettings, "G4")
+	section(ACTIVE.g5, sectionCVarDetail, "G5")
+	section(ACTIVE.g6, sectionCVarDiscovery, "G6")
+	section(ACTIVE.g6, sectionTrackingDetail, "G6")
+	section(ACTIVE.g7, sectionMapClutter, "G7")
+	section(ACTIVE.g8, sectionSettingsRegistry, "G8")
+	section(ACTIVE.g9, sectionBlips, "G9")
+	section(ACTIVE.g10, sectionBlipAtlas, "G10")
+	section(ACTIVE.g11, sectionOutline, "G11")
+	section(ACTIVE.g12, sectionQuestTooltip, "G12")
+	section(ACTIVE.g13, sectionSelector, "G13")
+	section(ACTIVE.g13, sectionSettingSignature, "G13")
 
-	if ACTIVE.g13c then sectionSettingReadback() end
-	if ACTIVE.g14  then sectionTracker()         end
-	if ACTIVE.g15  then sectionTrackerInternals() end
-	if ACTIVE.g16  then sectionNativePanel()     end
-	if ACTIVE.g17  then sectionHeaderTooltip()   end
-	if ACTIVE.g18  then sectionBagQuestBorder()  end
-	if ACTIVE.g19  then sectionInstantQuestText() end
-	if ACTIVE.g20  then sectionDefaultsAndApply() end
-	if ACTIVE.g21  then sectionBlizzardTooltips() end
-	if ACTIVE.g22  then sectionQuestFrameAndTooltip() end
-	if ACTIVE.g23  then sectionListDescription()   end
-	if ACTIVE.g24  then sectionDescriptionLabel()  end
-	if ACTIVE.g25  then sectionDescriptionText()   end
-	if ACTIVE.g26  then sectionDescriptionRender() end
-	if ACTIVE.g27  then sectionOwnTemplate()      end
+	section(ACTIVE.g13c, sectionSettingReadback, "G13C")
+	section(ACTIVE.g14, sectionTracker, "G14")
+	section(ACTIVE.g15, sectionTrackerInternals, "G15")
+	section(ACTIVE.g16, sectionNativePanel, "G16")
+	section(ACTIVE.g17, sectionHeaderTooltip, "G17")
+	section(ACTIVE.g18, sectionBagQuestBorder, "G18")
+	section(ACTIVE.g19, sectionInstantQuestText, "G19")
+	section(ACTIVE.g20, sectionDefaultsAndApply, "G20")
+	section(ACTIVE.g21, sectionBlizzardTooltips, "G21")
+	section(ACTIVE.g22, sectionQuestFrameAndTooltip, "G22")
+	section(ACTIVE.g23, sectionListDescription, "G23")
+	section(ACTIVE.g24, sectionDescriptionLabel, "G24")
+	section(ACTIVE.g25, sectionDescriptionText, "G25")
+	section(ACTIVE.g26, sectionDescriptionRender, "G26")
+	section(ACTIVE.g27, sectionOwnTemplate, "G27")
 
-	if ACTIVE.g28  then sectionAllCVars()             end
-	if ACTIVE.g29  then sectionHiddenCVars()          end
-	if ACTIVE.g30  then sectionTrackingType()         end
-	if ACTIVE.g31  then sectionUnitCircles()          end
-	if ACTIVE.g32  then sectionCVarWriteResult()      end
-	if ACTIVE.g33  then sectionTrackerButtonProtection() end
+	section(ACTIVE.g28, sectionAllCVars, "G28")
+	section(ACTIVE.g29, sectionHiddenCVars, "G29")
+	section(ACTIVE.g30, sectionTrackingType, "G30")
+	section(ACTIVE.g31, sectionUnitCircles, "G31")
+	section(ACTIVE.g32, sectionCVarWriteResult, "G32")
+	section(ACTIVE.g33, sectionTrackerButtonProtection, "G33")
 
 	-- Any full method dumps collected via "/unrecon methods <global>" get
 	-- folded in here so they travel inside the readable report rather than
@@ -3471,7 +3503,15 @@ end
 ---------------------------------------------------------------------
 
 local function run(arg)
-	local text = collect()
+	-- collect() is guarded too. Sections are individually wrapped, but the
+	-- scaffolding around them is not, and a failure there used to be a silent
+	-- no-op with nothing on screen to say why.
+	local ok, text = pcall(collect)
+	if not ok then
+		text = "Unmarked Recon v" .. RECON_VERSION ..
+			"\ncollect() failed outright:\n   " .. tostring(text)
+		DEFAULT_CHAT_FRAME:AddMessage("|cffff5555[Recon]|r collect() failed: " .. tostring(text))
+	end
 
 	UnmarkedReconDB.report = text
 	UnmarkedReconDB.generated = date("%Y-%m-%d %H:%M:%S")

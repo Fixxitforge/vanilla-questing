@@ -124,7 +124,7 @@ and the least explaining.
 | Option | Group | Ships | Drives | Owner | On | Off |
 | --- | --- | --- | --- | --- | --- | --- |
 | `hideMapQuestHelper` | Map and minimap | on | CVar | ours | `questPOI` → `0` | `questPOI` → `1` |
-| `hideMinimapQuestHelper` | Map and minimap | on | tracking | ours | Track Quest POIs off, re-asserted on every tracking change | back on |
+| `hideMinimapQuestHelper` | Map and minimap | on | tracking | shared | Track Quest POIs switched off, once | back on |
 | `hideBossPortraits` | Map and minimap | on | CVar | ours | `showBosses` → `0` | `showBosses` → `1` |
 | `noInstantQuestText` | Quests | on | CVar | shared | `instantQuestText` → `0` | → `1` |
 | `hideCharacterFrame` | Quests | on | frames | ours | questgiver portrait frame hidden | shown |
@@ -140,6 +140,37 @@ and the least explaining.
 `outlineMode` is the one option in neither column. It is a **pure mirror**: no default, never
 enforces, reports Blizzard's setting and lets the player change it from here. Exempt from `/vq on`,
 `/vq off`, Defaults and both presets. See below.
+
+#### What decides "ours" from "shared": is there another control?
+
+Not what the option drives, and not how hard it is to put back. **Does the player have a control of
+their own for this?** If they do, the AddOn mirrors it. If they do not, the option is the only
+control and its off state has to mean something.
+
+`hideMinimapQuestHelper` was the case that proved the rule by breaking it. It drives minimap
+tracking rather than a CVar, and the audit filed it as **ours** on the grounds that there is no
+Blizzard *checkbox* for it. There is a Blizzard **dropdown** for it — the minimap tracking menu —
+and that is a control. Filed as ours, the option re-asserted on every `MINIMAP_UPDATE_TRACKING`:
+a player ticking Track Quest POIs was overruled and told so in chat, and the menu entry was
+effectively inert.
+
+Which is precisely the thing this split exists to stop. **Forcing a Blizzard control to stay where
+this AddOn wants it is the definition of not sharing**, whether the control is a checkbox in the
+settings panel or an entry in a dropdown. It now behaves as `instantQuestText` and `autoQuestWatch`
+do: whichever way the player moves it, the option follows and says so, and nothing is forced back.
+
+What did not change is `Disable`: `/vq off` still leaves Track Quest POIs ticked. That is the AddOn
+handing back what it turned off, which every option does, and is not enforcement.
+
+Fourth position on this question — v0.18.0 forced it on, #27 argued for the remembered value and
+that shipped, the audit made it owned and forced it on again, and this is where the taxonomy
+actually leads. Worth writing down that **the audit got one row wrong by asking the wrong
+question**, because the wrong question is the reusable mistake: "is there a Blizzard checkbox" is
+not "does the player have a control".
+
+**One consequence, and it is an improvement.** The case the owned version gave up on — a player who
+had turned Track Quest POIs off by hand before installing — is much smaller now. They can untick it
+again and the option simply follows them.
 
 #### Off means off, for every option
 
@@ -1175,7 +1206,7 @@ Three player-facing lines went, all of them saying something the player did not 
 
 - `/vq on` no longer adds *"Experimental options must be activated manually."* The preset tooltip
   no longer carries it either, in **both** panels. It is said once now, under the Experimental
-  heading: *"These are not turned on by the Vanilla preset."* No instruction to switch them on —
+  heading: *"These are not enabled by the Vanilla preset."* No instruction to switch them on —
   the reader can see the checkboxes.
 - `/vq status` no longer ends with *"/vq help lists every command."* Its dead `example` local went
   with it.
@@ -1321,6 +1352,57 @@ single-option reading cannot come to disagree about what *on* means — the same
 `ns:SortedModules()` is the single source of ordering. The only difference is indentation: the
 full list indents a sub-option under its parent, and a row asked for by name has nothing to sit
 under.
+
+### v1.0.1 — the probe that produced nothing, and the section that ran anyway
+
+#### `/unrecon copy` does nothing was a Lua error with nowhere to surface
+
+**`GetCVar` errors on an unknown name on this client. It does not return nil.** Which is the whole
+point of a section asking whether a CVar exists — the first miss throws.
+
+Six new sections called it bare. `collect()` was called unprotected from `run()`. WoW swallows
+errors unless `scriptErrors` is on, so the symptom was the copy window simply not opening, and the
+round trip returned zero findings.
+
+**The knowledge was already in the file.** `probeCVar` has wrapped `GetCVar` in `pcall` since v0.3.
+The new code did not read the helper sitting forty lines above it — which is why the fix is not
+"remember to pcall" but a `section()` wrapper every dispatch line goes through. A section that
+throws now leaves its error **in the report**, where it is a finding rather than a silence, and
+every other section still runs.
+
+#### And a smoke test, because this is the second time
+
+v0.29 shipped with every section switched off: nothing to run, round trip wasted. v0.31 shipped
+with sections that could not run. Both looked identical from the player's side.
+
+`dev/tests/recon_smoke.lua` loads the probe under the harness and runs it. It cannot test what the
+probe **finds** — those answers live in the client — but it tests that it **runs**, which is the
+part that has failed twice. It models `GetCVar` erroring on an unknown name, exactly as the client
+does, so a missing `pcall` fails here rather than in a round trip; and it fails on a report with no
+sections at all, which is v0.29's mistake. Removing one `pcall` turns it red by name; verified.
+
+It is in `run.sh` beside the lint, because the probe is the one file no scenario loads.
+
+#### `hideMinimapQuestHelper` is shared, and the audit asked the wrong question
+
+Covered in full under the options audit above. The short form: the audit filed it as **ours**
+because there is no Blizzard *checkbox* for it, when the question that decides ownership is whether
+the player has a **control** — and the minimap tracking dropdown is one.
+
+**"Is there a Blizzard checkbox" is not "does the player have a control."** That is the reusable
+mistake, and it is worth more than the row it got wrong.
+
+#### The experimental warning is not shown on a mirror
+
+*"Experimental: untested and potentially unstable"* is a claim about what this AddOn is doing to the
+game. A mirror does nothing to the game. Blizzard's own Outline Mode is neither untested nor
+unstable, so on the one option that carries both flags the line was simply false — **and a false
+warning is worse than no warning, because it teaches the player to discount the true ones.**
+
+Reasoned from `mirrorOnly` rather than a flag of its own, so any future mirror gets the same answer
+without anyone having to remember. `noCompleteQuestPopup` is experimental and not a mirror, keeps
+the warning, and is the control in the test: without it, a change that stripped the note from every
+option would pass.
 
 ## Recon results
 
@@ -1608,7 +1690,7 @@ Shipping `SetCVar("questHelper", 0)` would have thrown no error and done nothing
 | Spec bullet | Implementation |
 |---|---|
 | Minimap quest area blobs | Covered by the tracking toggle below — no separate work |
-| Minimap quest POI pins | `C_Minimap.SetTracking(<index by name>, false)`, re-asserted |
+| Minimap quest POI pins | `C_Minimap.SetTracking(<index by name>, false)`, then mirrored |
 | World map quest pins | `questPOI 0` |
 | World map quest area highlights | `questPOI 0` |
 | CVar enforcement | `questPOI` only; re-assert on `CVAR_UPDATE` |

@@ -30,12 +30,34 @@ local YELLOW = C.body
 local ORANGE = C.experimental
 local GREY   = C.muted
 
--- Said once, in one place, and shown wherever an experimental option is.
+-- Said once, in one place, and shown wherever an experimental option is --
+-- except on a mirror. See `showsExperimentalNote` below.
 -- File-level locals go at the top of the file: one declared halfway down
 -- resolves as a nil global in everything above it, which has cost this
 -- project three separate silent failures inside pcalls.
 local EXPERIMENTAL_NOTE =
 	"Experimental: untested and potentially unstable. Use at your own discretion."
+
+-- A mirror does not get the experimental note, and Outline Mode is the reason.
+--
+-- "Untested and potentially unstable" is a claim about what this AddOn is
+-- doing to the game. A mirror does nothing to the game: it reports a Blizzard
+-- setting and lets the player change it from here. Blizzard's own Outline Mode
+-- is neither untested nor unstable, so the line was simply false -- and a
+-- false warning is worse than no warning, because it teaches the player to
+-- discount the true ones.
+--
+-- What the option keeps: the Experimental heading, the orange name, the
+-- "(experimental)" mark in `/vq status`, and its exemption from the Vanilla
+-- preset. Those all say "this one is different", which is true. And it keeps
+-- its `limitation`, which is the real cost and the thing worth reading.
+--
+-- Reasoned from `mirrorOnly` rather than a flag of its own: the argument is
+-- about what a mirror IS, so any future mirror gets the same answer without
+-- anyone having to remember to set something.
+local function showsExperimentalNote(m)
+	return m.experimental and not m.mirrorOnly
+end
 
 -- The Vanilla preset deliberately leaves experimental options where the player
 -- put them. That was spelled out in the preset tooltip and in chat, where it
@@ -44,7 +66,7 @@ local EXPERIMENTAL_NOTE =
 -- description text -- the shape Blizzard's own panels use, where a heading
 -- needs a sentence before the controls start.
 local EXPERIMENTAL_HEADER_NOTE =
-	"These are not turned on by the Vanilla preset."
+	"These are not enabled by the Vanilla preset."
 
 ---------------------------------------------------------------------
 -- The description row's frame script
@@ -684,7 +706,7 @@ local function build()
 				if m.limitation then
 					text = text .. "\n\n" .. ORANGE .. m.limitation .. C.close
 				end
-				if m.experimental then
+				if showsExperimentalNote(m) then
 					text = text .. "\n\n" .. ORANGE .. EXPERIMENTAL_NOTE .. C.close
 				end
 				return text
@@ -794,7 +816,7 @@ local function tooltipFor(m)
 	if m.limitation then
 		tip = tip .. "|n|n" .. ORANGE .. m.limitation .. "|r"
 	end
-	if m.experimental then
+	if showsExperimentalNote(m) then
 		tip = tip .. "|n|n" .. ORANGE .. EXPERIMENTAL_NOTE .. C.close
 	end
 	-- No slash handle. It was here, and was removed: on a Blizzard-styled

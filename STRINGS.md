@@ -67,7 +67,10 @@ is not monospaced, so padding to a column comes out ragged.
 
 ### Chat: when a Blizzard control is changed instead
 
-Fires when the player moves one of Blizzard's own checkboxes that this AddOn also drives.
+Fires when the player moves one of Blizzard's own controls that this AddOn also drives — the
+checkboxes in Blizzard's options, and the *Track Quest POIs* entry in the minimap tracking
+dropdown. `<Blizzard option name>` is `Instant Quest Text`, `Automatic Quest Tracking`,
+`Outline Mode` or `Track Quest POIs`.
 
 | ID | Trigger | Text |
 | --- | --- | --- |
@@ -78,7 +81,7 @@ Fires when the player moves one of Blizzard's own checkboxes that this AddOn als
 
 | ID | Trigger | Text |
 | --- | --- | --- |
-| `CHAT.TRACKING_REASSERTED` | The player switches *Track Quest POIs* on and the AddOn switches it back. Throttled to once every 10 seconds. | `Track Quest POIs` in `COLOR.HIGHLIGHT` + ` was disabled automatically. To allow it, use ` + `/vq off hideMinimapQuestHelper` in `COLOR.HIGHLIGHT` + `.` |
+| ~~`CHAT.TRACKING_REASSERTED`~~ | **Removed in v1.0.1.** The AddOn no longer switches *Track Quest POIs* back, so there is nothing to explain. `hideMinimapQuestHelper` is shared now and uses `CHAT.BLIZZ_YIELD` / `CHAT.BLIZZ_ADOPT` above, the same two lines the shared CVar options use. | — |
 
 ---
 
@@ -150,7 +153,12 @@ Blizzard paints the first line — the option's name — white by itself. Everyt
    painted white by Blizzard — it is **not** orange for an experimental option, even though the
    checkbox label is.
 2. A blank line, then `LIMIT_*` if the option has one, in `COLOR.EXPERIMENTAL`.
-3. A blank line, then `EXPERIMENTAL_NOTE` if it is experimental, in `COLOR.EXPERIMENTAL`.
+3. A blank line, then `EXPERIMENTAL_NOTE` if it is experimental **and not a mirror**, in
+   `COLOR.EXPERIMENTAL`. A mirror does nothing to the game — it reports a Blizzard setting — so
+   "untested and potentially unstable" is a claim about this AddOn that is not true of it. This
+   exempts `outlineMode` and nothing else today. The option stays experimental in every other
+   respect: orange name, Experimental heading, `(experimental)` in `/vq status`, out of the
+   Vanilla preset, and it keeps its `LIMIT_*` line, which is the real cost.
 4. A blank line, then `/<optionKey>` in `COLOR.MUTED`.
 
 | ID | Text |
@@ -173,7 +181,7 @@ Shown differently in the two panels, because of what each can draw:
 
 | ID | Text |
 | --- | --- |
-| `PANEL.EXPERIMENTAL_DESC` | `These are not turned on by the Vanilla preset.` |
+| `PANEL.EXPERIMENTAL_DESC` | `These are not enabled by the Vanilla preset.` |
 
 ### On Blizzard's own controls
 
