@@ -106,9 +106,23 @@ local ACTIVE = {
 	             --   at the width a control label gets. The other three draw
 	             --   nothing. No Blizzard element takes a paragraph.
 
+	g27 = false, -- ANSWERED v0.30, positive: all three rows rendered their
+	             --   sentences, wrapped, in Blizzard's own settings list.
+	             --   Settings.CreateElementInitializer takes a template the
+	             --   AddOn brings itself. Shipped as Templates.xml.
+
 	-- Still open.
-	g27 = true, -- does a template the ADDON ships render in Blizzard's
-	            --   settings list? If so, description text is solved.
+	g28 = true, -- enumerate every CVar the client has, rather than asking
+	            --   about ones already suspected
+	g29 = true, -- showQuestTrackingTooltips / minimapShowQuestBlobs: present
+	            --   here, and do they take a write?
+	g30 = true, -- MinimapScriptTrackingInfo.type -- a stable token, or another
+	            --   localised label?
+	g31 = true, -- ShowQuestUnitCircles, the yellow ring under quest mobs
+	g32 = true, -- #18: does SetCVar report success, and are any of the five
+	            --   variables this AddOn drives locked/secure/readOnly?
+	g33 = true, -- #16: IsProtected on the tracker ITEM BUTTONS, which is not
+	            --   what was measured
 }
 
 ---------------------------------------------------------------------
@@ -2601,6 +2615,405 @@ local function sectionQuestFrameAndTooltip()
 	}) do probe(n) end
 end
 
+
+---------------------------------------------------------------------
+-- [G28] Ask the client what CVars it HAS.
+--
+-- Every probe so far has asked about a CVar already suspected. Reading
+-- Blizzard's own Lua proved the limit of that approach: `particleDensity` and
+-- `ffxGlow` have ZERO mentions across the whole 5.5.4 drop and both exist and
+-- have been set from this AddOn. Absence from the source means "ask the game",
+-- not "not there".
+--
+-- Advanced Interface Options enumerates them in one line. Two names because it
+-- was renamed in 10.2.0, and which one this client has is part of the answer.
+--
+-- The full list goes to SavedVariables rather than the report: it is thousands
+-- of entries, and the report is meant to be read. What prints here is the
+-- count, the shape of one entry, and the quest-shaped names filtered out of it.
+---------------------------------------------------------------------
+local function sectionAllCVars()
+	head("[G28] Every CVar this client has")
+
+	local getter, getterName
+	if type(ConsoleGetAllCommands) == "function" then
+		getter, getterName = ConsoleGetAllCommands, "ConsoleGetAllCommands"
+	elseif type(C_Console) == "table" and type(C_Console.GetAllCommands) == "function" then
+		getter, getterName = C_Console.GetAllCommands, "C_Console.GetAllCommands"
+	end
+
+	mark(ConsoleGetAllCommands ~= nil, "ConsoleGetAllCommands (pre-10.2.0 name)")
+	mark(type(C_Console) == "table" and C_Console.GetAllCommands ~= nil,
+		"C_Console.GetAllCommands (10.2.0 name)")
+
+	if not getter then
+		add("   NEITHER exists. This whole section is dead and G28 closes negative;")
+		add("   fall back to probing suspected names one at a time.")
+		return
+	end
+	add("   Using " .. getterName .. ".")
+	add("")
+
+	local ok, list = pcall(getter)
+	if not ok or type(list) ~= "table" then
+		add("   It exists but the call failed: " .. tostring(list))
+		return
+	end
+	add("   Returned " .. #list .. " entries.")
+
+	-- What one entry looks like decides how to read the rest. AIO treats them
+	-- as tables with `command` and `commandType`, but that is AIO's client,
+	-- not necessarily this one.
+	local first = list[1]
+	add("   Entry type: " .. type(first))
+	if type(first) == "table" then
+		local keys = {}
+		for k in pairs(first) do keys[#keys + 1] = tostring(k) end
+		table.sort(keys)
+		add("   Entry keys: " .. table.concat(keys, ", "))
+		for i = 1, math.min(3, #list) do
+			local parts = {}
+			for _, k in ipairs(keys) do
+				parts[#parts + 1] = k .. "=" .. tostring(list[i][k])
+			end
+			add("      [" .. i .. "] " .. table.concat(parts, "  "))
+		end
+	elseif type(first) == "string" then
+		add("   First three: " .. tostring(list[1]) .. ", " ..
+			tostring(list[2]) .. ", " .. tostring(list[3]))
+	end
+	add("")
+
+	-- Normalise to plain names, whichever shape came back.
+	local names = {}
+	for i = 1, #list do
+		local e = list[i]
+		local n
+		if type(e) == "string" then n = e
+		elseif type(e) == "table" then n = e.command or e.name or e.commandName end
+		if type(n) == "string" then names[#names + 1] = n end
+	end
+	table.sort(names)
+	add("   " .. #names .. " names extracted.")
+
+	-- The whole list lives in SavedVariables. It is the artifact; the filtered
+	-- view below is only the first read of it.
+	UnmarkedReconDB.allCVars = names
+	add("   Full list saved to UnmarkedReconDB.allCVars.")
+	add("")
+
+	for _, needle in ipairs({
+		"quest", "poi", "track", "minimap", "tooltip",
+		"outline", "glow", "particle", "objective", "blob",
+	}) do
+		local hits = {}
+		for i = 1, #names do
+			if names[i]:lower():find(needle, 1, true) then hits[#hits + 1] = names[i] end
+		end
+		add("   '" .. needle .. "': " .. #hits)
+		for i = 1, math.min(#hits, 40) do
+			-- With its value, so one pass answers both "does it exist" and
+			-- "what is it set to".
+			local v = "?"
+			pcall(function() v = tostring(GetCVar(hits[i])) end)
+			add("      " .. hits[i] .. " = " .. v)
+		end
+		if #hits > 40 then add("      ... and " .. (#hits - 40) .. " more (see SavedVariables)") end
+	end
+end
+
+---------------------------------------------------------------------
+-- [G29] Two CVars Advanced Interface Options carries that the 5.5.4
+-- interface source never mentions.
+--
+--   showQuestTrackingTooltips -- "Displays quest tracking information in unit
+--     and object tooltips". A retail player reports Blizzard removed it in
+--     Shadowlands, which implies it was there before. If it exists AND is
+--     writable here, it replaces Tooltip.lua -- the module that cost six
+--     attempts and whose fix lives in OnSizeChanged -- with a CVar write.
+--     This is the highest-value line in the whole pass.
+--
+--   minimapShowQuestBlobs -- "Stores whether to show the quest blobs on the
+--     minimap".
+--
+-- Existence is not enough: a CVar that exists and refuses writes is no use.
+-- So each one is read, written, read back, and put back.
+---------------------------------------------------------------------
+local function sectionHiddenCVars()
+	head("[G29] showQuestTrackingTooltips and friends -- do they exist, and do they take a write?")
+
+	local function tryWrite(name, testValue)
+		local before = GetCVar(name)
+		if before == nil then
+			mark(false, name .. " -- does not exist here")
+			return
+		end
+		local _, default, ssa, ssc, locked, secure, readonly = GetCVarInfo(name)
+		add("   OK   " .. name .. " = " .. tostring(before) ..
+			"  (default " .. tostring(default) .. ")")
+		add("        storedServerAccount=" .. tostring(ssa) ..
+			" storedServerCharacter=" .. tostring(ssc))
+		add("        lockedFromUser=" .. tostring(locked) ..
+			" secure=" .. tostring(secure) .. " readOnly=" .. tostring(readonly))
+
+		-- The write test. A variable that reports none of the three flags can
+		-- still refuse, so the read-back is the answer and the flags are only
+		-- the prediction.
+		local target = (tostring(before) == tostring(testValue)) and "1" or testValue
+		local wrote = pcall(SetCVar, name, target)
+		local after = GetCVar(name)
+		add("        wrote " .. tostring(target) .. " -> now " .. tostring(after) ..
+			(tostring(after) == tostring(target) and "   TOOK THE WRITE" or "   REFUSED"))
+		if tostring(after) ~= tostring(before) then
+			pcall(SetCVar, name, before)
+			add("        put back to " .. tostring(GetCVar(name)))
+		end
+		add("        (SetCVar pcall returned " .. tostring(wrote) .. ")")
+	end
+
+	tryWrite("showQuestTrackingTooltips", "0")
+	add("")
+	tryWrite("minimapShowQuestBlobs", "0")
+	add("")
+	-- While we are here: the two this AddOn has wondered about for four
+	-- versions, asked the same way rather than by existence alone.
+	tryWrite("questHelper", "0")
+	add("")
+
+	add("   If showQuestTrackingTooltips exists and takes the write, hover a")
+	add("   quest object with it at 0 and see whether the progress line is gone.")
+	add("   That is the whole of Tooltip.lua, done by the client.")
+end
+
+---------------------------------------------------------------------
+-- [G30] What is actually in MinimapScriptTrackingInfo.type?
+--
+-- From the client's own generated API documentation:
+--
+--   C_Minimap.GetTrackingInfo(spellIndex:luaIndex) -> trackingInfo?
+--   structure MinimapScriptTrackingInfo { name:cstring, texture:fileID,
+--       active:bool, type:cstring, subType:number, spellID:number? }
+--
+-- Minimap.lua resolves the quest POI entry by matching the LOCALISED
+-- MINIMAP_TRACKING_QUEST_POIS string. SPEC.md is firm that it must never be
+-- by index. `type` is a third option the documentation names but does not
+-- describe -- and if it holds a stable non-localised token it is a better key
+-- than a localised label.
+---------------------------------------------------------------------
+local function sectionTrackingType()
+	head("[G30] Minimap tracking entries -- every field, for every entry")
+
+	mark(type(C_Minimap) == "table", "C_Minimap")
+	if type(C_Minimap) ~= "table" then return end
+	mark(type(C_Minimap.GetNumTrackingTypes) == "function", "C_Minimap.GetNumTrackingTypes")
+	mark(type(C_Minimap.GetTrackingInfo) == "function", "C_Minimap.GetTrackingInfo")
+	add("")
+
+	add("   The localised name this AddOn matches on:")
+	add("      MINIMAP_TRACKING_QUEST_POIS = " .. tostring(MINIMAP_TRACKING_QUEST_POIS))
+	add("")
+
+	local n = 0
+	pcall(function() n = C_Minimap.GetNumTrackingTypes() end)
+	add("   " .. n .. " tracking types.")
+	for i = 1, n do
+		local info
+		pcall(function() info = C_Minimap.GetTrackingInfo(i) end)
+		if type(info) ~= "table" then
+			-- The older five-return form, in case this client has that instead.
+			local name, texture, active, category, nested
+			pcall(function() name, texture, active, category, nested = GetTrackingInfo(i) end)
+			add(string.format("   [%2d] (flat form) name=%s active=%s category=%s nested=%s",
+				i, tostring(name), tostring(active), tostring(category), tostring(nested)))
+		else
+			local keys = {}
+			for k in pairs(info) do keys[#keys + 1] = tostring(k) end
+			table.sort(keys)
+			local parts = {}
+			for _, k in ipairs(keys) do parts[#parts + 1] = k .. "=" .. tostring(info[k]) end
+			add(string.format("   [%2d] %s", i, table.concat(parts, "  ")))
+		end
+	end
+	add("")
+	add("   Read the `type` column: if the quest POI row carries a token that is")
+	add("   the same word on a German client, findEntry() should key on it.")
+	add("")
+
+	-- The module re-asserts on its own schedule, and there is an event for
+	-- the thing it is watching for.
+	mark(true, "MINIMAP_UPDATE_TRACKING is documented as an event on this client")
+end
+
+---------------------------------------------------------------------
+-- [G31] ShowQuestUnitCircles -- the yellow ring under quest mobs.
+--
+-- A retail player names this one and gives the console command. It is not in
+-- this AddOn and has never been probed here.
+---------------------------------------------------------------------
+local function sectionUnitCircles()
+	head("[G31] ShowQuestUnitCircles and the nameplate neighbours")
+
+	for _, c in ipairs({
+		"ShowQuestUnitCircles", "showQuestUnitCircles",
+		"nameplateShowSelf", "ShowNamePlateLoseAggroFlash",
+		"SoftTargetIconGameObject", "SoftTargetIconUnit",
+	}) do probeCVar(c) end
+	add("")
+
+	local before = GetCVar("ShowQuestUnitCircles")
+	if before == nil then
+		add("   ShowQuestUnitCircles is absent under both spellings. Closed negative,")
+		add("   unless G28's full list turns it up under a third name.")
+		return
+	end
+	local target = (tostring(before) == "0") and "1" or "0"
+	pcall(SetCVar, "ShowQuestUnitCircles", target)
+	local after = GetCVar("ShowQuestUnitCircles")
+	add("   wrote " .. target .. " -> now " .. tostring(after) ..
+		(tostring(after) == target and "   TOOK THE WRITE" or "   REFUSED"))
+	pcall(SetCVar, "ShowQuestUnitCircles", before)
+	add("   put back to " .. tostring(GetCVar("ShowQuestUnitCircles")))
+	add("")
+	add("   If it took the write: stand near a quest mob, set it to 0 by hand,")
+	add("   and check whether Blizzard's nameplate settings put it back.")
+end
+
+---------------------------------------------------------------------
+-- [G32] Issue #18. Two questions, both one line, neither yet asked in game.
+--
+-- The client's documentation says:
+--
+--   C_CVar.SetCVar(name, value, scriptCVar) -> success:bool
+--   C_CVar.GetCVarInfo(name) -> value, defaultValue, isStoredServerAccount,
+--       isStoredServerCharacter, isLockedFromUser, isSecure, isReadOnly
+--
+-- CVars.lua wraps SetCVar in pcall and infers refusal from the value not
+-- having moved. There is a documented boolean -- but the documentation is for
+-- the NAMESPACED call, and the AddOn uses the global wrapper. Whether the
+-- wrapper passes the return value through is the question.
+--
+-- And a refusal ought to be knowable BEFORE the write: `refused[cvar]` latches
+-- on first failure and never clears precisely because the code cannot tell
+-- "you may not write this" from "that write happened to fail".
+---------------------------------------------------------------------
+local function sectionCVarWriteResult()
+	head("[G32] Does SetCVar report success, and are any of ours locked? (#18)")
+
+	mark(type(C_CVar) == "table", "C_CVar")
+	mark(type(C_CVar) == "table" and type(C_CVar.SetCVar) == "function", "C_CVar.SetCVar")
+	mark(type(C_CVar) == "table" and type(C_CVar.GetCVarInfo) == "function", "C_CVar.GetCVarInfo")
+	mark(type(C_CVar) == "table" and type(C_CVar.GetCVarDefault) == "function", "C_CVar.GetCVarDefault")
+	mark(SetCVar ~= nil, "SetCVar (global wrapper)")
+	mark(SetCVar ~= nil and C_CVar ~= nil and SetCVar == C_CVar.SetCVar,
+		"the global IS the namespaced function (same reference)")
+	add("")
+
+	-- A write that changes nothing, so the answer costs nothing. Writing a
+	-- variable its own current value is still a write as far as the API is
+	-- concerned.
+	local probeVar = "questPOI"
+	local current = GetCVar(probeVar)
+	add("   Writing " .. probeVar .. " its own current value (" .. tostring(current) .. "):")
+
+	local r1 = { pcall(SetCVar, probeVar, current) }
+	add("      SetCVar          returned " .. #r1 - 1 .. " value(s): " ..
+		tostring(r1[2]) .. ", " .. tostring(r1[3]))
+	if type(C_CVar) == "table" and type(C_CVar.SetCVar) == "function" then
+		local r2 = { pcall(C_CVar.SetCVar, probeVar, current) }
+		add("      C_CVar.SetCVar   returned " .. #r2 - 1 .. " value(s): " ..
+			tostring(r2[2]) .. ", " .. tostring(r2[3]))
+	end
+	add("")
+	add("   'returned 0 value(s): nil' means the wrapper swallows it and CVars.lua")
+	add("   must call C_CVar.SetCVar directly to get the boolean.")
+	add("")
+
+	add("   And the five variables this AddOn actually drives, with their flags:")
+	for _, c in ipairs({
+		"questPOI", "autoQuestWatch", "instantQuestText", "showBosses", "Outline",
+	}) do
+		local value, default, ssa, ssc, locked, secure, readonly = GetCVarInfo(c)
+		add(string.format("      %-18s = %-6s default=%-6s locked=%-5s secure=%-5s readOnly=%-5s",
+			c, tostring(value), tostring(default),
+			tostring(locked), tostring(secure), tostring(readonly)))
+		add(string.format("      %-18s   storedServerAccount=%s storedServerCharacter=%s",
+			"", tostring(ssa), tostring(ssc)))
+		local d = "?"
+		if type(C_CVar) == "table" and type(C_CVar.GetCVarDefault) == "function" then
+			pcall(function() d = tostring(C_CVar.GetCVarDefault(c)) end)
+		end
+		add(string.format("      %-18s   GetCVarDefault=%s", "", d))
+	end
+	add("")
+	add("   Any of these reporting locked/secure/readOnly true is an option that")
+	add("   should never have been offered, and is worth more than the write test.")
+end
+
+---------------------------------------------------------------------
+-- [G33] Issue #16. The measurement that was generalised from parent to child.
+--
+-- SPEC.md and the Tracker.lua header both lean on:
+--
+--   > WatchFrame:IsProtected() -> false, explicitly false. Safety rule 1 is
+--   > satisfied: it can be touched, in combat included.
+--
+-- That was measured on WatchFrame, the PARENT. WatchFrameItem1..N are the
+-- quest-item USE buttons -- the part of the tracker most likely to be secure,
+-- because using an item is a protected action. No recon log contains the
+-- answer; the existing dump at Recon.lua:1454 never calls IsProtected on one.
+--
+-- A measurement on a parent frame is not a measurement on its children.
+---------------------------------------------------------------------
+local function sectionTrackerButtonProtection()
+	head("[G33] Are the tracker item buttons protected? (#16)")
+
+	local function report(name, obj)
+		if obj == nil then
+			mark(false, name)
+			return
+		end
+		local prot, explicit, otype, attr, kind = "?", "?", "?", "?", "?"
+		pcall(function() prot, explicit = obj:IsProtected() end)
+		pcall(function() otype = obj:GetObjectType() end)
+		pcall(function() attr = tostring(obj:GetAttribute("type")) end)
+		pcall(function() kind = tostring(obj.IsForbidden and obj:IsForbidden()) end)
+		add(string.format("   OK   %-22s [%s]  IsProtected=%s explicit=%s  attr.type=%s forbidden=%s",
+			name, tostring(otype), tostring(prot), tostring(explicit), attr, kind))
+	end
+
+	-- The parent, so the two numbers sit side by side in one report and the
+	-- claim can be compared against the thing it was generalised to.
+	report("WatchFrame", WatchFrame)
+	add("")
+	add("   The item buttons, which is what #16 is about:")
+	local anyButton = false
+	for i = 1, 10 do
+		local n = "WatchFrameItem" .. i
+		if _G[n] then anyButton = true end
+		report(n, _G[n])
+	end
+	if not anyButton then
+		add("")
+		add("   None exist right now. These are created on demand -- pick up a quest")
+		add("   with a usable item (most starting-zone quests have one), make sure")
+		add("   the tracker is showing it, and run this again. A run with no buttons")
+		add("   is NOT a negative result.")
+	end
+	add("")
+
+	-- The two the module also touches, for completeness.
+	add("   The lines the plain-text option silences:")
+	for i = 1, 3 do
+		report("WatchFrameLine" .. i, _G["WatchFrameLine" .. i])
+	end
+	add("")
+	add("   If IsProtected comes back true for a button, the Hide() path in")
+	add("   Tracker.lua is a blocked action waiting for combat. The planned fix")
+	add("   is SetAlpha(0) + EnableMouse(false), which is not protected -- so the")
+	add("   question stops existing rather than being answered. This probe decides")
+	add("   whether SPEC.md records a near miss or a live bug.")
+end
+
 local function collect()
 	wipe(lines)
 
@@ -2700,6 +3113,13 @@ local function collect()
 	if ACTIVE.g25  then sectionDescriptionText()   end
 	if ACTIVE.g26  then sectionDescriptionRender() end
 	if ACTIVE.g27  then sectionOwnTemplate()      end
+
+	if ACTIVE.g28  then sectionAllCVars()             end
+	if ACTIVE.g29  then sectionHiddenCVars()          end
+	if ACTIVE.g30  then sectionTrackingType()         end
+	if ACTIVE.g31  then sectionUnitCircles()          end
+	if ACTIVE.g32  then sectionCVarWriteResult()      end
+	if ACTIVE.g33  then sectionTrackerButtonProtection() end
 
 	-- Any full method dumps collected via "/unrecon methods <global>" get
 	-- folded in here so they travel inside the readable report rather than
