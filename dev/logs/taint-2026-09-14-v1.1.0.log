@@ -1,0 +1,373 @@
+9/14 23:21:06.109  Tainted value written to global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) by VanillaQuesting - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:478
+9/14 23:21:06.109      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:478
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Tracker.lua:148
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:266 applyModule()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:390 ApplyAll()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:514
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:116
+9/14 23:21:06.109  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.109      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Tracker.lua:148
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:266 applyModule()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:390 ApplyAll()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:514
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:116
+9/14 23:21:06.109  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.109      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Tracker.lua:148
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:266 applyModule()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:390 ApplyAll()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:514
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:116
+9/14 23:21:06.109  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.109      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Tracker.lua:148
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:266 applyModule()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:390 ApplyAll()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:514
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:116
+9/14 23:21:06.109  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.109      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Tracker.lua:148
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:266 applyModule()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:390 ApplyAll()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:514
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:116
+9/14 23:21:06.109  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.109      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Tracker.lua:148
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:266 applyModule()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:390 ApplyAll()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:514
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:116
+9/14 23:21:06.109  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:492
+9/14 23:21:06.109      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:492
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Tracker.lua:148
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:266 applyModule()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:390 ApplyAll()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:514
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:116
+9/14 23:21:06.109  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.109      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Tracker.lua:189
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:266 applyModule()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:390 ApplyAll()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:514
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:116
+9/14 23:21:06.109  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.109      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Tracker.lua:189
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:266 applyModule()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:390 ApplyAll()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:514
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:116
+9/14 23:21:06.109  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.109      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Tracker.lua:189
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:266 applyModule()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:390 ApplyAll()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:514
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:116
+9/14 23:21:06.109  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.109      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Tracker.lua:189
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:266 applyModule()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:390 ApplyAll()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:514
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:116
+9/14 23:21:06.109  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.109      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Tracker.lua:189
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:266 applyModule()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:390 ApplyAll()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:514
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:116
+9/14 23:21:06.109  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:492
+9/14 23:21:06.109      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:492
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Tracker.lua:189
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:266 applyModule()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:390 ApplyAll()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:514
+9/14 23:21:06.109      pcall()
+9/14 23:21:06.109      Interface/AddOns/VanillaQuesting/Core.lua:116
+9/14 23:21:06.115  Tainted value written to global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) by VanillaQuesting - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.115      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.115      WatchFrame_Update()
+9/14 23:21:06.115      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:401
+9/14 23:21:06.115  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.115      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.115      WatchFrame_Update()
+9/14 23:21:06.115      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:401
+9/14 23:21:06.115  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:492
+9/14 23:21:06.115      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:492
+9/14 23:21:06.115      WatchFrame_Update()
+9/14 23:21:06.115      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:401
+9/14 23:21:06.115  Tainted value written to global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) by VanillaQuesting - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.115      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.115      WatchFrame_Update()
+9/14 23:21:06.115      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:401 WatchFrame_OnSizeChanged()
+9/14 23:21:06.115      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:374
+9/14 23:21:06.115  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.115      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.115      WatchFrame_Update()
+9/14 23:21:06.115      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:401 WatchFrame_OnSizeChanged()
+9/14 23:21:06.115      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:374
+9/14 23:21:06.115  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:492
+9/14 23:21:06.115      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:492
+9/14 23:21:06.115      WatchFrame_Update()
+9/14 23:21:06.115      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:401 WatchFrame_OnSizeChanged()
+9/14 23:21:06.115      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:374
+9/14 23:21:06.310  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.310      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.310      WatchFrame_Update()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:97 WorldStateChallengeMode_HideTimer()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:59 WorldStateChallengeMode_CheckTimers()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:13
+9/14 23:21:06.310  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.310      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.310      WatchFrame_Update()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:97 WorldStateChallengeMode_HideTimer()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:59 WorldStateChallengeMode_CheckTimers()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:13
+9/14 23:21:06.310  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.310      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.310      WatchFrame_Update()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:97 WorldStateChallengeMode_HideTimer()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:59 WorldStateChallengeMode_CheckTimers()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:13
+9/14 23:21:06.310  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.310      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.310      WatchFrame_Update()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:97 WorldStateChallengeMode_HideTimer()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:59 WorldStateChallengeMode_CheckTimers()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:13
+9/14 23:21:06.310  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.310      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.310      WatchFrame_Update()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:97 WorldStateChallengeMode_HideTimer()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:59 WorldStateChallengeMode_CheckTimers()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:13
+9/14 23:21:06.310  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:492
+9/14 23:21:06.310      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:492
+9/14 23:21:06.310      WatchFrame_Update()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:97 WorldStateChallengeMode_HideTimer()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:59 WorldStateChallengeMode_CheckTimers()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:13
+9/14 23:21:06.310  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.310      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.310      WatchFrame_Update()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:286 WorldStateProvingGrounds_HideTimer()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:228 WorldStateProvingGrounds_CheckTimers()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:323
+9/14 23:21:06.310  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.310      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.310      WatchFrame_Update()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:286 WorldStateProvingGrounds_HideTimer()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:228 WorldStateProvingGrounds_CheckTimers()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:323
+9/14 23:21:06.310  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.310      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.310      WatchFrame_Update()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:286 WorldStateProvingGrounds_HideTimer()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:228 WorldStateProvingGrounds_CheckTimers()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:323
+9/14 23:21:06.310  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.310      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.310      WatchFrame_Update()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:286 WorldStateProvingGrounds_HideTimer()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:228 WorldStateProvingGrounds_CheckTimers()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:323
+9/14 23:21:06.310  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.310      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.310      WatchFrame_Update()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:286 WorldStateProvingGrounds_HideTimer()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:228 WorldStateProvingGrounds_CheckTimers()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:323
+9/14 23:21:06.310  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:492
+9/14 23:21:06.310      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:492
+9/14 23:21:06.310      WatchFrame_Update()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:286 WorldStateProvingGrounds_HideTimer()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:228 WorldStateProvingGrounds_CheckTimers()
+9/14 23:21:06.310      Interface/AddOns/Blizzard_FrameXML/Mists/WorldStateFrame.lua:323
+9/14 23:21:06.355  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.355      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Tracker.lua:148
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:266 applyModule()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:390 ApplyAll()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:521
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:116
+9/14 23:21:06.355  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.355      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Tracker.lua:148
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:266 applyModule()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:390 ApplyAll()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:521
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:116
+9/14 23:21:06.355  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.355      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Tracker.lua:148
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:266 applyModule()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:390 ApplyAll()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:521
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:116
+9/14 23:21:06.355  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.355      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Tracker.lua:148
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:266 applyModule()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:390 ApplyAll()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:521
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:116
+9/14 23:21:06.355  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.355      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Tracker.lua:148
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:266 applyModule()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:390 ApplyAll()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:521
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:116
+9/14 23:21:06.355  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:492
+9/14 23:21:06.355      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:492
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Tracker.lua:148
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:266 applyModule()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:390 ApplyAll()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:521
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:116
+9/14 23:21:06.355  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.355      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Tracker.lua:189
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:266 applyModule()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:390 ApplyAll()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:521
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:116
+9/14 23:21:06.355  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.355      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Tracker.lua:189
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:266 applyModule()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:390 ApplyAll()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:521
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:116
+9/14 23:21:06.355  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.355      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Tracker.lua:189
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:266 applyModule()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:390 ApplyAll()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:521
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:116
+9/14 23:21:06.355  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.355      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Tracker.lua:189
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:266 applyModule()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:390 ApplyAll()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:521
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:116
+9/14 23:21:06.355  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.355      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Tracker.lua:189
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:266 applyModule()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:390 ApplyAll()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:521
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:116
+9/14 23:21:06.355  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:492
+9/14 23:21:06.355      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:492
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Tracker.lua:189
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:266 applyModule()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:390 ApplyAll()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:521
+9/14 23:21:06.355      pcall()
+9/14 23:21:06.355      Interface/AddOns/VanillaQuesting/Core.lua:116
+9/14 23:21:06.367  Tainted value written to global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) by VanillaQuesting - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.367      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.367      WatchFrame_Update()
+9/14 23:21:06.367      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:313
+9/14 23:21:06.367  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.367      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.367      WatchFrame_Update()
+9/14 23:21:06.367      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:313
+9/14 23:21:06.367  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:492
+9/14 23:21:06.367      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:492
+9/14 23:21:06.367      WatchFrame_Update()
+9/14 23:21:06.367      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:313
+9/14 23:21:06.367  Tainted value written to global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) by VanillaQuesting - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.367      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.367      WatchFrame_Update()
+9/14 23:21:06.367      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/QuestMapFrame.lua:183
+9/14 23:21:06.367  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.367      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:487
+9/14 23:21:06.367      WatchFrame_Update()
+9/14 23:21:06.367      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/QuestMapFrame.lua:183
+9/14 23:21:06.367  Execution tainted by VanillaQuesting while reading global WATCHFRAME_NUM_POPUPS (<table: 000001918347c200>) - Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:492
+9/14 23:21:06.367      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:492
+9/14 23:21:06.367      WatchFrame_Update()
+9/14 23:21:06.367      Interface/AddOns/Blizzard_UIPanels_Game/Wrath/QuestMapFrame.lua:183

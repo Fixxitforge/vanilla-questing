@@ -32,6 +32,34 @@ local ADDON_NAME, ns = ...
 -- tracker recycles its buttons, so a line that is a quest title now may be
 -- something else after the next update.
 local hooked = false
+-- CALLING WatchFrame_Update taints. Hooking it does not.
+--
+-- `hooksecurefunc` installs a post-hook that runs after Blizzard's own code and
+-- does not taint the execution that called it -- that is what it is for. A
+-- direct `WatchFrame_Update()` from AddOn Lua is the opposite: Blizzard's
+-- function then runs in OUR execution context, and everything it writes is
+-- marked as ours.
+--
+-- The taint log, 5.5.4.69585, with VanillaQuesting the only AddOn:
+--
+--   Tainted value written to global WATCHFRAME_NUM_POPUPS by VanillaQuesting
+--     Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:478
+--     pcall()
+--     VanillaQuesting/Tracker.lua:148      <- this file, Enable/Disable
+--     VanillaQuesting/Core.lua:266 applyModule()
+--     VanillaQuesting/Core.lua:390 ApplyAll()
+--
+-- `WATCHFRAME_NUM_POPUPS` is a global TABLE, so once a tainted value is written
+-- into it the taint is permanent for the session. Every later read by
+-- Blizzard's own code inherits it -- the same log shows
+-- WorldStateChallengeMode_HideTimer, WorldStateProvingGrounds_HideTimer and
+-- QuestMapFrame reading it and being tainted in turn, none of which this AddOn
+-- touches or has any interest in.
+--
+-- **That is the mechanism behind "Interface action failed because of an AddOn"
+-- appearing somewhere unrelated, much later.** Nothing here calls it any more:
+-- Enable applies the pass directly, Disable restores from its own record, and
+-- the hook keeps both correct across the rebuilds Blizzard does itself.
 local function ensureHook()
 	if hooked then return end
 	if type(hooksecurefunc) ~= "function" or type(WatchFrame_Update) ~= "function" then
@@ -133,9 +161,12 @@ do
 		end
 	end
 
+	-- No WatchFrame_Update, in either direction. See the note above
+	-- `ensureHook` -- CALLING it taints, and the taint log names this exact
+	-- line as where a session's taint began.
 	function M:Enable()
 		ensureHook()
-		if type(WatchFrame_Update) == "function" then pcall(WatchFrame_Update) end
+		M:trackerPass()
 	end
 
 	function M:Disable()
@@ -145,7 +176,6 @@ do
 			end
 		end
 		wipe(touched)
-		if type(WatchFrame_Update) == "function" then pcall(WatchFrame_Update) end
 	end
 
 	function M:Status()
@@ -186,7 +216,18 @@ do
 
 	function C:Enable()
 		ensureHook()
-		if type(WatchFrame_Update) == "function" then pcall(WatchFrame_Update) end
+		-- The parent owns the pass; this option only widens what it silences.
+		--
+		-- Only when the parent is actually ON. `trackerPass` does not check
+		-- the setting -- the hook does that before calling it -- so running it
+		-- from here with the parent off would silence buttons the parent had
+		-- just handed back. That is what going through `WatchFrame_Update()`
+		-- used to hide, and it broke the moment the call was removed.
+		if not (ns.db and ns.db.settings[C.parent]) then return end
+		local parent = ns.modules[C.parent]
+		if parent and type(parent.trackerPass) == "function" then
+			pcall(parent.trackerPass, parent)
+		end
 	end
 
 	function C:Disable()
@@ -199,7 +240,6 @@ do
 				touched[b] = nil
 			end
 		end
-		if type(WatchFrame_Update) == "function" then pcall(WatchFrame_Update) end
 	end
 
 	function C:Status()

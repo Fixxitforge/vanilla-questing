@@ -362,14 +362,34 @@ local function cycleWorldMap()
 end
 
 local function refreshQuestUI(rule)
+	-- Nothing at all unless a person just asked for it.
+	--
+	-- Every call below is a Blizzard function run from AddOn Lua, which means
+	-- Blizzard's code executes in OUR context and everything it writes is
+	-- marked as ours. `WatchFrame_Update` writes the global table
+	-- `WATCHFRAME_NUM_POPUPS`, so the taint is permanent for the session and
+	-- every later read of it by Blizzard's own code inherits it -- the taint
+	-- log shows exactly that, reaching WorldStateFrame's timers and
+	-- QuestMapFrame, none of which this AddOn touches.
+	--
+	-- At login there is nothing to refresh anyway: the tracker and the map are
+	-- being built from scratch, after this runs, from the values it just
+	-- wrote. The refresh is only worth anything when the player changes an
+	-- option with the UI already on screen -- and that is exactly when they
+	-- are watching for it.
+	--
+	-- This does not make the calls taint-free when they do run. It confines
+	-- them to a deliberate action, which is the smaller surface and the one a
+	-- player can connect to what they did. See the note in Tracker.lua.
+	if not ns.byRequest then return end
+
 	if type(WatchFrame_Update) == "function" then
 		pcall(WatchFrame_Update)
 	end
 	if type(QuestMapFrame_UpdateAll) == "function" and mapIsOpen() then
 		pcall(QuestMapFrame_UpdateAll)
 	end
-	-- Only the rules the map and the tracker actually read, and only when a
-	-- person just asked for it.
+	-- Only the rules the map and the tracker actually read.
 	--
 	-- Cycling the map for a variable it does not look at would be a visible
 	-- jolt for nothing. Cycling it on a loading screen is worse than that: it
@@ -382,7 +402,7 @@ local function refreshQuestUI(rule)
 	-- down, so the write still happens and the map is simply left alone. It is
 	-- right the next time it is opened, which on a loading screen is the only
 	-- time anyone sees it anyway.
-	if rule and rule.cyclesMap and ns.byRequest then cycleWorldMap() end
+	if rule and rule.cyclesMap then cycleWorldMap() end
 end
 
 local function writeCVar(rule, value)

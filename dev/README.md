@@ -47,6 +47,14 @@ that stays banned is asserting behaviour from memory.
 
 Start at [`knowledge/CLIENT-SOURCE.md`](knowledge/CLIENT-SOURCE.md).
 
+## `logs/`
+
+`recon-log-*.txt` is probe output; `taint-*.log` is the client's own taint log.
+
+**On 5.5.4.69585 `/console taintLog 1` produces no file. `taintLog 2` does.** Three issues sat on
+"needs a taint log" for a week because of that one line. The log is written on logout, to
+`World of Warcraft/_classic_/Logs/taint.log`.
+
 ## `logs/recon-log-*.txt`
 
 The raw output of past probe runs, kept because **every conclusion in `SPEC.md` is evidence from

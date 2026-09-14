@@ -39,6 +39,8 @@ cost to find, and why it was made that way — is the version history in [`dev/S
 - **The options panel no longer lags on every click.** Changing one option re-applied all of them.
 - **The world map no longer opens and closes by itself on a loading screen.** It still refreshes
   when you change a map option yourself.
+- **The AddOn no longer taints the game's quest tracker at login**, which could surface much later
+  as *"Interface action failed because of an AddOn"* on something unrelated.
 - Switching an option off now always switches its effect off — including when the option had turned
   itself on to follow a change made in Blizzard's options.
 - Switching an option off now always tries to put its setting back, even if an earlier write

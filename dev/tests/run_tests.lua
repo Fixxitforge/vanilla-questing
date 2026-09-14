@@ -999,6 +999,39 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 		check("and is still open, not half-cycled", WorldMapFrame:IsShown())
 		_G.__inCombat = false
 
+		-- ---- taint: nothing calls WatchFrame_Update at login ----
+		--
+		-- From the taint log on 5.5.4.69585, VanillaQuesting the only AddOn:
+		--
+		--   Tainted value written to global WATCHFRAME_NUM_POPUPS by
+		--   VanillaQuesting -- WatchFrame.lua:478
+		--     pcall() / Tracker.lua:148 / applyModule() / ApplyAll()
+		--
+		-- CALLING a Blizzard function from AddOn Lua runs it in our execution
+		-- context, so everything it writes is marked as ours. WATCHFRAME_NUM_POPUPS
+		-- is a global TABLE, so the taint is permanent for the session, and the
+		-- same log shows it spreading to WorldStateFrame's timers and
+		-- QuestMapFrame -- none of which this AddOn touches.
+		--
+		-- Hooking is not the problem and never was: `hooksecurefunc` post-hooks
+		-- do not taint. Calling is.
+		_G.__watchUpdates = 0
+		pcall(fire, "PLAYER_ENTERING_WORLD")
+		check("a loading screen calls WatchFrame_Update zero times",
+			_G.__watchUpdates == 0, _G.__watchUpdates)
+
+		ns:ResetDefaults(true)
+		_G.__watchUpdates = 0
+		pcall(fire, "VARIABLES_LOADED")
+		check("and so does VARIABLES_LOADED", _G.__watchUpdates == 0, _G.__watchUpdates)
+
+		-- The tracker options still apply on that pass -- the point is that
+		-- they do it by walking the buttons themselves, not by asking
+		-- Blizzard to rebuild.
+		check("and the tracker options are still applied",
+			WATCHFRAME_LINKBUTTONS[1]:IsMouseEnabled() == false,
+			tostring(WATCHFRAME_LINKBUTTONS[1]:IsMouseEnabled()))
+
 		-- ---- #17: a loading screen is not someone asking for a refresh ----
 		--
 		-- The cycle goes through HideUIPanel / ShowUIPanel, which taints

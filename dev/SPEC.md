@@ -1438,6 +1438,73 @@ without anyone having to remember. `noCompleteQuestPopup` is experimental and no
 the warning, and is the control in the test: without it, a change that stripped the note from every
 option would pass.
 
+### The taint log, at last — and it was never the map
+
+`/console taintLog 1` produces no file on this client. **`taintLog 2` does.** That one line is why
+three issues sat on "needs a taint log" for a week, and it is worth writing down before anything
+else: **on 5.5.4.69585 the taint log only works at verbosity 2.**
+
+The log is kept at `dev/logs/taint-2026-09-14-v1.1.0.log`, captured with VanillaQuesting as the
+only AddOn loaded.
+
+#### What it says
+
+```
+Tainted value written to global WATCHFRAME_NUM_POPUPS by VanillaQuesting
+  - Blizzard_UIPanels_Game/Wrath/WatchFrame.lua:478
+    pcall()
+    VanillaQuesting/Tracker.lua:148
+    pcall()
+    VanillaQuesting/Core.lua:266 applyModule()
+    VanillaQuesting/Core.lua:390 ApplyAll()
+    VanillaQuesting/Core.lua:514
+```
+
+`Tracker.lua:148` was `pcall(WatchFrame_Update)` in a module's `Enable`/`Disable`. **Calling a
+Blizzard function from AddOn Lua runs that function in OUR execution context**, so everything it
+writes is marked as ours — and `WATCHFRAME_NUM_POPUPS` is a global **table**, so once a tainted
+value goes into it the taint is permanent for the session.
+
+The rest of the log is that taint spreading. `WorldStateChallengeMode_HideTimer`,
+`WorldStateProvingGrounds_HideTimer`, `QuestMapFrame.lua:183` — Blizzard's own code, reading a
+global this AddOn has no interest in and being tainted by it, long after login.
+
+**That is the mechanism behind "Interface action failed because of an AddOn" turning up somewhere
+unrelated.** It is exactly what #17's fix was reasoning about, and #17 fixed the wrong call.
+
+#### Hooking is not the problem. Calling is.
+
+`hooksecurefunc` installs a post-hook that does not taint the execution it runs after — that is what
+it is for, and `ensureHook` was always fine. A direct `WatchFrame_Update()` is the opposite thing.
+
+The distinction is easy to lose because both appear in the same file, three lines apart.
+
+#### What changed
+
+Five calls removed, and the pattern is the one the bags and the item buttons already established:
+
+- **`trackerPlainText`** — `Enable` runs its own `trackerPass()`; `Disable` restores from `touched`.
+- **The achievement sub-option** — `Enable` runs the parent's pass, **and only when the parent is
+  actually on.** `trackerPass` does not check the setting (the hook does that before calling it),
+  so running it from here with the parent off silenced buttons the parent had just handed back.
+  Going through `WatchFrame_Update()` had hidden that, and it broke the moment the call went.
+- **`refreshQuestUI`** in `CVars.lua` — returns immediately unless `ns.byRequest`. At login there is
+  nothing to refresh: the tracker and the map are built from scratch *after* this runs, from the
+  values it just wrote.
+
+That last one **does not make the calls taint-free when they do run.** It confines them to a
+deliberate action — the smaller surface, and the one a player can connect to something they did.
+Removing them outright is the real fix and wants its own round, because the refresh they provide was
+established over several passes of #11 and #19.
+
+#### What this means for [#11](https://github.com/Fixxitforge/vanilla-questing/issues/11)
+
+The hypothesis recorded there — a login-time taint, surfacing later as an unrelated blocked action
+— **is confirmed as a real mechanism.** It is not yet confirmed as the cause of that specific
+report, and the difference matters: the log shows taint, not the failure. Whether the combat error
+with the map closed goes away needs the same reproduction run again against a build that has this
+fix.
+
 ### Two more redraws that were not ours to make
 
 Both are the same shape as the bag one below, found one after another.
