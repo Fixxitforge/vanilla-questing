@@ -100,6 +100,32 @@ this file that says "the client does X" can now be sourced two ways — a probe 
 a line in Blizzard's code — and the first thing reading it turned up was an error in this file
 (known limitation 1, below).
 
+### Off means off
+
+**An option that is switched off must leave its console variable in a state that does not count as
+on.** Restoring the remembered pre-AddOn value is right whenever this AddOn was the thing that
+moved it, and wrong whenever it was not — which is every time the AddOn *adopted* an option because
+the player already had the variable where the option wanted it, and nothing was ever written.
+
+Found in play: Outline at 3, Outline Mode on, `/vq off outlineMode`, and Outline stayed at 3. The
+option read off while the outlines it names were still being drawn.
+
+**It was live in all five CVar options**, not only the odd one. A sweep added with the fix fails
+five checks without it, and two of the suite's own existing checks had the broken behaviour written
+into them as the expected answer — one of them expecting the AddOn to restore its own enforced `0`
+and leave the map markers hidden with the option switched off. That is the argument for sweeping a
+rule across every option rather than asserting per option: a per-option check gets written to match
+whatever that option happens to do.
+
+Each rule declares an explicit **`offValue`** rather than inferring one. For the boolean CVars the
+opposite of `wanted` would have worked; for `Outline` it would not, because 1, 2 and 3 all count as
+on and only 0 is off. A rule that holds for four cases out of five is not a rule.
+
+**Known consequence, undecided.** Switching an option off writes `offValue`, so a player who had
+`Outline` at 1 or 3 gets 0, and switching back on gives them `wanted` (2) rather than the value
+they had chosen. Preserving it would need a second remembered slot — the player's preferred *on*
+value, as distinct from the pre-AddOn value — and that has not been built.
+
 ### The client's CVars are not loaded at `ADDON_LOADED`
 
 `GetCVar` answers with the **default** until the client has loaded the player's saved console
