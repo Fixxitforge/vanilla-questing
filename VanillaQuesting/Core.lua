@@ -313,9 +313,44 @@ end
 -- Lifecycle
 ---------------------------------------------------------------------
 
+-- Have the player's own CVar values arrived yet?
+--
+-- They have not at ADDON_LOADED. The client loads its saved console variables
+-- later, and until it does GetCVar answers with the DEFAULT rather than with
+-- what the player has. Blizzard's own code asks this same question through
+-- EventUtil.AreVariablesLoaded, which reads the same flag.
+local function variablesLoaded()
+	return type(UIParent) == "table" and UIParent.variablesLoaded and true or false
+end
+
+-- ADDON_LOADED sets the database up and stops there.
+--
+-- Applying here reads CVars that are not the player's yet, and this AddOn
+-- does two things with that reading it cannot afford to get wrong: it records
+-- the pre-AddOn value so the option can be handed back, and on a clean
+-- install it adopts an option from the control it shadows. Both were being
+-- decided against a default.
+--
+-- The symptom that found it: a clean install with Outline switched off got
+-- "Outline Mode was changed in Blizzard's options" in chat, and only that
+-- value did it. Adoption read the default 2, set the option on, and the real
+-- 0 arriving moments later looked exactly like the player reaching into
+-- Blizzard's options -- which is what the mirror is for. Outline 1, 2 and 3
+-- were all silent because they agree with the default about being "on".
+--
+-- The recording bug is the quieter one and the worse one: remembering
+-- Blizzard's default as "what the player had" means handing back the wrong
+-- value forever, for every CVar option, on every client where the two differ.
 ns:RegisterEvent("ADDON_LOADED", function(_, loaded)
 	if loaded ~= ADDON_NAME then return end
 	initDB()
+	-- Unless they are already here, which is the case if this AddOn is ever
+	-- loaded on demand rather than at startup.
+	if variablesLoaded() then ns:ApplyAll() end
+end)
+
+ns:RegisterEvent("VARIABLES_LOADED", function()
+	if not ns.db then initDB() end
 	ns:ApplyAll()
 end)
 
@@ -417,18 +452,15 @@ SlashCmdList["VANILLAQUESTING"] = function(msg)
 				-- being shown. Say what actually happened instead.
 				-- Report what the AddOn is now doing. Setting a sub-option
 				-- while its parent is off changes the saved value and nothing
-				-- else, and claiming the effect would be a straight untruth --
-				-- so say where it stands and what it is waiting for.
+				-- else, so "off" is the honest answer -- and it is the whole
+				-- answer. A second line explaining which parent it waits on
+				-- was tried and read as a lecture: the panel already shows the
+				-- child greyed under the parent it belongs to.
 				local live = ns:IsActive(key)
 				local effect = m and (live and m.onText or m.offText)
-				local waiting = ""
-				if m and m.parent and want and not live then
-					waiting = " Takes effect when " .. C.highlight .. m.parent ..
-						C.close .. " is on."
-				end
 				ns:Print(C.highlight .. key .. C.close .. " " ..
 					(live and (C.on .. "on" .. C.close) or (C.off .. "off" .. C.close)) ..
-					"." .. (effect and (" " .. effect) or "") .. waiting)
+					"." .. (effect and (" " .. effect) or ""))
 			else
 				ns:Print(C.warning .. "Unknown option '" .. arg .. "'." .. C.close ..
 					" Try " .. C.highlight .. "/vq help" .. C.close .. " for list of commands.")

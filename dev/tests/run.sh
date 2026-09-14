@@ -7,7 +7,7 @@ cd "$(dirname "$0")" || exit 1
 
 SCENARIOS="normal no_settings settings_refuses cvar_refused tracking_refused
            no_cminimap no_entry no_cvar native native_halfway no_tooltipfunc
-           no_template no_button_type outline_off"
+           no_template no_button_type outline_off outline_late_off"
 
 total=0
 failed=0

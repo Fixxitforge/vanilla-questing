@@ -166,7 +166,7 @@ do
 	-- what lets it hand the achievement clicks back without guessing that they
 	-- were on.
 	local C = ns:RegisterModule("trackerPlainTextAchievements", {})
-	C.title   = "Plain Text Tracked Achievements"
+	C.title   = "Plain Text Achievements"
 	C.desc    = "Achievement titles in the tracker stop being clickable as well."
 	C.onText  = "Tracker achievement titles are now plain text."
 	C.offText = "Tracker achievement titles are clickable."

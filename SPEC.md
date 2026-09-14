@@ -100,6 +100,32 @@ this file that says "the client does X" can now be sourced two ways — a probe 
 a line in Blizzard's code — and the first thing reading it turned up was an error in this file
 (known limitation 1, below).
 
+### The client's CVars are not loaded at `ADDON_LOADED`
+
+`GetCVar` answers with the **default** until the client has loaded the player's saved console
+variables and raised `VARIABLES_LOADED`. Blizzard reads the same flag through
+`EventUtil.AreVariablesLoaded`, which is `UIParent.variablesLoaded`.
+
+This AddOn does two things with a CVar reading that it cannot afford to get wrong: it records the
+pre-AddOn value so an option can be handed back, and on a clean install it adopts an option from
+the Blizzard control it shadows. Both were being decided against a default.
+
+Found from play, on the one value that made it visible: a clean install with **Outline** switched
+off printed *"Outline Mode was changed in Blizzard's options"* in chat. Adoption read the default
+`2`, set the option on, and the real `0` arriving moments later looked exactly like the player
+reaching into Blizzard's options. Outline `1`, `2` and `3` were all silent, because they agree with
+the default about being "on".
+
+The chat line was the visible half. The quiet half is worse: **the remembered pre-AddOn value was
+Blizzard's default rather than the player's setting**, for every CVar option, on every client where
+the two differ — so the value handed back when an option is switched off was wrong from the start.
+
+`ADDON_LOADED` now sets the database up and nothing else. The first `ApplyAll` waits for
+`VARIABLES_LOADED`, with `PLAYER_ENTERING_WORLD` as the backstop, and applies immediately if the
+flag is already up. Covered by the `outline_late_off` scenario, which models a client answering
+with defaults until the event: without the fix it ends with the option on and the player's `0`
+overwritten with `2`.
+
 ### Known limitations
 
 Documented in `README.md` and to be repeated on the CurseForge page. These are things this

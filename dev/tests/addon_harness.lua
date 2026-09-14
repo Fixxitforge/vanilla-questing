@@ -220,10 +220,38 @@ GameTooltip = {
 	GetOwner = function() return tooltipOwner end,
 }
 
+-- UIParent, for the one flag this AddOn reads off it: variablesLoaded, which
+-- is how Blizzard's own EventUtil.AreVariablesLoaded answers the same question.
+UIParent = UIParent or { variablesLoaded = true }
+
 -- ---- CVars ----
 local cvars = { questPOI = "1", autoQuestWatch = "1", showBosses = "1", Outline = "2", instantQuestText = "1" }
 local lockedCVars = {}
-GetCVar = function(n) return cvars[n] end
+
+-- The player's saved values do not exist yet at ADDON_LOADED.
+--
+-- The client loads them later and raises VARIABLES_LOADED; until then GetCVar
+-- answers with the DEFAULT. Modelled here because an AddOn that reads CVars at
+-- ADDON_LOADED reads the wrong ones, and no scenario could show that while the
+-- harness handed out the saved values from the first instruction.
+--
+-- `cvarDefaults` is what the client answers before that moment. Only entries
+-- that differ need listing; anything absent reads the same either way.
+local cvarDefaults = {}
+local variablesLoaded = true
+_G.__setCVarDefaults = function(tbl, saved)
+	cvarDefaults = tbl
+	variablesLoaded = false
+	-- The flag the AddOn actually reads has to come down with it, or the
+	-- scenario models a client that says its variables are loaded while
+	-- handing out defaults -- which is no client at all.
+	UIParent.variablesLoaded = false
+	for k, v in pairs(saved or {}) do cvars[k] = v end
+end
+GetCVar = function(n)
+	if not variablesLoaded and cvarDefaults[n] ~= nil then return cvarDefaults[n] end
+	return cvars[n]
+end
 SetCVar = function(n, v)
 	if lockedCVars[n] then return true end        -- accepts the write, ignores it
 	if cvars[n] == nil then return true end
@@ -234,6 +262,22 @@ SetCVar = function(n, v)
 end
 _G.cvars = cvars
 _G.lockCVar = function(n) lockedCVars[n] = true end
+
+-- What the client does at VARIABLES_LOADED: the saved values become visible,
+-- the flag the AddOn reads goes up, and every value that actually moved raises
+-- CVAR_UPDATE -- which is the event that turned a wrong reading into a chat
+-- message blaming the player.
+_G.__loadVariables = function()
+	if variablesLoaded then return end
+	local changed = {}
+	for k, def in pairs(cvarDefaults) do
+		if cvars[k] ~= def then changed[k] = cvars[k] end
+	end
+	variablesLoaded = true
+	UIParent.variablesLoaded = true
+	fire("VARIABLES_LOADED")
+	for k, v in pairs(changed) do fire("CVAR_UPDATE", k, v) end
+end
 
 -- ---- Minimap tracking ----
 MINIMAP_TRACKING_QUEST_POIS = "Track Quest POIs"
@@ -545,6 +589,10 @@ end
 
 -- ---- scenario tweaks, applied BEFORE the addon loads ----
 if scenario == "outline_off" then cvars.Outline = "0"
+elseif scenario == "outline_late_off" then
+	-- The reported bug, exactly: the player has Outline switched off, but the
+	-- client still answers with the default 2 when this AddOn first looks.
+	__setCVarDefaults({ Outline = "2" }, { Outline = "0" })
 elseif scenario == "cvar_refused" then lockCVar("questPOI")
 elseif scenario == "tracking_refused" then lockTracking()
 elseif scenario == "no_cminimap" then C_Minimap = nil

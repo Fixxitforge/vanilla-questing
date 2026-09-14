@@ -18,6 +18,9 @@ print("=== scenario: " .. scenario .. " ===")
 -- boot the addon the way the client does
 local ok, err = pcall(fire, "ADDON_LOADED", "VanillaQuesting")
 check("ADDON_LOADED without error", ok, err)
+-- The client's saved CVars arrive after ADDON_LOADED, not before it.
+ok, err = pcall(__loadVariables)
+check("VARIABLES_LOADED without error", ok, err)
 ok, err = pcall(fire, "PLAYER_ENTERING_WORLD")
 check("PLAYER_ENTERING_WORLD without error", ok, err)
 ok, err = pcall(fire, "PLAYER_LOGIN")
@@ -32,19 +35,20 @@ check("no runaway event recursion (depth " .. maxEventDepth() .. ")", maxEventDe
 -- never touched -- comparing a long-standing player value against a setting a
 -- few milliseconds old. An option that ships OFF beside a control that ships
 -- ON mismatches every time, and said so in chat on a first ever login.
-if scenario == "normal" or scenario == "outline_off" then
+if scenario == "normal" or scenario == "outline_off"
+	or scenario == "outline_late_off" then
 	-- NOT `(scenario == "outline_off") and false or true`. The and/or idiom
 	-- cannot carry a false branch: `true and false` is false, and `false or
 	-- true` is true, so that expression is true for every scenario and the
 	-- check passes without testing anything.
 	local expected = true
-	if scenario == "outline_off" then expected = false end
+	if scenario ~= "normal" then expected = false end
 	check("an option that ships off adopts the Blizzard control it shadows",
 		VanillaQuestingDB.settings.outlineMode == expected,
 		tostring(VanillaQuestingDB.settings.outlineMode) ..
 		" for Outline " .. tostring(cvars.Outline))
 	check("adopting does not move the variable",
-		cvars.Outline == ((scenario == "outline_off") and "0" or "2"), cvars.Outline)
+		cvars.Outline == ((scenario == "normal") and "2" or "0"), cvars.Outline)
 
 	local noisy = {}
 	for _, m in ipairs(chatlog) do
