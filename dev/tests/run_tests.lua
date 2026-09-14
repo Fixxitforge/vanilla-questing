@@ -226,45 +226,59 @@ if scenario == "normal" then
 	pcall(SlashCmdList["VANILLAQUESTING"], "on outlineMode")
 	check("Outline 3 is left alone when the option goes on", cvars.Outline == "3", cvars.Outline)
 	pcall(SlashCmdList["VANILLAQUESTING"], "off outlineMode")
-	check("and is still 3 afterwards", cvars.Outline == "3", cvars.Outline)
+	check("and switching the option off means outlines off", cvars.Outline == "0",
+		cvars.Outline)
 
-	-- THE RULE, stated so it cannot be "fixed" again.
+	-- THE RULE, and the one option that is excepted from it.
 	--
-	-- Off means return to the player's last known setting -- not to a value
-	-- this AddOn considers "off", and not to Blizzard's default. Whatever the
-	-- player last chose is what comes back, whether they chose it before
-	-- installing, through Blizzard's own options, or between two toggles of
-	-- ours.
+	-- The rule: switching an option off returns the variable to whatever the
+	-- player last chose. Not to a value this AddOn considers "off", and not to
+	-- Blizzard's default. v1.0.1 briefly shipped that reading across all five
+	-- CVar options and it was wrong -- it means switching an option off
+	-- CHANGES a setting the player chose, which a subtractive AddOn must not
+	-- do. Pinned below on questPOI, which is an ordinary rule.
 	--
-	-- v1.0.1 briefly shipped the other reading: an option that is off leaves
-	-- its variable in a state that does not count as on. It sounds right, it
-	-- passed a sweep across all five options, and it was wrong -- it means
-	-- switching an option off CHANGES something the player had chosen, which
-	-- is the one thing a subtractive AddOn must never do. Reverted, and this
-	-- check is the reason it stays reverted.
+	-- The exception: Outline has four values and three of them count as on, so
+	-- "what the player had" is 2 for almost everyone -- which is still
+	-- outlines. Restoring it makes switching the option off do nothing
+	-- visible, which is not a switch. Outline alone declares an `offValue`.
 	--
-	-- The case that makes it concrete: Outline at 3 is the player's setting.
-	-- Turning Outline Mode on leaves it at 3, because 3 already counts as on.
-	-- Turning Outline Mode off must therefore leave it at 3 as well -- the
-	-- AddOn moved nothing, so it has nothing to put back.
+	-- Note what the exception does NOT do: force `wanted` on the way in. A
+	-- player who chose 3 keeps 3 while the option is on, because re-writing a
+	-- Blizzard control's value on every re-assert is fighting the player's UI.
 	cvars.Outline = "3"
 	VanillaQuestingDB.state.Outline = nil
 	pcall(SlashCmdList["VANILLAQUESTING"], "on outlineMode")
-	pcall(SlashCmdList["VANILLAQUESTING"], "off outlineMode")
-	check("off returns the player's last known setting, not an 'off' value",
+	check("a value that already counts as on is left where the player put it",
 		cvars.Outline == "3", cvars.Outline)
-	pcall(SlashCmdList["VANILLAQUESTING"], "on outlineMode")
-	check("and on again leaves it there", cvars.Outline == "3", cvars.Outline)
-
-	-- And the untouched case, which is the same rule seen from the other side:
-	-- a player who has never opened Outline Mode has Blizzard's 2, and must
-	-- still have Blizzard's 2 after this AddOn has been switched on and off.
-	cvars.Outline = "2"
-	VanillaQuestingDB.state.Outline = nil
-	pcall(SlashCmdList["VANILLAQUESTING"], "on outlineMode")
 	pcall(SlashCmdList["VANILLAQUESTING"], "off outlineMode")
-	check("an untouched Outline is still Blizzard's default afterwards",
+	check("but switching the option off means outlines off", cvars.Outline == "0",
+		cvars.Outline)
+	pcall(SlashCmdList["VANILLAQUESTING"], "on outlineMode")
+	check("and switching it on again asks for Blizzard's 2, the 3 being gone",
 		cvars.Outline == "2", cvars.Outline)
+
+	-- The case that worried us: a player who has NEVER switched Outline Mode
+	-- on must never have their Outline touched, including by a bulk /vq off.
+	-- Ownership is what `state` records, and there is none here.
+	pcall(SlashCmdList["VANILLAQUESTING"], "off outlineMode")
+	cvars.Outline = "3"
+	VanillaQuestingDB.state.Outline = nil
+	pcall(SlashCmdList["VANILLAQUESTING"], "off")
+	check("an option never switched on does not touch its variable",
+		cvars.Outline == "3", cvars.Outline)
+	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+
+	-- And the general rule, on an ordinary option. questPOI has two values, so
+	-- "what the player had" and "not on" are the same thing -- which is why
+	-- every rule but Outline needs no exception.
+	cvars.questPOI = "1"
+	VanillaQuestingDB.state.questPOI = nil
+	pcall(SlashCmdList["VANILLAQUESTING"], "on hideMapQuestHelper")
+	check("an ordinary option drives its variable", cvars.questPOI == "0", cvars.questPOI)
+	pcall(SlashCmdList["VANILLAQUESTING"], "off hideMapQuestHelper")
+	check("and hands back exactly what the player had", cvars.questPOI == "1",
+		cvars.questPOI)
 
 	-- The remembered value has to be forgotten when the option is handed back,
 	-- or it is never replaced. Reported in play against the minimap; the CVar
@@ -281,8 +295,7 @@ if scenario == "normal" then
 		VanillaQuestingDB.state.Outline == nil, tostring(VanillaQuestingDB.state.Outline))
 	cvars.Outline = "3"
 	pcall(SlashCmdList["VANILLAQUESTING"], "on outlineMode")
-	pcall(SlashCmdList["VANILLAQUESTING"], "off outlineMode")
-	check("so a value set between cycles is the one restored",
+	check("a value set between cycles is left alone while the option is on",
 		cvars.Outline == "3", cvars.Outline)
 
 	pcall(SlashCmdList["VANILLAQUESTING"], "reset")

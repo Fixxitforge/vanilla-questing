@@ -117,6 +117,20 @@ local RULES = {
 		-- from off lands where the game would have put it rather than on the
 		-- narrowest setting.
 		wanted       = "2",
+		-- The one rule with an explicit OFF value, and the only rule that
+		-- needs one.
+		--
+		-- Everywhere else, "off" means give the player back what they had, and
+		-- that works because the AddOn's on-state and the player's off-state
+		-- are the same two values. Outline has four, of which three count as
+		-- on -- so for most players "what they had" is 2, which is still
+		-- outlines. Restoring it makes switching the option off do nothing
+		-- visible, which is not a switch.
+		--
+		-- Only applied when this AddOn was the one holding the variable, which
+		-- is what `state` records. A player who has never switched Outline
+		-- Mode on never has their Outline touched, including by `/vq off`.
+		offValue     = "0",
 		default      = false,
 		experimental = true,
 		label        = "outline mode",
@@ -362,10 +376,23 @@ local function makeModule(rule)
 		-- variable already holds -- harmless in itself, but it used to drag
 		-- refreshQuestUI along with it and cycle the world map every time any
 		-- unrelated option was touched.
-		if readCVar(rule.cvar) == original then return end
+		-- `offValue` where a rule declares one, the remembered value
+		-- otherwise. See the Outline rule for why exactly one rule does.
+		--
+		-- Note what is NOT done here: forcing `wanted` on the way IN. Enable
+		-- still leaves a value that already counts as on exactly where the
+		-- player put it, so someone who chose Outline 3 keeps 3 while the
+		-- option is on. Forcing 2 there would mean re-writing a Blizzard
+		-- control's value on every re-assert, which is fighting the player's
+		-- UI -- safety rule 4, and not worth winning.
+		--
+		-- The cost is that 3 is not recoverable after an off/on cycle: off
+		-- writes 0, and on then asks for `wanted`. Accepted deliberately.
+		local target = rule.offValue or original
+		if readCVar(rule.cvar) == target then return end
 
 		applying = true
-		pcall(SetCVar, rule.cvar, original)
+		pcall(SetCVar, rule.cvar, target)
 		applying = false
 		refreshQuestUI(rule)
 	end

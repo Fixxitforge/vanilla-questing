@@ -100,35 +100,34 @@ this file that says "the client does X" can now be sourced two ways — a probe 
 a line in Blizzard's code — and the first thing reading it turned up was an error in this file
 (known limitation 1, below).
 
-### Off means the player's last known setting
+### Off means the player's last known setting — with one declared exception
 
 **Switching an option off returns the variable to whatever the player last chose** — not to a value
-this AddOn considers "off", and not to Blizzard's default. Whatever they last set is what comes
-back, whether they set it before installing, through Blizzard's own options, or between two toggles
-of this AddOn's.
+this AddOn considers "off", and not to Blizzard's default. It follows that switching an option off
+never *changes* anything the player chose: if the AddOn moved nothing, it has nothing to put back.
 
-It follows that **switching an option off never changes anything the player chose.** If the AddOn
-moved nothing, it has nothing to put back. Outline at 3 is the case that makes it concrete: 3
-already counts as on, so `outlineMode` going on leaves it at 3 and `outlineMode` going off must
-leave it at 3 too.
+v1.0.1 briefly shipped the opposite reading across all five CVar options and it was wrong, because
+it means switching an option off changes a setting the player chose, which a subtractive AddOn must
+not do. Reverted, and the rule is pinned in the suite on `questPOI`.
 
-v1.0.1 briefly shipped the opposite reading — *an option that is off leaves its variable in a state
-that does not count as on* — after a play report that turned out to have been mistaken. It sounds
-right. It passed a sweep written across all five CVar options. And it was wrong, because it means
-switching an option off **changes** a setting the player had chosen, which is the one thing a
-subtractive AddOn must never do.
+**`outlineMode` is the exception, and it is the only rule that declares an `offValue`.**
 
-Reverted in full, with the rule above written into the test suite as the reason it stays reverted.
+Every other rule has two values: the AddOn's on-state and the player's off-state are the same pair,
+so "what they had" and "not on" coincide and no exception is needed. `Outline` has four, and
+**three of them count as on** — so "what the player had" is `2` for almost everyone, which is still
+outlines. Restoring it makes switching the option off do nothing visible, which is not a switch.
 
-**Two things worth keeping from the wrong version:**
+Three properties, deliberately:
 
-- It surfaced `"quest POI tracking would not turn off"` in chat at login. Writing `questPOI`
-  appears to disturb the minimap quest POI tracking entry, so the AddOn's own write raced its own
-  verification read and latched `refused`. Unproven, and the write is gone, but it is a hazard
-  worth knowing before anything else starts writing `questPOI` outside `Enable`.
-- **A sweep across every option is not the same as a correct rule.** The sweep was right that all
-  five options behaved identically; it could not tell that the behaviour it asserted was the wrong
-  one. A test that encodes a rule is only as good as the rule.
+- **On leaves a value that already counts as on alone.** A player who chose `3` keeps `3` while the
+  option is on. Forcing `2` would mean re-writing a Blizzard control's value on every re-assert,
+  which is fighting the player's UI — safety rule 4, and not worth winning.
+- **Off writes `0`**, but only when the AddOn was the one holding the variable, which is what
+  `state` records. A player who has never switched Outline Mode on never has their `Outline`
+  touched, including by a bulk `/vq off`.
+- **The player's `1` or `3` is not recoverable after an off/on cycle**: off writes `0`, and on then
+  asks for `wanted`. Accepted rather than solved. Keeping it would need a second remembered slot —
+  the preferred *on* value, distinct from the pre-AddOn value — and the option is experimental.
 
 ### The client's CVars are not loaded at `ADDON_LOADED`
 
