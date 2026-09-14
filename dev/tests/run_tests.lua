@@ -349,14 +349,28 @@ if scenario == "normal" then
 	check("same for the other owned option", cvars.showBosses == "1",
 		cvars.showBosses)
 
-	-- And a mirrored option keeps restore semantics, because it has a control
-	-- of its own and a mirror to correct it.
-	cvars.instantQuestText = "0"
-	VanillaQuestingDB.state.instantQuestText = nil
-	pcall(SlashCmdList["VANILLAQUESTING"], "on noInstantQuestText")
-	pcall(SlashCmdList["VANILLAQUESTING"], "off noInstantQuestText")
-	check("a mirrored option hands back what the player had", 
-		cvars.instantQuestText == "0", cvars.instantQuestText)
+	-- Every CVar rule, mirrored or not. The distinction between "hand back
+	-- what was recorded" and "write the off value" looked vacuous for the
+	-- two-valued rules, and enumerating it showed otherwise: a player who
+	-- already had the variable at `wanted` gets that recorded as their value,
+	-- and handing it back leaves the option off with its effect still running.
+	--
+	-- The mirror cannot rescue it. Nothing is written, so no CVAR_UPDATE
+	-- fires, so the two-way sync never runs -- the disagreement just sits
+	-- there, exactly as it did for questPOI.
+	for _, t in ipairs({
+		{ cvar = "instantQuestText", key = "noInstantQuestText" },
+		{ cvar = "autoQuestWatch",   key = "noAutoQuestTracking" },
+	}) do
+		cvars[t.cvar] = "0"                       -- already where the AddOn wants it
+		VanillaQuestingDB.state[t.cvar] = nil
+		pcall(SlashCmdList["VANILLAQUESTING"], "on " .. t.key)
+		check("no write needed for " .. t.key .. ", it is already there",
+			cvars[t.cvar] == "0", cvars[t.cvar])
+		pcall(SlashCmdList["VANILLAQUESTING"], "off " .. t.key)
+		check("but switching " .. t.key .. " off still means off",
+			cvars[t.cvar] == "1", cvars[t.cvar])
+	end
 	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
 
 	-- The remembered value has to be forgotten when the option is handed back,
@@ -421,32 +435,37 @@ if scenario == "normal" then
 	ns.db.state.minimapMarkersTracking = nil
 	tracking[4].active = false
 	pcall(SlashCmdList["VANILLAQUESTING"], "on hideMinimapQuestHelper")
-	check("an entry that was already off is remembered as off",
+	check("an entry that was already off is marked as ours to hand back",
 		ns.db.state.minimapMarkersTracking == false,
 		tostring(ns.db.state.minimapMarkersTracking))
 	pcall(SlashCmdList["VANILLAQUESTING"], "off hideMinimapQuestHelper")
-	check("turning the option off leaves it off, rather than forcing the default",
-		tracking[4].active == false, tostring(tracking[4].active))
-
-	-- E7 from the v1.0.1 test pass, which failed in play: turn the option off,
-	-- switch the entry back on BY HAND, then cycle the option. The value the
-	-- player just chose is the one that has to come back -- not the one from
-	-- before they touched it.
-	tracking[4].active = true
-	pcall(SlashCmdList["VANILLAQUESTING"], "on hideMinimapQuestHelper")
-	pcall(SlashCmdList["VANILLAQUESTING"], "off hideMinimapQuestHelper")
-	check("a manual re-enable between cycles is what gets restored",
+	check("switching the option off brings the markers back, whatever it found",
 		tracking[4].active == true, tostring(tracking[4].active))
 
-	-- And the ordinary case still works: remembered ON comes back ON.
-	ns.db.state.minimapMarkersTracking = nil
+	-- Owned, like questPOI and showBosses. The option is the only control the
+	-- player has for the entry here, so its off state has to mean something.
+	--
+	-- Third position on this. v0.18.0 forced it on, #27 argued for the
+	-- remembered value and that shipped, and the audit of all thirteen options
+	-- settled it: this was the only option the AddOn owns outright that did not
+	-- behave this way, for no reason it could state.
 	tracking[4].active = true
 	pcall(SlashCmdList["VANILLAQUESTING"], "on hideMinimapQuestHelper")
 	check("the AddOn hides it while the option is on", tracking[4].active == false,
 		tostring(tracking[4].active))
 	pcall(SlashCmdList["VANILLAQUESTING"], "off hideMinimapQuestHelper")
-	check("and hands a remembered ON back", tracking[4].active == true,
+	check("and hands them back when it is switched off", tracking[4].active == true,
 		tostring(tracking[4].active))
+
+	-- But an option that was never switched on owns nothing, so a bulk /vq off
+	-- must not reach in and turn the entry on for someone who had it off.
+	pcall(SlashCmdList["VANILLAQUESTING"], "off hideMinimapQuestHelper")
+	tracking[4].active = false
+	ns.db.state.minimapMarkersTracking = nil
+	pcall(SlashCmdList["VANILLAQUESTING"], "off")
+	check("an entry this AddOn never held is left alone",
+		tracking[4].active == false, tostring(tracking[4].active))
+	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
 	advanceTime(20)
 
 elseif scenario == "cvar_refused" then

@@ -50,6 +50,16 @@ local RULES = {
 		-- [G19], which read the variable off Blizzard's own control.
 		blizzOption = "Automatic Quest Tracking",
 		wanted  = "0",
+		-- Every CVar rule declares one. The distinction between "hand back
+		-- what was recorded" and "write the off value" looked vacuous for the
+		-- two-valued rules -- and it is not: a player who already had the
+		-- variable at `wanted` gets it RECORDED as their value, and handing
+		-- that back leaves the option off with its effect still running.
+		--
+		-- The mirror cannot catch it either. Nothing is written, so no
+		-- CVAR_UPDATE fires, so the two-way sync never runs and the
+		-- disagreement simply persists.
+		offValue = "1",
 		-- Ships ON. Vanilla (Default) is what people install this AddOn for,
 		-- so a fresh install gives exactly that. An earlier pass argued the
 		-- opposite four lines up -- that this is quality of life rather than
@@ -79,6 +89,8 @@ local RULES = {
 		cvar    = "instantQuestText",
 		blizzOption = "Instant Quest Text",
 		wanted  = "0",
+		-- As above: an option that is off must leave the variable off.
+		offValue = "1",
 		default = true,
 		label   = "instant quest text",
 		onText  = "Quest text appears slowly.",

@@ -102,65 +102,78 @@ a line in Blizzard's code — and the first thing reading it turned up was an er
 
 ### Every option, and what it does
 
-Thirteen options. The behaviour columns are taken from the suite, not from reading the code: the
-CVar and tracking rows were produced by switching each option on and off against the harness and
-recording what moved.
+Thirteen options. The behaviour columns are taken from the suite, not from reading the code: each
+option with observable state was switched on and off against the harness and what moved was
+recorded.
 
-**Kind** is the distinction everything else follows from:
+Two separate questions, which an earlier version of this table ran together:
 
-- **Owned** — nothing in Blizzard's interface shows this variable. The option *is* the control, so
-  its off state has to mean something, and it declares an `offValue`.
-- **Mirrored** — Blizzard has a control for it. The option follows that control in both directions
-  and hands back the player's own value when switched off.
-- **Mirror** — `outlineMode` alone. It has no default and never enforces; it reports Blizzard's
-  setting and lets the player change it from here. Exempt from `/vq on`, `/vq off`, Defaults and
-  both presets.
-- **Lua** — no console variable at all; the AddOn hides or unhooks something directly.
+**What it drives** — a console variable, the minimap's tracking list, or frames directly. This is a
+fact about the client and says nothing about behaviour. The last of the three takes the most code
+and the least explaining.
 
-| Option | Group | Ships | Kind | On | Off |
-| --- | --- | --- | --- | --- | --- |
-| `hideMapQuestHelper` | Map and minimap | on | owned | `questPOI` → `0` | `questPOI` → `1` |
-| `hideMinimapQuestHelper` | Map and minimap | on | Lua | Track Quest POIs tracking entry off, re-asserted on every tracking change | the entry goes back to the value the player had |
-| `hideBossPortraits` | Map and minimap | on | owned | `showBosses` → `0` | `showBosses` → `1` |
+**Who owns it** — and this is the one that decides everything:
 
-| `noInstantQuestText` | Quests | on | mirrored | `instantQuestText` → `0` | back to the player's value |
-| `hideCharacterFrame` | Quests | on | Lua | the questgiver portrait frame is hidden | shown again |
-| `noAutoQuestTracking` | Quest Tracker | on | mirrored | `autoQuestWatch` → `0` | back to the player's value |
-| `trackerPlainText` | Quest Tracker | on | Lua | quest link buttons take `EnableMouse(false)` | clicks handed back |
-| `trackerPlainTextAchievements` | Quest Tracker | on | Lua | achievement link buttons silenced too | achievement lines clickable |
-| `hideTrackerItemButtons` | Quest Tracker | on | Lua | `WatchFrameItem<N>` hidden | shown again |
-| `hideTooltipsQuestProgress` | UI | on | Lua | quest lines removed from tooltips, height re-fitted in the same frame | lines return; the frame stays owned until the next reload |
-| `noBagItemHighlight` | UI | on | Lua | the quest texture on bag slots is hidden | shown again |
-| `outlineMode` | Experimental | **follows the client** | mirror | `Outline` → `2` if it was `0`; a `1` or `3` is left where the player put it | `Outline` → `0` |
-| `noCompleteQuestPopup` | Experimental | off | Lua | turn-in pop-ups removed as they arrive | pop-ups return |
+- **Ours.** Nothing in Blizzard's interface offers the player a control for it. The option *is* the
+  control, so its off state has to mean something: a switch that can be turned off with nothing
+  happening is not a switch. Off restores what the AddOn changed.
+- **Shared.** Blizzard has a control too, so the AddOn mirrors it in both directions — change either
+  and the other follows, with a chat line saying which way it went. Off still means off; the mirror
+  is about staying in agreement, not about what off means.
 
-`hideMapQuestHelper` is the only option that needs a UI reload, and therefore the only one behind
-Blizzard's Apply button. `hideBossPortraits` used to be as well, and is not: the boss pins are drawn
-by the world map's own data provider when the map opens, and the map cannot be open while the
-options panel is — both are UI panels and the settings panel takes the screen. A player changing it
-there has no map to update, and the next one they open is built from the current value.
+| Option | Group | Ships | Drives | Owner | On | Off |
+| --- | --- | --- | --- | --- | --- | --- |
+| `hideMapQuestHelper` | Map and minimap | on | CVar | ours | `questPOI` → `0` | `questPOI` → `1` |
+| `hideMinimapQuestHelper` | Map and minimap | on | tracking | ours | Track Quest POIs off, re-asserted on every tracking change | back on |
+| `hideBossPortraits` | Map and minimap | on | CVar | ours | `showBosses` → `0` | `showBosses` → `1` |
+| `noInstantQuestText` | Quests | on | CVar | shared | `instantQuestText` → `0` | → `1` |
+| `hideCharacterFrame` | Quests | on | frames | ours | questgiver portrait frame hidden | shown |
+| `noAutoQuestTracking` | Quest Tracker | on | CVar | shared | `autoQuestWatch` → `0` | → `1` |
+| `trackerPlainText` | Quest Tracker | on | frames | ours | quest link buttons take `EnableMouse(false)` | clicks handed back |
+| `trackerPlainTextAchievements` | Quest Tracker | on | frames | ours | achievement link buttons silenced too | clicks handed back |
+| `hideTrackerItemButtons` | Quest Tracker | on | frames | ours | `WatchFrameItem<N>` hidden | shown |
+| `hideTooltipsQuestProgress` | UI | on | frames | ours | quest lines removed from tooltips, height refitted in the same frame | lines return; the frame stays owned until the next reload |
+| `noBagItemHighlight` | UI | on | frames | ours | quest texture on bag slots hidden | shown |
+| `outlineMode` | Experimental | **follows the client** | CVar | **mirror** | `Outline` → `2` if it was `0`; a `1` or `3` is left where the player put it | `Outline` → `0` |
+| `noCompleteQuestPopup` | Experimental | off | frames | ours | turn-in pop-ups removed as they arrive | pop-ups return |
+
+`outlineMode` is the one option in neither column. It is a **pure mirror**: no default, never
+enforces, reports Blizzard's setting and lets the player change it from here. Exempt from `/vq on`,
+`/vq off`, Defaults and both presets. See below.
+
+#### Off means off, for every option
+
+Every CVar rule declares an explicit `offValue`, and every frame-driven option puts back what it
+hid. There is no option whose off state is "whatever happened to be there".
+
+That was not always true, and the way it failed is worth keeping. The AddOn records the value it
+found before writing, and for three versions `Disable` handed that value back. It reads as the
+careful thing to do. But a player who already had the variable where the AddOn wanted it gets
+**that** recorded as their value — so switching the option off handed back the AddOn's own state and
+nothing changed, while chat announced that the thing had been restored. Reported from play against
+`questPOI`; enumerating the two-valued rules afterwards found it live in `instantQuestText` and
+`autoQuestWatch` as well.
+
+The mirror does not rescue the shared ones either. Nothing is written, so no `CVAR_UPDATE` fires, so
+the two-way sync never runs and the disagreement simply sits there.
+
+**The recorded value is now an ownership marker and nothing else.** Its presence says "this AddOn
+drove this variable"; what it holds is not read. That is what stops a bulk `/vq off` reaching into
+a setting the player never asked this AddOn to touch.
 
 #### On a first install
 
-Eleven of the thirteen ship **on**, and are applied on the first login after the client's own saved
-variables have arrived. The AddOn records what each variable was before it touched it, so every one
-of them can be handed back.
-
-`noCompleteQuestPopup` ships **off** and is never switched on by the Vanilla (Default) preset.
-
-`outlineMode` has no ship state at all: it reads `Outline` and reports it. Blizzard's default is
-`2`, so on a fresh client it shows as **on** — that is the mirror working, not a default being
-applied.
+Eleven of the thirteen ship **on**, applied on the first login after the client's own saved
+variables have arrived. `noCompleteQuestPopup` ships **off** and is never switched on by the
+Vanilla (Default) preset. `outlineMode` has no ship state at all: it reads `Outline` and reports it,
+so on a fresh client it shows as **on**, because Blizzard's default is `2`.
 
 `trackerPlainTextAchievements` is a sub-option of `trackerPlainText`. It ships on, and while its
 parent is off it is inactive and every readout says so.
 
-#### What "off" restores
-
-Only the options that moved something have anything to restore, and only while the AddOn is
-installed to do it. See the design rule below. The memory is dropped as each option is handed back,
-so a value the player sets between two toggles is the one that comes back — not the one from before
-they touched it.
+`hideMapQuestHelper` is the only option that needs a UI reload, and therefore the only one behind
+Blizzard's Apply button. `hideBossPortraits` used to be and is not: the boss pins are drawn by the
+world map's own data provider, and the map cannot be open while the options panel is.
 
 ### Off means the player's last known setting — and one option is a mirror
 

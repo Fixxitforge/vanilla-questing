@@ -238,8 +238,9 @@ function M:Enable()
 	local index, info = findEntry()
 	if not index then return end
 
-	-- Remember the pre-AddOn state once, so Disable restores what the player
-	-- actually had rather than assuming it was on.
+	-- Marks that this AddOn is the one holding the entry down, so a bulk
+	-- `/vq off` on an option that was never switched on changes nothing. What
+	-- it holds is not read: see Disable.
 	if ns.db.state.minimapMarkersTracking == nil then
 		ns.db.state.minimapMarkersTracking = info.active and true or false
 	end
@@ -249,45 +250,40 @@ function M:Enable()
 	settled = true
 end
 
--- Switching this option OFF restores what the player had, always.
+-- Switching this option OFF turns Track Quest POIs back ON.
 --
--- v0.18.0 did the opposite: it turned Track Quest POIs back ON regardless, on
--- the argument that the entry is on by default, so handing back an OFF would
--- look like the option had failed. That was the one place in the whole AddOn
--- that restored a Blizzard default instead of the value it found, and being
--- the only exception is most of what was wrong with it.
+-- This AddOn OWNS the entry, the same way it owns `questPOI` and `showBosses`:
+-- the option is the only control the player has for it here, so its off state
+-- has to mean something. A switch that can be turned off with nothing
+-- happening is not a switch.
 --
--- The case it worried about is real but harmless: a player who had the entry
--- off before installing gets it back off, and that is a choice they already
--- made once. Nothing here made it for them, and nothing here should quietly
--- undo it. No chat line either -- announcing "your own setting is where you
--- left it" is noise.
+-- The case this gives up on: a player who had turned Track Quest POIs off by
+-- hand BEFORE installing gets it back on when they switch the option off.
+-- Deliberate. They are far likelier to have forgotten they ever touched it
+-- than to be relying on it, and "turn the AddOn off and the quest helper comes
+-- back" is the promise that matters. Restoring their 0 would have the AddOn
+-- quietly holding a setting down after being told to stop.
+--
+-- This is the third position on this question. v0.18.0 forced it on, #27
+-- argued for the remembered value and that shipped in v1.0.1, and the audit of
+-- all thirteen options is what settled it: every other option this AddOn owns
+-- outright behaves this way, and this one was the exception for no reason it
+-- could state.
+--
+-- No chat line. Announcing that a setting is where the player expects it is
+-- noise.
 function M:Disable()
 	settled = false
 	local index, info = findEntry()
-	-- No entry means nothing to hand back, and nothing to forget either: the
-	-- value was never recorded, because Enable returns at the same point.
 	if not index then return end
 
-	local wanted = ns.db and ns.db.state.minimapMarkersTracking
-	if wanted == nil then return end
-
-	-- Forget as we hand back.
-	--
-	-- The memory is only valid while this AddOn is the one holding the entry
-	-- down. Once the option is off the player owns it again, and whatever they
-	-- set next is what the NEXT Enable has to remember -- Enable only records
-	-- when there is nothing recorded, so a value kept across an off/on cycle
-	-- is a stale one that never gets replaced.
-	--
-	-- That was the bug: turn the option off, switch Track Quest POIs back on
-	-- by hand, turn the option on and off again, and the entry went off --
-	-- restored to what it had been two decisions ago rather than to what the
-	-- player had just chosen.
+	-- Only when this AddOn was the one holding it down.
+	if not ns.db or ns.db.state.minimapMarkersTracking == nil then return end
 	ns.db.state.minimapMarkersTracking = nil
 
-	if (info.active and true or false) ~= wanted then
-		setTracking(index, wanted)
+	if not info.active then
+		failedVerifies = 0
+		setTracking(index, true)
 	end
 end
 
