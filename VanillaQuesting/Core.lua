@@ -223,7 +223,14 @@ end
 function ns:ApplyAll()
 	if not ns.db then return end
 
-	-- On a clean install, meet the player's configuration before touching it.
+	-- Once per session, before touching anything: read the client for the
+	-- options that only mirror it.
+	--
+	-- On a clean install this is what stops the AddOn announcing a mismatch it
+	-- did not cause. On every later login it is what keeps a mirror honest --
+	-- a saved value applied at login would be the AddOn telling Blizzard what
+	-- its own setting is, which is backwards for an option whose entire job is
+	-- to report that setting.
 	--
 	-- The AddOn writes its own CVars during this first pass, and every write
 	-- raises CVAR_UPDATE. The two-way mirror then walks EVERY rule, including
@@ -239,10 +246,10 @@ function ns:ApplyAll()
 	-- mismatch instead, so there is nothing to report and nothing to be wrong
 	-- about. `applying` cannot help here either -- it is down by the time an
 	-- event arrives a frame later.
-	if ns.firstRun then
+	if not ns.applied then
 		for i = 1, #ns.modules do
 			local m = ns.modules[i]
-			if type(m.AdoptFirstRun) == "function" then pcall(m.AdoptFirstRun, m) end
+			if type(m.SyncFromClient) == "function" then pcall(m.SyncFromClient, m) end
 		end
 	end
 
@@ -319,6 +326,17 @@ function ns:ResetDefaults(silent)
 	for k, v in pairs(ns.defaults) do
 		ns.db.settings[k] = v
 	end
+
+	-- A mirror has no default to restore to. Its value is whatever the client
+	-- says, so Defaults re-reads rather than writing one -- otherwise resetting
+	-- this AddOn would reach out and change a Blizzard graphics setting.
+	for i = 1, #ns.modules do
+		local m = ns.modules[i]
+		if m.mirrorOnly and type(m.SyncFromClient) == "function" then
+			pcall(m.SyncFromClient, m)
+		end
+	end
+
 	ns:ApplyAll()
 	if not silent then
 		ns:Print("Restored default options.")
@@ -450,7 +468,15 @@ SlashCmdList["VANILLAQUESTING"] = function(msg)
 			-- "/vq off" still takes them, because Disabled means nothing is on.
 			for k in pairs(ns.defaults) do
 				local m = ns.modules[k]
-				if want and m and m.experimental then
+				-- A mirror is never bulk-set, in either direction. It reports
+				-- a Blizzard setting rather than removing anything, so "turn
+				-- everything on" and "turn everything off" both have nothing
+				-- to say about it -- and `/vq off` is the command people type
+				-- on their way to uninstalling, which is the worst possible
+				-- moment to change someone's graphics options.
+				if m and m.mirrorOnly then
+					-- leave it alone
+				elseif want and m and m.experimental then
 					-- leave it alone
 				else
 					ns.db.settings[k] = want

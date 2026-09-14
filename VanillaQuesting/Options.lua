@@ -303,8 +303,14 @@ local function derivedPreset()
 		else
 			on = ns.db.settings[m.key] and true or false
 		end
-		if on then allOff = false end
-		if not m.experimental and not on then allNormalOn = false end
+		-- A mirror is not part of either preset. It reports a Blizzard
+		-- setting rather than removing anything, and Outline ships at 2 on a
+		-- fresh client -- so counting it would mean almost nobody could ever
+		-- read "Disabled", however many options they switched off.
+		if not m.mirrorOnly then
+			if on then allOff = false end
+			if not m.experimental and not on then allNormalOn = false end
+		end
 	end
 	if allOff then return "disabled" end
 	if allNormalOn then return "classic" end

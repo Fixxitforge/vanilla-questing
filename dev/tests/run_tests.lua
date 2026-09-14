@@ -204,10 +204,34 @@ if scenario == "normal" then
 	pcall(SlashCmdList["VANILLAQUESTING"], "off showBosses")
 
 	-- experimental features must never be swept on by a bare "/vq on"
+	--
+	-- Checked on noCompleteQuestPopup, not outlineMode. outlineMode is a
+	-- mirror: it has no default at all, and on this harness's client Outline
+	-- reads 2, so after a reset it is legitimately ON. Using it as the stand-in
+	-- for "experimental" would test the mirror instead of the rule.
 	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
-	check("experimental off by default", VanillaQuestingDB.settings.outlineMode == false)
+	check("experimental off by default",
+		VanillaQuestingDB.settings.noCompleteQuestPopup == false)
 	pcall(SlashCmdList["VANILLAQUESTING"], "on")
-	check("/vq on leaves experimental alone", VanillaQuestingDB.settings.outlineMode == false)
+	check("/vq on leaves experimental alone",
+		VanillaQuestingDB.settings.noCompleteQuestPopup == false)
+
+	-- And the mirror, which reset re-reads rather than defaulting: resetting
+	-- this AddOn must not reach out and change a Blizzard graphics setting.
+	cvars.Outline = "3"
+	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+	check("a mirror follows the client through a reset",
+		VanillaQuestingDB.settings.outlineMode == true,
+		tostring(VanillaQuestingDB.settings.outlineMode))
+	check("and reset leaves the variable alone", cvars.Outline == "3", cvars.Outline)
+	cvars.Outline = "0"
+	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+	check("including when the client says off",
+		VanillaQuestingDB.settings.outlineMode == false,
+		tostring(VanillaQuestingDB.settings.outlineMode))
+	check("still leaving the variable alone", cvars.Outline == "0", cvars.Outline)
+	cvars.Outline = "2"
+	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
 	check("/vq on still enables the normal ones", VanillaQuestingDB.settings.hideBossPortraits == true)
 	-- From off, the AddOn asks for 2. (The harness starts Outline at 2, which
 	-- already counts as on, and a value the player chose is left alone -- so
@@ -257,6 +281,21 @@ if scenario == "normal" then
 	pcall(SlashCmdList["VANILLAQUESTING"], "on outlineMode")
 	check("and switching it on again asks for Blizzard's 2, the 3 being gone",
 		cvars.Outline == "2", cvars.Outline)
+
+	-- A mirror follows the client at every login, not just a clean install.
+	--
+	-- Every other option applies its saved choice at login. This one reads the
+	-- client and follows, because an option whose only job is to report a
+	-- Blizzard setting cannot also insist on what that setting is.
+	cvars.Outline = "0"
+	VanillaQuestingDB.settings.outlineMode = true     -- a stale saved value
+	ns.applied = nil                                  -- as at the first apply
+	ns:ApplyAll()
+	check("a mirror follows the client at login, not the saved value",
+		VanillaQuestingDB.settings.outlineMode == false,
+		tostring(VanillaQuestingDB.settings.outlineMode))
+	check("and does not push the saved value onto the client",
+		cvars.Outline == "0", cvars.Outline)
 
 	-- The case that worried us: a player who has NEVER switched Outline Mode
 	-- on must never have their Outline touched, including by a bulk /vq off.
@@ -1681,13 +1720,32 @@ if scenario == "normal" then
 	end
 	check("and still turns every normal option on", normalOn)
 
-	-- Disabled means nothing is on, experiments included.
+	-- Disabled means nothing is on, experiments included -- with one exception.
+	--
+	-- A mirror reports a Blizzard setting rather than removing anything, so
+	-- neither bulk command has anything to say about it. `/vq off` in
+	-- particular is what people type on their way to uninstalling, which is
+	-- the worst moment to change someone's graphics options.
+	cvars.Outline = "2"
+	ns.db.settings.outlineMode = true
 	pcall(SlashCmdList["VANILLAQUESTING"], "off")
-	local anyOn = false
+	local anyOn, mirrorsLeftAlone = false, true
 	for i = 1, #ns.modules do
-		if ns.db.settings[ns.modules[i].key] then anyOn = true end
+		local m = ns.modules[i]
+		if ns.db.settings[m.key] then
+			if m.mirrorOnly then
+				-- expected
+			else
+				anyOn = true
+			end
+		elseif m.mirrorOnly then
+			mirrorsLeftAlone = false
+		end
 	end
 	check("/vq off takes the experiments too", not anyOn)
+	check("but never a mirror", mirrorsLeftAlone)
+	check("and does not touch the variable a mirror reports",
+		cvars.Outline == "2", cvars.Outline)
 	ns:ResetDefaults(true)
 
 	-- Outline is not a boolean: 1, 2 and 3 all mean outlines are on.

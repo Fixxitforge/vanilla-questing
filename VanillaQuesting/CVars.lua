@@ -107,6 +107,25 @@ local RULES = {
 		-- promised, and never part of "turn everything on".
 		key          = "outlineMode",
 		cvar         = "Outline",
+		-- A MIRROR, not a setting this AddOn has an opinion about.
+		--
+		-- The only reason this option exists is to show what Blizzard's
+		-- Outline Mode is set to and let the player change it from here. It
+		-- has no default of its own: the default is whatever the player's
+		-- Outline already is, on a clean install and on every login after.
+		--
+		-- Which means it never enforces. Every other option applies a saved
+		-- choice at login; this one reads the client and follows. The saved
+		-- value exists only so the panel has something to draw between the
+		-- read and the next change.
+		--
+		-- And bulk commands leave it alone. `/vq off` means "stop removing
+		-- things", and this option removes nothing -- it reflects a Blizzard
+		-- setting. Driving it to 0 there would change a graphics option on
+		-- someone who is on their way to uninstalling, which is the opposite
+		-- of what that command is for. This is a deliberate exception to
+		-- "Disabled means nothing is on" from v0.14.3, for this rule only.
+		mirrorOnly   = true,
 		-- Not a boolean. Outline has four settings on this client, and 1, 2
 		-- and 3 are all "outlines are on", differing in what they apply to.
 		-- Only 0 is off, so only 0 leaves this option unticked, and a value
@@ -298,6 +317,8 @@ local function makeModule(rule)
 	-- The label Blizzard shows for the same thing, where it shows one at all.
 	-- Used to annotate Blizzard's control and to decide who wins a conflict.
 	M.blizzOption = rule.blizzOption
+	-- Read by Core (bulk commands, reset) and by Options (preset derivation).
+	M.mirrorOnly = rule.mirrorOnly
 	M.blizzVariable = rule.blizzOption and rule.cvar or nil
 
 	-- One name: the module key is the saved-settings key is the handle the
@@ -319,8 +340,8 @@ local function makeModule(rule)
 	--
 	-- Rules with no Blizzard control are not adopted either. Nothing in the
 	-- interface claims to own those, so there is no control to agree with.
-	function M:AdoptFirstRun()
-		if not rule.blizzOption or rule.default then return end
+	function M:SyncFromClient()
+		if not rule.mirrorOnly then return end
 		if type(GetCVar) ~= "function" then return end
 		local current = readCVar(rule.cvar)
 		if current == nil then return end

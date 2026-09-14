@@ -100,34 +100,43 @@ this file that says "the client does X" can now be sourced two ways — a probe 
 a line in Blizzard's code — and the first thing reading it turned up was an error in this file
 (known limitation 1, below).
 
-### Off means the player's last known setting — with one declared exception
+### Off means the player's last known setting — and one option is a mirror
 
 **Switching an option off returns the variable to whatever the player last chose** — not to a value
 this AddOn considers "off", and not to Blizzard's default. It follows that switching an option off
 never *changes* anything the player chose: if the AddOn moved nothing, it has nothing to put back.
 
-v1.0.1 briefly shipped the opposite reading across all five CVar options and it was wrong, because
-it means switching an option off changes a setting the player chose, which a subtractive AddOn must
-not do. Reverted, and the rule is pinned in the suite on `questPOI`.
+v1.0.1 briefly shipped the opposite reading across all five CVar options, and it was wrong for
+exactly that reason. Reverted; the rule is pinned in the suite on `questPOI`.
 
-**`outlineMode` is the exception, and it is the only rule that declares an `offValue`.**
+#### `outlineMode` is a mirror
 
-Every other rule has two values: the AddOn's on-state and the player's off-state are the same pair,
-so "what they had" and "not on" coincide and no exception is needed. `Outline` has four, and
-**three of them count as on** — so "what the player had" is `2` for almost everyone, which is still
-outlines. Restoring it makes switching the option off do nothing visible, which is not a switch.
+Unique among the options, and the flag is `mirrorOnly` on its rule. **The only reason it exists is
+to show what Blizzard's Outline Mode is set to and let the player change it from here.** Everything
+else follows from that sentence:
 
-Three properties, deliberately:
+| | |
+| --- | --- |
+| **No default of its own** | The default is whatever the player's `Outline` already is — on a clean install and on every login after |
+| **Never enforces** | Every other option applies its saved choice at login. This one reads the client and follows. An option whose job is to report a setting cannot also insist on what that setting is |
+| **Exempt from bulk commands** | `/vq on` and `/vq off` both skip it. `/vq off` is what people type on their way to uninstalling, and that is the worst moment to change someone's graphics options |
+| **Exempt from Defaults** | Reset re-reads the client rather than writing a default |
+| **Not part of either preset** | `Outline` ships at 2, so counting it would mean almost nobody could read "Disabled", however many options they switched off |
+| **Declares an `offValue` of `0`** | `Outline` has four values and three count as on, so "what the player had" is 2 for most people — which is still outlines. Restoring it would make the switch do nothing visible |
 
-- **On leaves a value that already counts as on alone.** A player who chose `3` keeps `3` while the
-  option is on. Forcing `2` would mean re-writing a Blizzard control's value on every re-assert,
-  which is fighting the player's UI — safety rule 4, and not worth winning.
-- **Off writes `0`**, but only when the AddOn was the one holding the variable, which is what
-  `state` records. A player who has never switched Outline Mode on never has their `Outline`
-  touched, including by a bulk `/vq off`.
-- **The player's `1` or `3` is not recoverable after an off/on cycle**: off writes `0`, and on then
-  asks for `wanted`. Accepted rather than solved. Keeping it would need a second remembered slot —
-  the preferred *on* value, distinct from the pre-AddOn value — and the option is experimental.
+Two things it deliberately does **not** do:
+
+- **Force `2` on the way in.** A player who chose `3` keeps `3` while the option is on. Forcing it
+  would mean re-writing a Blizzard control on every re-assert, and `ApplyAll` runs on every settings
+  change and every world entry — so they could never hold `3` at all. That is fighting the player's
+  UI, safety rule 4.
+- **Remember the preferred on-value.** After an off/on cycle a `1` or `3` becomes `2`. Accepted
+  rather than solved: keeping it needs a second remembered slot, distinct from the pre-AddOn value.
+
+**This is a deliberate exception to "Disabled means nothing is on"** from v0.14.3, for this rule
+only. That rule still holds for `noCompleteQuestPopup`, the other experimental option — which is
+why the suite tests "experimental" on that one and tests the mirror separately. Using `outlineMode`
+as the stand-in for "experimental" tests the exception instead of the rule.
 
 ### The client's CVars are not loaded at `ADDON_LOADED`
 
