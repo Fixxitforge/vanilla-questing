@@ -319,6 +319,46 @@ if scenario == "normal" then
 	check("and hands back exactly what the player had", cvars.questPOI == "1",
 		cvars.questPOI)
 
+	-- The case that made the option inert, reported from play.
+	--
+	-- A player who has already run `/console questPOI 0` has the markers
+	-- hidden by their own hand. Switching the option on correctly changes
+	-- nothing -- it is already where the AddOn wants it -- and switching it
+	-- off used to restore the 0 it had recorded, so the markers never came
+	-- back while chat said "World map quest helper restored".
+	--
+	-- The line is whether Blizzard shows a control. questPOI and showBosses
+	-- have none, so the option IS the control and its off state has to mean
+	-- something. instantQuestText, autoQuestWatch and Outline all have one,
+	-- and for those the mirror corrects any disagreement on its own -- our
+	-- option cannot sit "off" while the variable is where we want it, because
+	-- the mirror flips it back on and says so.
+	cvars.questPOI = "0"
+	VanillaQuestingDB.state.questPOI = nil
+	pcall(SlashCmdList["VANILLAQUESTING"], "on hideMapQuestHelper")
+	check("an owned option that is already where we want it writes nothing",
+		cvars.questPOI == "0", cvars.questPOI)
+	pcall(SlashCmdList["VANILLAQUESTING"], "off hideMapQuestHelper")
+	check("but switching it off still brings the markers back",
+		cvars.questPOI == "1", cvars.questPOI)
+
+	cvars.showBosses = "0"
+	VanillaQuestingDB.state.showBosses = nil
+	pcall(SlashCmdList["VANILLAQUESTING"], "on hideBossPortraits")
+	pcall(SlashCmdList["VANILLAQUESTING"], "off hideBossPortraits")
+	check("same for the other owned option", cvars.showBosses == "1",
+		cvars.showBosses)
+
+	-- And a mirrored option keeps restore semantics, because it has a control
+	-- of its own and a mirror to correct it.
+	cvars.instantQuestText = "0"
+	VanillaQuestingDB.state.instantQuestText = nil
+	pcall(SlashCmdList["VANILLAQUESTING"], "on noInstantQuestText")
+	pcall(SlashCmdList["VANILLAQUESTING"], "off noInstantQuestText")
+	check("a mirrored option hands back what the player had", 
+		cvars.instantQuestText == "0", cvars.instantQuestText)
+	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+
 	-- The remembered value has to be forgotten when the option is handed back,
 	-- or it is never replaced. Reported in play against the minimap; the CVar
 	-- modules had it too, which is why it is tested here as well as there.

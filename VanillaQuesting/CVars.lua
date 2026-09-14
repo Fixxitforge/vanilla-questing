@@ -16,6 +16,18 @@ local RULES = {
 		key     = "hideMapQuestHelper",
 		cvar       = "questPOI",
 		wanted     = "0",
+		-- This AddOn OWNS this variable: nothing in Blizzard's interface shows
+		-- it, so there is no control for the player to have an opinion through
+		-- and no mirror to correct a disagreement. The option is the control,
+		-- and a control that can be switched off without anything happening is
+		-- not one.
+		--
+		-- Without this, a player who had already run `/console questPOI 0` got
+		-- an inert option: on changed nothing (correctly -- it was already
+		-- where the AddOn wanted it), and off restored the 0 it had recorded,
+		-- so the markers never came back while chat said "World map quest
+		-- helper restored". The AddOn was telling them something untrue.
+		offValue   = "1",
 		needsApply = true,
 		-- The on-screen quest helper only picks this up when the map pane is
 		-- closed and reopened -- reported from play, and not fixed by asking
@@ -84,6 +96,8 @@ local RULES = {
 		key     = "hideBossPortraits",
 		cvar       = "showBosses",
 		wanted     = "0",
+		-- Owned outright, like questPOI. Same reasoning, same need.
+		offValue   = "1",
 		needsApply = true,
 		default = true,
 		label   = "boss portraits",

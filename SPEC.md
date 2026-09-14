@@ -106,8 +106,30 @@ a line in Blizzard's code — and the first thing reading it turned up was an er
 this AddOn considers "off", and not to Blizzard's default. It follows that switching an option off
 never *changes* anything the player chose: if the AddOn moved nothing, it has nothing to put back.
 
-v1.0.1 briefly shipped the opposite reading across all five CVar options, and it was wrong for
-exactly that reason. Reverted; the rule is pinned in the suite on `questPOI`.
+v1.0.1 briefly shipped the opposite reading across **all five** CVar options, and it was wrong for
+exactly that reason. Reverted.
+
+**The line is whether Blizzard shows a control for the variable**, and it took three attempts to
+find it:
+
+- **Mirrored** — `instantQuestText`, `autoQuestWatch`, `Outline`. The player has a control of their
+  own, so "what they last chose" is a real thing with a real place to change it. These restore.
+  They also cannot go stale: the two-way mirror will not let this AddOn's option sit "off" while
+  the variable is where the option wants it — it flips the option back on and says so.
+- **Owned** — `questPOI`, `showBosses`. Nothing in Blizzard's interface shows these, so there is no
+  control to have an opinion through and no mirror to correct a disagreement. **The option is the
+  control**, and a control that can be switched off with nothing happening is not one. These
+  declare an `offValue`.
+
+The case that settled it, reported from play: a player who had already run `/console questPOI 0`
+got an inert option. Switching it on changed nothing — correctly, the markers were already hidden
+— and switching it off restored the `0` the AddOn had recorded, so the markers never came back
+**while chat said "World map quest helper restored"**. Saying something untrue is worse than either
+behaviour.
+
+That case is a regression from the fix for handing a CVar back forgetting what it was: before that,
+the stale first-ever reading happened to be `1`, so the option appeared to work. Both are wanted;
+they only coexist once owned and mirrored rules are told apart.
 
 #### `outlineMode` is a mirror
 
