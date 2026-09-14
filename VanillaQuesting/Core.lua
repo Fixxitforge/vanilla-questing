@@ -263,6 +263,22 @@ function ns:ApplyAll()
 	-- Down once the first pass is over. Everything after this really is the
 	-- player doing something, and deserves to be reported as such.
 	ns.firstRun = false
+
+	-- And the two-way mirror is armed only from here.
+	--
+	-- The client raises CVAR_UPDATE for its own saved variables as it loads
+	-- them. Those events are the game telling us what the player already had,
+	-- not the player reaching into Blizzard's options -- but they are
+	-- indistinguishable from the outside, and the mirror believed them. On a
+	-- login with Instant Quest Text on, the arrival of that saved value was
+	-- read as the player having just switched it on, so the AddOn stood down
+	-- from an option it had not yet applied and said so in chat.
+	--
+	-- This is the other half of not applying at ADDON_LOADED. Applying early
+	-- read defaults; applying late left the mirror awake through the storm.
+	-- It has to be both: apply once the values are real, and ignore everything
+	-- until that has happened.
+	ns.applied = true
 end
 
 -- Toggling takes effect immediately; no /reload.

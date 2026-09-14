@@ -65,6 +65,43 @@ if scenario == "normal" or scenario == "outline_off"
 		tostring(ns.firstRun))
 end
 
+if scenario == "vars_late_on" then
+	-- The options that ship ON must still be applied, and nothing may be said.
+	check("Instant Quest Text still enforced", cvars.instantQuestText == "0",
+		cvars.instantQuestText)
+	check("Automatic Quest Tracking still enforced", cvars.autoQuestWatch == "0",
+		cvars.autoQuestWatch)
+	check("noInstantQuestText stayed on", VanillaQuestingDB.settings.noInstantQuestText == true,
+		tostring(VanillaQuestingDB.settings.noInstantQuestText))
+	check("noAutoQuestTracking stayed on", VanillaQuestingDB.settings.noAutoQuestTracking == true,
+		tostring(VanillaQuestingDB.settings.noAutoQuestTracking))
+	check("outlineMode adopted on from Outline 2",
+		VanillaQuestingDB.settings.outlineMode == true,
+		tostring(VanillaQuestingDB.settings.outlineMode))
+
+	local noisy = {}
+	for _, m in ipairs(chatlog) do
+		local t = tostring(m)
+		if t:find("was changed in Blizzard's options", 1, true)
+			or t:find("was disabled automatically", 1, true) then
+			noisy[#noisy + 1] = t
+		end
+	end
+	check("and the login says nothing at all", #noisy == 0, table.concat(noisy, " | "))
+
+	-- The mirror still has to work afterwards, or the fix is just a mute.
+	cvars.instantQuestText = "1"
+	pcall(fire, "CVAR_UPDATE", "instantQuestText", "1")
+	check("the mirror still yields to a real player change",
+		VanillaQuestingDB.settings.noInstantQuestText == false,
+		tostring(VanillaQuestingDB.settings.noInstantQuestText))
+	local said = false
+	for _, m in ipairs(chatlog) do
+		if tostring(m):find("was changed in Blizzard's options", 1, true) then said = true end
+	end
+	check("and says so", said)
+end
+
 if scenario == "normal" then
 	check("questPOI driven to 0", cvars.questPOI == "0", cvars.questPOI)
 	check("quest POI tracking turned off", tracking[4].active == false, tracking[4].active)

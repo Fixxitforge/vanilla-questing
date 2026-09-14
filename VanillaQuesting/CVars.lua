@@ -414,6 +414,13 @@ end
 ns:RegisterEvent("CVAR_UPDATE", function()
 	if applying or not ns.db then return end
 
+	-- Nothing before the first ApplyAll. The client raises this event for its
+	-- own saved variables as it loads them, and those are the game reporting
+	-- what the player already had rather than the player changing anything.
+	-- `applying` cannot tell the difference: it only covers this AddOn's own
+	-- writes, synchronously.
+	if not ns.applied then return end
+
 	for i = 1, #RULES do
 		local rule = RULES[i]
 		if not refused[rule.cvar] then

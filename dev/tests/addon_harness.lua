@@ -273,10 +273,23 @@ _G.__loadVariables = function()
 	for k, def in pairs(cvarDefaults) do
 		if cvars[k] ~= def then changed[k] = cvars[k] end
 	end
+
+	-- ORDER MATTERS, and getting it backwards hides the bug this models.
+	--
+	-- The client loads the values first and raises CVAR_UPDATE for each one
+	-- that moved, and only then announces VARIABLES_LOADED. So those events
+	-- arrive BEFORE any AddOn that waits for the announcement has applied
+	-- anything -- which is the whole reason the mirror mistook them for the
+	-- player.
+	--
+	-- Modelled the other way round, the AddOn applies first, every value
+	-- already agrees, and the scenario passes whether or not the fix is there.
+	-- This harness has made exactly that mistake before, over the tooltip
+	-- resize, and five passes of green tests came of it.
 	variablesLoaded = true
+	for k, v in pairs(changed) do fire("CVAR_UPDATE", k, v) end
 	UIParent.variablesLoaded = true
 	fire("VARIABLES_LOADED")
-	for k, v in pairs(changed) do fire("CVAR_UPDATE", k, v) end
 end
 
 -- ---- Minimap tracking ----
@@ -589,6 +602,15 @@ end
 
 -- ---- scenario tweaks, applied BEFORE the addon loads ----
 if scenario == "outline_off" then cvars.Outline = "0"
+elseif scenario == "vars_late_on" then
+	-- The reported matrix. Instant Quest Text and Automatic Quest Tracking are
+	-- both OFF by default in the client and this player has both ON, so the
+	-- client raises CVAR_UPDATE for each of them as it loads -- before this
+	-- AddOn has applied anything. The mirror read that as the player switching
+	-- them on and stood the AddOn down from options it had not yet applied.
+	__setCVarDefaults(
+		{ instantQuestText = "0", autoQuestWatch = "0", Outline = "2" },
+		{ instantQuestText = "1", autoQuestWatch = "1", Outline = "2" })
 elseif scenario == "outline_late_off" then
 	-- The reported bug, exactly: the player has Outline switched off, but the
 	-- client still answers with the default 2 when this AddOn first looks.

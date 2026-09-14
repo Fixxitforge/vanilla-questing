@@ -77,6 +77,18 @@ succeeds and the panel must fall back rather than half-work.
 412 checks on a build that froze the game, because it had no `SettingsPanel` and so never called
 the hook the freeze recursed through. When a bug gets through, the harness gets the fix too.
 
+**Order is part of the model, and getting it backwards is worse than leaving it out.** Twice now a
+scenario has passed whether or not the fix was present, because the harness ran the client's steps
+in a sequence the client does not use:
+
+- The tooltip resize ran the client's own sizing *before* the Show hooks. Five passes of green
+  tests preceded five reports from the game.
+- `VARIABLES_LOADED` was raised *before* the `CVAR_UPDATE` events the client sends while loading
+  those variables. That order lets the AddOn apply first, so every value agrees by the time the
+  events arrive, and the scenario is green with the bug in place.
+
+A new scenario is not finished until it has been run against the broken code and seen to fail.
+
 ## Where bugs live
 
 **GitHub Issues**, not a file in the repository. `BUGS.md` existed briefly and was the wrong
