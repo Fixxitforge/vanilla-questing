@@ -340,7 +340,7 @@ function applyPreset(which)
 	if which ~= "custom" then
 		for i = 1, #ns.modules do
 			local m = ns.modules[i]
-			if not (which == "classic" and m.experimental) then
+			if not m.mirrorOnly and not (which == "classic" and m.experimental) then
 				local want = (which == "classic")
 				if m.needsApply and (ns.db.settings[m.key] and true or false) ~= want then
 					touchesMap = true
@@ -353,9 +353,17 @@ function applyPreset(which)
 	if which ~= "custom" then
 		for i = 1, #ns.modules do
 			local m = ns.modules[i]
-			-- Full Classic leaves the experiments exactly as the player set
-			-- them. Disabled means nothing is on, so it takes everything.
-			if not (which == "classic" and m.experimental) then
+			-- Vanilla (Default) leaves the experiments exactly as the player
+			-- set them. Disabled means nothing is on, so it takes everything.
+			--
+			-- Except a mirror, which neither preset touches. It reports a
+			-- Blizzard setting rather than removing anything, so there is no
+			-- sense in which a preset has a view about it -- and "Disabled"
+			-- reaching out to change someone's graphics options is the same
+			-- mistake `/vq off` was making a round ago, through a different
+			-- door. `derivedPreset` already leaves mirrors out of the reading;
+			-- this is the writing side of the same rule.
+			if not m.mirrorOnly and not (which == "classic" and m.experimental) then
 				local want = (which == "classic")
 				-- Native mode writes THROUGH the control, not around it.
 				-- Writing ns.db.settings directly left Blizzard unaware that

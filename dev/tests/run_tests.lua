@@ -1820,11 +1820,22 @@ if scenario == "native" or scenario == "no_tooltipfunc" or scenario == "no_templ
 	ns.RefreshOptions()
 	pcall(drops3[1].setting.SetValue, drops3[1].setting, "disabled")
 	pcall(_G.pressApply)
-	local anyOn = false
+	local anyOn, mirrorsUntouched = false, true
 	for i = 1, #ns.modules do
-		if ns.db.settings[ns.modules[i].key] then anyOn = true end
+		local m = ns.modules[i]
+		if m.mirrorOnly then
+			-- A preset has no view about a mirror. It reports a Blizzard
+			-- setting rather than removing anything, and "Disabled" reaching
+			-- out to change someone's graphics options is the same mistake
+			-- /vq off was making, through a different door.
+			if ns.db.settings[m.key] ~= true then mirrorsUntouched = false end
+		elseif ns.db.settings[m.key] then
+			anyOn = true
+		end
 	end
 	check("Disabled turns the experiments off with everything else", not anyOn)
+	check("but leaves a mirror exactly where the client has it", mirrorsUntouched,
+		"Outline = " .. tostring(cvars.Outline))
 
 	-- The wording has to match the behaviour.
 	local expTip
