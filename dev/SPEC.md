@@ -1534,6 +1534,36 @@ the cycle is the only thing that makes the on-screen quest helper pick up a `que
 established the hard way across several passes of #11 and #19. Which also means #17's central
 claim, that the panel manager is what this AddOn was tainting, was wrong twice over.
 
+#### Confirmed clean
+
+A third log, `dev/logs/taint-2026-09-15-clean-v1.1.0-6.log`, taken against the fixed build: fifteen
+lines, all of them this —
+
+```
+Execution tainted by VanillaQuesting while reading global SLASH_VANILLAQUESTING1
+  - Blizzard_ChatFrameBase/Shared/ChatFrameUtil.lua:720
+```
+
+Blizzard's chat parser reading the slash-command globals every AddOn registers. **Transient
+execution taint that ends when the call stack unwinds, and no tainted global anywhere.** There is no
+way to have a slash command without it, and nothing to do about it.
+
+#### And the client opens the map itself
+
+Retesting in combat turned up a symptom that is not taint at all: `/vq on` in combat leaves the
+world map **open**. The AddOn cannot be doing it — `cycleWorldMap` returns before touching anything
+when `InCombatLockdown()` is true.
+
+`HandleUserActionToggleQuestLog()`, in Blizzard's `CVAR_UPDATE` handler above, **toggles the quest
+log pane**. Writing `questPOI` raises that event, so the client opens the map in response to a change
+this AddOn just made. Out of combat the cycle runs afterwards and ends closed, hiding it; in combat
+the cycle is skipped and Blizzard's toggle is the last thing to happen.
+
+Which reframes `cycleWorldMap` completely. It exists because *"the on-screen quest helper only picks
+a questPOI change up when the map pane closes and opens again"* — and **the client is already
+toggling that pane on the same event.** The AddOn may have spent four versions re-implementing, and
+fighting, something the game does itself. [#46](https://github.com/Fixxitforge/vanilla-questing/issues/46).
+
 #### What this round cost, and the rule out of it
 
 Two fixes shipped on reasoning about a mechanism, neither aimed at the code doing the damage. The

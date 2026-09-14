@@ -1,0 +1,14 @@
+9/15 00:19:44.500  Execution tainted by VanillaQuesting while reading global SLASH_VANILLAQUESTING1 (<table: 00000202dac1b200>) - Interface/AddOns/Blizzard_ChatFrameBase/Shared/ChatFrameUtil.lua:720
+9/15 00:19:44.500      Interface/AddOns/Blizzard_ChatFrameBase/Shared/ChatFrameUtil.lua:720
+9/15 00:19:44.500      secureexecuterange()
+9/15 00:19:44.500      Interface/AddOns/Blizzard_ChatFrameBase/Shared/ChatFrameUtil.lua:734 ImportListToHash()
+9/15 00:19:44.500      Interface/AddOns/Blizzard_ChatFrameBase/Shared/ChatFrameUtil.lua:740 ImportAllListsToHash()
+9/15 00:19:44.500      Interface/AddOns/Blizzard_ChatFrameBase/Shared/ChatFrameEditBox.lua:245 ChatFrame1EditBox:ParseText()
+9/15 00:19:44.500      Interface/AddOns/Blizzard_ChatFrameBase/Shared/ChatFrameEditBox.lua:439
+9/15 00:19:44.500  Execution tainted by VanillaQuesting while reading global SLASH_VANILLAQUESTING2 (<table: 00000202dac1b200>) - Interface/AddOns/Blizzard_ChatFrameBase/Shared/ChatFrameUtil.lua:728
+9/15 00:19:44.500      Interface/AddOns/Blizzard_ChatFrameBase/Shared/ChatFrameUtil.lua:728
+9/15 00:19:44.500      secureexecuterange()
+9/15 00:19:44.500      Interface/AddOns/Blizzard_ChatFrameBase/Shared/ChatFrameUtil.lua:734 ImportListToHash()
+9/15 00:19:44.500      Interface/AddOns/Blizzard_ChatFrameBase/Shared/ChatFrameUtil.lua:740 ImportAllListsToHash()
+9/15 00:19:44.500      Interface/AddOns/Blizzard_ChatFrameBase/Shared/ChatFrameEditBox.lua:245 ChatFrame1EditBox:ParseText()
+9/15 00:19:44.500      Interface/AddOns/Blizzard_ChatFrameBase/Shared/ChatFrameEditBox.lua:439
