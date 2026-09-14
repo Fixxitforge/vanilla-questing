@@ -226,11 +226,45 @@ if scenario == "normal" then
 	pcall(SlashCmdList["VANILLAQUESTING"], "on outlineMode")
 	check("Outline 3 is left alone when the option goes on", cvars.Outline == "3", cvars.Outline)
 	pcall(SlashCmdList["VANILLAQUESTING"], "off outlineMode")
-	-- Off means off. Restoring the remembered 3 would leave the option reading
-	-- off with the outlines it names still being drawn, which is what was
-	-- reported from play.
-	check("and goes to 0 when the option is switched off", cvars.Outline == "0",
-		cvars.Outline)
+	check("and is still 3 afterwards", cvars.Outline == "3", cvars.Outline)
+
+	-- THE RULE, stated so it cannot be "fixed" again.
+	--
+	-- Off means return to the player's last known setting -- not to a value
+	-- this AddOn considers "off", and not to Blizzard's default. Whatever the
+	-- player last chose is what comes back, whether they chose it before
+	-- installing, through Blizzard's own options, or between two toggles of
+	-- ours.
+	--
+	-- v1.0.1 briefly shipped the other reading: an option that is off leaves
+	-- its variable in a state that does not count as on. It sounds right, it
+	-- passed a sweep across all five options, and it was wrong -- it means
+	-- switching an option off CHANGES something the player had chosen, which
+	-- is the one thing a subtractive AddOn must never do. Reverted, and this
+	-- check is the reason it stays reverted.
+	--
+	-- The case that makes it concrete: Outline at 3 is the player's setting.
+	-- Turning Outline Mode on leaves it at 3, because 3 already counts as on.
+	-- Turning Outline Mode off must therefore leave it at 3 as well -- the
+	-- AddOn moved nothing, so it has nothing to put back.
+	cvars.Outline = "3"
+	VanillaQuestingDB.state.Outline = nil
+	pcall(SlashCmdList["VANILLAQUESTING"], "on outlineMode")
+	pcall(SlashCmdList["VANILLAQUESTING"], "off outlineMode")
+	check("off returns the player's last known setting, not an 'off' value",
+		cvars.Outline == "3", cvars.Outline)
+	pcall(SlashCmdList["VANILLAQUESTING"], "on outlineMode")
+	check("and on again leaves it there", cvars.Outline == "3", cvars.Outline)
+
+	-- And the untouched case, which is the same rule seen from the other side:
+	-- a player who has never opened Outline Mode has Blizzard's 2, and must
+	-- still have Blizzard's 2 after this AddOn has been switched on and off.
+	cvars.Outline = "2"
+	VanillaQuestingDB.state.Outline = nil
+	pcall(SlashCmdList["VANILLAQUESTING"], "on outlineMode")
+	pcall(SlashCmdList["VANILLAQUESTING"], "off outlineMode")
+	check("an untouched Outline is still Blizzard's default afterwards",
+		cvars.Outline == "2", cvars.Outline)
 
 	-- The remembered value has to be forgotten when the option is handed back,
 	-- or it is never replaced. Reported in play against the minimap; the CVar
@@ -247,11 +281,9 @@ if scenario == "normal" then
 		VanillaQuestingDB.state.Outline == nil, tostring(VanillaQuestingDB.state.Outline))
 	cvars.Outline = "3"
 	pcall(SlashCmdList["VANILLAQUESTING"], "on outlineMode")
-	check("a value the player already chose is not dragged to `wanted`",
-		cvars.Outline == "3", cvars.Outline)
 	pcall(SlashCmdList["VANILLAQUESTING"], "off outlineMode")
-	check("and switching off still means off, not back to that value",
-		cvars.Outline == "0", cvars.Outline)
+	check("so a value set between cycles is the one restored",
+		cvars.Outline == "3", cvars.Outline)
 
 	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
 	pcall(SlashCmdList["VANILLAQUESTING"], "off hideMinimapQuestHelper")
@@ -324,35 +356,6 @@ if scenario == "normal" then
 	check("and hands a remembered ON back", tracking[4].active == true,
 		tostring(tracking[4].active))
 	advanceTime(20)
-
-	-- The invariant, for every CVar option at once: an option that is OFF
-	-- must leave its variable in a state that does not count as ON.
-	--
-	-- Swept rather than spot-checked. The failure reported from play was
-	-- Outline, but the same shape was live in all five rules, and two of the
-	-- suite's own checks had the broken behaviour written into them as the
-	-- expected answer. A per-option assertion would have been written to match
-	-- whatever each one happened to do.
-	do
-		local offState = {
-			hideMapQuestHelper  = { cvar = "questPOI",         on = { ["0"] = true } },
-			noAutoQuestTracking = { cvar = "autoQuestWatch",   on = { ["0"] = true } },
-			noInstantQuestText  = { cvar = "instantQuestText", on = { ["0"] = true } },
-			hideBossPortraits   = { cvar = "showBosses",       on = { ["0"] = true } },
-			outlineMode         = { cvar = "Outline",
-				on = { ["1"] = true, ["2"] = true, ["3"] = true } },
-		}
-		pcall(SlashCmdList["VANILLAQUESTING"], "on")
-		for key, spec in pairs(offState) do
-			pcall(SlashCmdList["VANILLAQUESTING"], "on " .. key)
-			pcall(SlashCmdList["VANILLAQUESTING"], "off " .. key)
-			check("off means off for " .. key,
-				not spec.on[tostring(cvars[spec.cvar])],
-				spec.cvar .. " = " .. tostring(cvars[spec.cvar]))
-		end
-		pcall(SlashCmdList["VANILLAQUESTING"], "reset")
-	end
-
 
 elseif scenario == "cvar_refused" then
 	-- questHelper-style: the write is accepted and ignored
@@ -451,20 +454,21 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 	local first = checks[1]
 	if first then
 		local before = VanillaQuestingDB.settings.hideMapQuestHelper
+		-- Read the remembered value BEFORE the click. Handing a CVar back
+		-- forgets it, so asking afterwards asks a question whose answer the
+		-- click just erased -- and the test then expects Blizzard's default
+		-- rather than the value the AddOn correctly restored.
+		local remembered = VanillaQuestingDB.state.questPOI
 		first:SetChecked(not before)
 		ok, err = pcall(rawget(first, "script_OnClick"), first)
 		check("checkbox click runs", ok, err)
 		check("checkbox click changed the setting",
 			VanillaQuestingDB.settings.hideMapQuestHelper == (not before),
 			tostring(VanillaQuestingDB.settings.hideMapQuestHelper))
-		-- An option that is on drives the variable to `wanted`; an option that
-		-- is off has to leave it in a state that does not count as on. That is
-		-- the whole assertion, and it does not depend on what was remembered.
-		--
-		-- It used to. The check read the remembered value and expected it back,
-		-- which passed while the AddOn was restoring its OWN enforced "0" and
-		-- leaving the markers hidden with the option switched off.
-		local expected = VanillaQuestingDB.settings.hideMapQuestHelper and "0" or "1"
+		-- Disabling restores the value the addon remembered, which is not
+		-- necessarily "1": if the saved DB was replaced mid-run the addon
+		-- re-captures whatever was current, which is correct behaviour.
+		local expected = before and remembered or "0"
 		check("world map CVar followed the click", cvars.questPOI == expected,
 			cvars.questPOI .. " expected " .. tostring(expected))
 		pcall(SlashCmdList["VANILLAQUESTING"], "reset")

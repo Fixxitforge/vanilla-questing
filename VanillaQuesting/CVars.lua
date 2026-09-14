@@ -16,7 +16,6 @@ local RULES = {
 		key     = "hideMapQuestHelper",
 		cvar       = "questPOI",
 		wanted     = "0",
-		offValue   = "1",
 		needsApply = true,
 		-- The on-screen quest helper only picks this up when the map pane is
 		-- closed and reopened -- reported from play, and not fixed by asking
@@ -39,7 +38,6 @@ local RULES = {
 		-- [G19], which read the variable off Blizzard's own control.
 		blizzOption = "Automatic Quest Tracking",
 		wanted  = "0",
-		offValue = "1",
 		-- Ships ON. Vanilla (Default) is what people install this AddOn for,
 		-- so a fresh install gives exactly that. An earlier pass argued the
 		-- opposite four lines up -- that this is quality of life rather than
@@ -69,7 +67,6 @@ local RULES = {
 		cvar    = "instantQuestText",
 		blizzOption = "Instant Quest Text",
 		wanted  = "0",
-		offValue = "1",
 		default = true,
 		label   = "instant quest text",
 		onText  = "Quest text appears slowly.",
@@ -87,7 +84,6 @@ local RULES = {
 		key     = "hideBossPortraits",
 		cvar       = "showBosses",
 		wanted     = "0",
-		offValue   = "1",
 		needsApply = true,
 		default = true,
 		label   = "boss portraits",
@@ -121,9 +117,6 @@ local RULES = {
 		-- from off lands where the game would have put it rather than on the
 		-- narrowest setting.
 		wanted       = "2",
-		-- Only 0 is off. 1, 2 and 3 all count as on, so "the opposite
-		-- of wanted" is not a thing that can be inferred here.
-		offValue     = "0",
 		default      = false,
 		experimental = true,
 		label        = "outline mode",
@@ -364,38 +357,15 @@ local function makeModule(rule)
 
 		if refused[rule.cvar] then return end
 
-		-- An option that is OFF has to leave the variable in a state that
-		-- counts as off. That is the whole promise of the switch, and until
-		-- v1.0.1 it was not kept.
-		--
-		-- Restoring the remembered value is right whenever the AddOn was the
-		-- thing that moved it. It is wrong when the remembered value still
-		-- counts as ON -- which happens whenever the AddOn ADOPTED the option
-		-- rather than applying it, because the player already had the variable
-		-- where this AddOn wanted it and nothing was ever written.
-		--
-		-- Reported from play: Outline at 3, Outline Mode on, `/vq off
-		-- outlineMode` -- and Outline stayed at 3. The option read off while
-		-- the outlines it names were still being drawn. Restoring 3 was the
-		-- code doing exactly what it was told; what it was told was wrong.
-		--
-		-- `offValue` is declared per rule rather than inferred. For the
-		-- boolean CVars the opposite of `wanted` would have worked; for
-		-- Outline it would not, because 1, 2 and 3 are all on and only 0 is
-		-- off. A rule that holds for four cases out of five is not a rule.
-		local target = original
-		if ruleIsOn(rule, target) then target = rule.offValue end
-		if target == nil then return end
-
 		-- Only when it actually moves. ApplyAll re-applies every module on
 		-- every change, so an unconditional restore here writes a value the
 		-- variable already holds -- harmless in itself, but it used to drag
 		-- refreshQuestUI along with it and cycle the world map every time any
 		-- unrelated option was touched.
-		if readCVar(rule.cvar) == target then return end
+		if readCVar(rule.cvar) == original then return end
 
 		applying = true
-		pcall(SetCVar, rule.cvar, target)
+		pcall(SetCVar, rule.cvar, original)
 		applying = false
 		refreshQuestUI(rule)
 	end
@@ -467,19 +437,9 @@ ns:RegisterEvent("CVAR_UPDATE", function()
 					ns.db.settings[rule.key] = shouldBeOn
 
 					if shouldBeOn then
-						-- Adopted rather than applied: the player moved the
-						-- variable themselves, so this AddOn has written
-						-- nothing. It still has to remember something, or
-						-- switching the option off later finds no memory and
-						-- leaves the variable where it is -- an option that is
-						-- off with its effect still running.
-						--
-						-- What is remembered is what the player has now, which
-						-- Disable will recognise as still counting as ON and
-						-- replace with the rule's off value.
-						if ns.db.state[rule.cvar] == nil then
-							ns.db.state[rule.cvar] = now
-						end
+						-- Adopted rather than applied: the player set this
+						-- themselves, so there is no pre-AddOn value to
+						-- remember that has not been remembered already.
 						ns:Print(C.highlight .. rule.blizzOption .. C.close ..
 							" was changed in Blizzard's options, so " .. C.highlight ..
 							rule.key .. C.close .. " is now " .. C.on .. "on" .. C.close .. ".")
