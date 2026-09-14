@@ -80,11 +80,32 @@ function M:Enable()
 	eachOpenContainer(scrub)
 end
 
+-- Stop suppressing, and let the game redraw when it was going to anyway.
+--
+-- The comment here used to state the right principle -- "which slots SHOULD
+-- show a highlight is the game's business, not ours, so the restore is to let
+-- it redraw and decide" -- and then reach in and make the redraw happen, which
+-- is the opposite of letting it. `ContainerFrame_Update` was CALLED on every
+-- open container.
+--
+-- Hooking it is fine and is what Enable does. Calling it runs Blizzard's
+-- container code on a path AddOn Lua is already on, and bag buttons are
+-- taint-sensitive: the cost of getting that wrong is a blocked action on a
+-- frame the player uses constantly, reported as "Interface action failed
+-- because of an AddOn" with nothing pointing back here.
+--
+-- `QuestFrame.lua` already takes this line for the questgiver portrait, and
+-- for the same reason.
+--
+-- What this costs: highlights stay missing on containers that are open at the
+-- moment the option is switched off, until the next redraw -- closing and
+-- reopening a bag, picking something up, any BAG_UPDATE. A fraction of a
+-- second of staleness on a deliberate action, against a taint risk on a frame
+-- class that is known to be sensitive. Worth it.
 function M:Disable()
-	-- Which slots SHOULD show a highlight is the game's business, not ours, so
-	-- the restore is to let it redraw and decide.
-	if type(ContainerFrame_Update) ~= "function" then return end
-	eachOpenContainer(function(f) pcall(ContainerFrame_Update, f) end)
+	-- Nothing. The hook installed by Enable checks the setting on every pass,
+	-- so it is already inert; the next redraw the game does for its own
+	-- reasons puts the highlights back.
 end
 
 function M:Status()

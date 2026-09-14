@@ -281,7 +281,20 @@ GetCVar = function(n)
 	if not variablesLoaded and cvarDefaults[n] ~= nil then return cvarDefaults[n] end
 	return cvars[n]
 end
+local rejectedCVars = {}
+-- SetCVar returns success:bool. Confirmed through the global wrapper by probe
+-- v0.33 [G32], and the two failure modes are genuinely different:
+--
+--   lockCVar   -- returns TRUE and ignores the write. questHelper does this;
+--                 the server owns it and the client says so only by declining
+--                 to change the value. Only the read-back catches it.
+--   rejectCVar -- returns FALSE. The documented refusal, which the AddOn can
+--                 see without reading anything back.
+--
+-- Both are modelled because relying on either alone is wrong: the boolean is
+-- necessary and not sufficient.
 SetCVar = function(n, v)
+	if rejectedCVars[n] then return false end     -- says no, outright
 	if lockedCVars[n] then return true end        -- accepts the write, ignores it
 	if cvars[n] == nil then return true end
 	local old = cvars[n]
@@ -291,6 +304,8 @@ SetCVar = function(n, v)
 end
 _G.cvars = cvars
 _G.lockCVar = function(n) lockedCVars[n] = true end
+_G.rejectCVar = function(n) rejectedCVars[n] = true end
+_G.allowCVar = function(n) lockedCVars[n] = nil rejectedCVars[n] = nil end
 
 -- What the client does at VARIABLES_LOADED: the saved values become visible,
 -- the flag the AddOn reads goes up, and every value that actually moved raises

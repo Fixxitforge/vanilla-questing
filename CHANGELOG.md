@@ -6,8 +6,13 @@ Entries say what shipped. They do not link issues: an issue can be reopened afte
 then the changelog is claiming something the tracker contradicts. The long form — what a change
 cost to find, and why it was made that way — is the version history in [`dev/SPEC.md`](dev/SPEC.md).
 
-## 1.0.1
+## 1.1.0
 
+- A console variable that refuses one write is given another chance at the next loading screen,
+  instead of that option staying dead for the rest of the session.
+- Switching an option off now always tries to put its setting back, even if a write failed earlier.
+- Turning off the bag item highlight no longer redraws your open bags; the highlights return the
+  next time the game redraws them for its own reasons.
 - **New: Remove loot sparkles on quest objectives.** The sparkle on a quest object is gone. It also
   removes the sparkle on profession nodes — herbs, mining veins — which is what both looked like in
   the original game.
@@ -23,8 +28,6 @@ cost to find, and why it was made that way — is the version history in [`dev/S
 - Ticking *Track Quest POIs* in the minimap tracking dropdown is no longer overruled. The minimap
   option follows it instead, the way the Instant Quest Text and Automatic Quest Tracking options
   follow Blizzard's checkboxes. Turning the option off still puts *Track Quest POIs* back.
-- Outline Mode now only reports Blizzard's own setting rather than holding an opinion about it.
-  `/vq on`, `/vq off`, Defaults and both presets all leave it alone.
 - Switching an option off now always switches its effect off, including when the option had
   turned itself on to follow a change made in Blizzard's own options.
 - Hide Boss Portraits no longer asks for a UI reload.

@@ -256,6 +256,18 @@ local applying = false
 -- questHelper on this client accepts a write and silently ignores it. Any
 -- CVar can behave that way, so every write is read back and verified, and a
 -- refused write stands down instead of retrying on every event forever.
+--
+-- Cleared on every PLAYER_ENTERING_WORLD, at the foot of this file. It used to
+-- be set once and never cleared, so ONE transient failure killed that option
+-- for the rest of the session -- and, worse, blocked the restore. A session
+-- can be many hours; a loading screen is the natural moment to give a variable
+-- another chance, and the verification below means a genuine refusal simply
+-- latches again on the next write.
+--
+-- Note what this does NOT do: gate on GetCVarInfo's isLockedFromUser / isSecure
+-- / isReadOnly. Probe v0.33 [G32] read all three for every variable this AddOn
+-- drives and they are all false -- while questHelper [G29] refuses its write
+-- reporting none of them. The flags are a cheap pre-check, not an oracle.
 local refused = {}
 
 -- Whether a CVar's current value counts as this rule being on. Most are a
@@ -366,16 +378,34 @@ local function writeCVar(rule, value)
 	if refused[rule.cvar] then return false end
 
 	applying = true
-	local ok = pcall(SetCVar, rule.cvar, value)
+	-- SetCVar returns `success:bool`, documented in the client's own generated
+	-- API files and confirmed through the GLOBAL wrapper by probe v0.33 [G32]
+	-- -- which is not the same function reference as C_CVar.SetCVar, and
+	-- passes the value through anyway. This used to infer refusal from the
+	-- read-back alone.
+	local called, reported = pcall(SetCVar, rule.cvar, value)
 	applying = false
 
-	if not ok then
+	if not called then
 		refused[rule.cvar] = true
 		ns:Warn("cvar:set:" .. rule.cvar,
 			"could not set " .. rule.cvar .. "; skipping " .. rule.label .. ".")
 		return false
 	end
 
+	-- The read-back stays, and the boolean does not replace it.
+	--
+	-- `questHelper` [G29] returns true from SetCVar and does not move: the
+	-- server owns it, and the client says so only by declining to change the
+	-- value. So the boolean is necessary and not sufficient, and a write is
+	-- only believed when both agree.
+	if reported == false then
+		refused[rule.cvar] = true
+		ns:Warn("cvar:set:" .. rule.cvar,
+			rule.cvar .. " was refused (asked for " .. tostring(value) ..
+			"). Skipping " .. rule.label .. ".")
+		return false
+	end
 
 	local now = readCVar(rule.cvar)
 	if now ~= value then
@@ -479,7 +509,17 @@ local function makeModule(rule)
 		-- holding anything down, which is precisely when the memory should go.
 		ns.db.state[rule.cvar] = nil
 
-		if refused[rule.cvar] then return end
+		-- Deliberately NOT gated on `refused`, which is what this used to do.
+		--
+		-- The AddOn may have written this variable successfully and hit a
+		-- refusal later -- and returning here meant it had made a change it
+		-- had then made itself unable to undo. A write that failed going in
+		-- may well succeed coming out, and a failed restore costs nothing
+		-- beyond what has already happened. There is no argument for refusing
+		-- to try.
+		--
+		-- `writeCVar` is not used below for the same reason: it opens with the
+		-- same early return.
 
 		-- Only when it actually moves. ApplyAll re-applies every module on
 		-- every change, so an unconditional restore here writes a value the
@@ -611,4 +651,21 @@ ns:RegisterEvent("CVAR_UPDATE", function()
 			end
 		end
 	end
+end)
+
+-- One retry per session for a variable that would not take a write.
+--
+-- `refused` latches so a rule that is genuinely being ignored stops writing on
+-- every event forever. It used to latch for the whole session, which turned a
+-- single transient failure into an option that stayed dead until the player
+-- reloaded -- and, until the fix in `Disable`, into a change the AddOn could
+-- no longer undo.
+--
+-- A loading screen is the right moment to forget: it is rare, it is already a
+-- natural boundary, and the verification in `writeCVar` means a real refusal
+-- latches straight back on the next write. Nothing else is cleared -- the
+-- ownership markers in `ns.db.state` are saved variables and survive on
+-- purpose.
+ns:RegisterEvent("PLAYER_ENTERING_WORLD", function()
+	for k in pairs(refused) do refused[k] = nil end
 end)

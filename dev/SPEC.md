@@ -1438,6 +1438,64 @@ without anyone having to remember. `noCompleteQuestPopup` is experimental and no
 the warning, and is the control in the test: without it, a change that stripped the note from every
 option would pass.
 
+### A refused write, and a redraw that was not ours to make
+
+#### `refused` latched for the session, and blocked the restore with it
+
+`refused[cvar]` was set on any write failure and never cleared. Two consequences, and the second is
+the serious one:
+
+1. One transient failure killed that option for the rest of the session.
+2. **`Disable` returned on the same flag** — so the AddOn could make a change it had then made
+   itself unable to undo.
+
+This AddOn writes settings that belong to the game and survive deleting the folder. A path that
+silently keeps a change is worse here than it would be in most codebases.
+
+Three parts, all of them now in:
+
+- **`Disable` restores regardless of `refused`.** A write that failed going in may well succeed
+  coming out, and a failed restore costs nothing beyond what has already happened. There is no
+  argument for refusing to try.
+- **`refused` is cleared on `PLAYER_ENTERING_WORLD`.** A loading screen is rare, is already a
+  boundary, and the verification in `writeCVar` means a genuine refusal latches straight back.
+- **`SetCVar`'s return value is read.** It reports `success:bool`, confirmed through the *global*
+  wrapper by probe v0.33 [G32] — which is not the same function reference as `C_CVar.SetCVar` and
+  passes the value through anyway.
+
+**The read-back stays, and this is the part worth writing down.** `questHelper` [G29] returns
+`true` from `SetCVar` and does not move: the server owns it, and the client says so only by
+declining to change the value. So the boolean is **necessary and not sufficient**, and a write is
+believed only when the return and the read-back agree.
+
+Nor are the flags an oracle. `GetCVarInfo`'s `isLockedFromUser` / `isSecure` / `isReadOnly` are
+all false for every variable this AddOn drives, and `questHelper` refuses while reporting none of
+them. They are a cheap pre-check — an option whose variable reports `locked` is a bug in this
+AddOn — and nothing more.
+
+The harness models both failures separately, because relying on either alone is the bug:
+`lockCVar` returns `true` and ignores the write, `rejectCVar` returns `false`.
+
+#### `Bags.lua` called `ContainerFrame_Update` on a tainted path
+
+The comment above it stated the right principle —
+
+> Which slots SHOULD show a highlight is the game's business, not ours, so the restore is to let it
+> redraw and decide.
+
+— and the implementation then reached in and made the redraw happen, which is the opposite of
+letting it. Hooking `ContainerFrame_Update` is correct and is what `Enable` does. **Calling** it
+runs Blizzard's container code on a path AddOn Lua is already on, and bag buttons are
+taint-sensitive.
+
+`Disable` now does nothing at all: the hook checks the setting on every pass, so it is already
+inert. `QuestFrame.lua` has always taken this line for the questgiver portrait, for the same reason.
+
+**The cost, accepted:** highlights stay missing on a bag that is open at the moment the option is
+switched off, until the next redraw the game does anyway. A fraction of a second of staleness on a
+deliberate action, against a taint risk on a frame class the player uses constantly. The test
+asserts the staleness rather than pretending it is not there.
+
 ### The sparkles had their own switch all along
 
 `ShowQuestObjectHighlightEffect`, found by probe v0.32's full enumeration and read in v0.33 through

@@ -557,6 +557,83 @@ elseif scenario == "cvar_refused" then
 	check("still only one warning after 5 more events", warns == 1, warns)
 	check("minimap side still worked", tracking[4].active == false, tracking[4].active)
 
+	-- ---- #18: a refusal must not be permanent, and must not block the restore
+	--
+	-- `refused` latched on the first failure and was never cleared, so one
+	-- transient failure killed that option for the session -- and `Disable`
+	-- returned on the same flag, which meant the AddOn could make a change it
+	-- had then made itself unable to undo. That is the serious half: this
+	-- AddOn writes settings that belong to the game and survive deleting the
+	-- folder.
+
+	-- The documented refusal, which is a different thing from questHelper's
+	-- silent one: SetCVar returns false rather than accepting the write and
+	-- ignoring it.
+	cvars.showBosses = "1"
+	VanillaQuestingDB.state.showBosses = nil
+	rejectCVar("showBosses")
+	local b4 = #chatlog
+	ns:Set("hideBossPortraits", true)
+	check("a refusal reported by SetCVar is believed",
+		cvars.showBosses == "1", cvars.showBosses)
+	local said = false
+	for i = b4 + 1, #chatlog do
+		if tostring(chatlog[i]):find("was refused", 1, true) then said = true end
+	end
+	check("and is said once, naming the variable", said)
+
+	-- Refused once, then permitted: the restore has to go through.
+	cvars.questPOI = "1"
+	VanillaQuestingDB.state.questPOI = nil
+	allowCVar("questPOI")
+	pcall(fire, "PLAYER_ENTERING_WORLD")
+	ns:Set("hideMapQuestHelper", true)
+	check("a variable that works again is driven", cvars.questPOI == "0", cvars.questPOI)
+	lockCVar("questPOI")
+	ns:Set("hideMapQuestHelper", false)
+	ns:Set("hideMapQuestHelper", true)     -- latches `refused` again
+	allowCVar("questPOI")
+	cvars.questPOI = "0"
+	VanillaQuestingDB.state.questPOI = "1"
+	ns:Set("hideMapQuestHelper", false)
+	check("and Disable restores even with a refusal latched",
+		cvars.questPOI == "1", cvars.questPOI)
+
+	-- Refused permanently: Disable tries, fails, and says nothing new. A
+	-- failed restore costs nothing beyond what has already happened.
+	pcall(fire, "PLAYER_ENTERING_WORLD")
+	cvars.showBosses = "1"
+	VanillaQuestingDB.state.showBosses = nil
+	allowCVar("showBosses")
+	ns:Set("hideBossPortraits", true)
+	check("driven while it works", cvars.showBosses == "0", cvars.showBosses)
+	rejectCVar("showBosses")
+	b4 = #chatlog
+	local okd = pcall(ns.Set, ns, "hideBossPortraits", false)
+	check("a permanently refused restore runs without error", okd)
+	check("and stays quiet about it", #chatlog == b4, #chatlog - b4)
+	check("and the ownership marker is gone either way",
+		VanillaQuestingDB.state.showBosses == nil,
+		tostring(VanillaQuestingDB.state.showBosses))
+	allowCVar("showBosses")
+
+	-- One retry per session, and a loading screen is the natural boundary.
+	pcall(fire, "PLAYER_ENTERING_WORLD")
+	cvars.showBosses = "1"
+	VanillaQuestingDB.state.showBosses = nil
+	lockCVar("showBosses")
+	ns:Set("hideBossPortraits", true)
+	check("a silently ignored write latches", cvars.showBosses == "1", cvars.showBosses)
+	allowCVar("showBosses")
+	ns:Set("hideBossPortraits", false)
+	ns:Set("hideBossPortraits", true)
+	check("and stays latched within the session", cvars.showBosses == "1", cvars.showBosses)
+	pcall(fire, "PLAYER_ENTERING_WORLD")
+	ns:Set("hideBossPortraits", false)
+	ns:Set("hideBossPortraits", true)
+	check("but a loading screen gives it another chance",
+		cvars.showBosses == "0", cvars.showBosses)
+
 elseif scenario == "tracking_slow" then
 	-- The client finally gets round to the write, after the whole login.
 	pcall(__settleTracking)
@@ -1896,12 +1973,28 @@ if scenario == "normal" then
 	for _, t in ipairs(_G.__bagTextures) do if t:IsShown() then stillHidden = false end end
 	check("still hidden after further redraws", stillHidden)
 
-	ns:Set("noBagItemHighlight", false)
+	-- #20: turning it off must NOT call ContainerFrame_Update.
+	--
+	-- Hooking it is fine and is what Enable does; CALLING it runs Blizzard's
+	-- container code on a path AddOn Lua is already on, and bag buttons are
+	-- taint-sensitive. The comment in Bags.lua stated the right principle --
+	-- let the game redraw and decide -- and then made the redraw happen.
 	local redraws = _G.__bagRedraws
-	check("turning it off redraws the open bags", _G.__bagRedraws > redraws - 1)
+	ns:Set("noBagItemHighlight", false)
+	check("turning it off does not drive Blizzard's container code",
+		_G.__bagRedraws == redraws, _G.__bagRedraws - redraws)
+
+	-- The highlights come back on the next redraw the game does anyway, which
+	-- is what the accepted staleness means: they stay missing on a bag that is
+	-- already open until something touches it.
+	local anyBackYet = false
+	for _, t in ipairs(_G.__bagTextures) do if t:IsShown() then anyBackYet = true end end
+	check("so an open bag is briefly stale, as accepted", not anyBackYet)
+
+	ContainerFrame_Update(ContainerFrame1)
 	local anyBack = false
 	for _, t in ipairs(_G.__bagTextures) do if t:IsShown() then anyBack = true end end
-	check("turning it off gives the highlight back", anyBack)
+	check("and the next redraw gives the highlight back", anyBack)
 
 	ContainerFrame_Update(ContainerFrame1)
 	local stayBack = true
