@@ -187,17 +187,23 @@ local RULES = {
 		offText    = "Loot sparkles on quest objects restored.",
 		group      = "UI & Graphics",
 		order      = 105,
-		title      = "Remove loot sparkles on quest objectives",
-		desc       = "Removes the sparkle effect on quest objects in the world.",
+		title      = "Remove Loot Sparkles",
+		desc       = "Removes the sparkle effect on quest objects.",
 		-- Stated because it is a real cost the player should read before
 		-- choosing, not a defect. The client draws both effects from one
-		-- switch: there is no separate variable for profession nodes, so
+		-- switch: there is no separate variable for gathering nodes, so
 		-- turning one off turns both off.
 		--
 		-- It is also Vanilla behaviour -- neither had a glimmer in the
 		-- original game -- which is why it is an acceptable limitation rather
 		-- than a reason not to ship the option.
-		limitation = "Also removes the loot sparkles on profession loot nodes (i.e. herbs, mining veins, etc).",
+		--
+		-- The "Known limitation:" prefix is PART OF THE STRING, in every
+		-- `limitation` field. The panel paints the line orange and puts it
+		-- under the description; it does not add a label. This one shipped
+		-- without the prefix once, which made a stated cost read as a second
+		-- sentence of description.
+		limitation = "Known limitation: also removes the loot sparkles on gathering nodes (such as herbs, mining veins, etc).",
 	},
 	{
 		-- SHARED, the same shape as Instant Quest Text and Automatic Quest
@@ -236,7 +242,7 @@ local RULES = {
 		group       = "UI & Graphics",
 		order       = 110,
 		title       = "No Outline Mode",
-		desc        = "Stops quest objects being drawn with an outline.",
+		desc        = "Removes outline around quest objects.",
 		-- No `limitation`. The old one explained that outlines and sparkles
 		-- were an either/or and that outlines did not render here. Neither is
 		-- a cost of THIS option: it removes outlines, and the sparkles have

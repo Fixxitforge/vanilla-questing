@@ -348,8 +348,13 @@ client will not let an AddOn do cleanly, not things left undone.
    the whole list.
 
    The limitation that replaces it is a genuine one and is stated on the option: the same switch
-   governs profession nodes, so removing the sparkle from a quest object removes it from herbs and
-   mining veins too. Vanilla behaviour for both, which is why it is acceptable rather than a defect.
+   governs gathering nodes, so removing the loot sparkle from a quest object removes it from herbs
+   and mining veins too. Neither had loot sparkles in the original game, which is why it is the
+   accepted behaviour rather than a defect.
+
+   **`Known limitation:` is part of every `limitation` string**, not a label the panel adds. This
+   one shipped without it once, which turned a stated cost into what read as a second sentence of
+   description. The suite now asserts the prefix on every option that has one.
 
 ## Architecture
 
@@ -647,13 +652,13 @@ is one claim too many, and the stricter of the two is the one a reader believes.
 
 Its **Known limitations** section must include, at minimum:
 
-- **Removing the quest object sparkles also removes them from profession nodes.** Herbs and mining
-  veins lose their glimmer too, because the game draws both from one switch. Neither had one in the
-  original game.
+- **Removing the loot sparkles on quest objects also removes them from gathering nodes.** Herbs and
+  mining veins lose theirs too, because the game draws both from one switch. Neither had loot
+  sparkles in the original game.
 
   This replaces the old "either an outline or loot sparkles, never neither" entry, which is
   withdrawn — see the known-limitations section above. **The listing must be updated to match**;
-  it still carries the old text.
+  it still carries the old text, and wants a shorter form of this than the README carries.
 - Anything else discovered to be unreachable gets listed here rather than quietly omitted.
 
 ## Version history
@@ -1550,7 +1555,7 @@ when there is other visual indicators, such as quest or loot effects"*) and
 questPOI system to be toggled by the user"* — it is a permission, not a feature switch, which is
 why writing it changes nothing.
 
-#### A hook that adds nothing must still leave the frame as it found it
+#### A hook that adds nothing must still leave the frame as it found it — and it should rarely add nothing
 
 The tracking button's tooltip disappeared entirely once the minimap option stood down. Not our
 line — **Blizzard's whole "Tracking" tooltip**.
@@ -1568,8 +1573,18 @@ With the option off the hook returned at the top, so it never called `Show()` �
 that `Show()` was what put the tooltip on screen. The AddOn had quietly become load-bearing for a
 frame it only meant to annotate.
 
-The fix separates the two: add the line only while the AddOn is holding the entry, and call
-`Show()` either way.
+The first fix separated the two: add the line only while the AddOn is holding the entry, call
+`Show()` either way. **That was still wrong, and the correction is the more useful half.**
+
+The line is now added on *every* hover, whatever the option is set to. A player hovering this entry
+wants to know that this AddOn has a hand in it — and they want it **most** when the option is off,
+because that is when the entry is behaving in a way the AddOn did not cause and they are trying to
+work out why. **A note that disappears exactly when the question arises is worse than no note.**
+
+The reasoning that produced the narrow fix was "saying *managed by Vanilla Questing* about a
+setting the player has taken back would be false" — tidy, and answering a question nobody asked.
+The player is not auditing the sentence; they are looking for the thing that explains what they are
+seeing.
 
 **Eleven versions unnoticed, because the state was unreachable.** Until `hideMinimapQuestHelper`
 became shared, ticking Track Quest POIs was overruled within the frame, so nobody ever hovered that

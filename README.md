@@ -75,9 +75,9 @@ You have full control, disable as much or as little as you like.
   belongs to or how many you still need
 - The yellow highlight on quest items in your bags, and the `!` on items that start a
   quest — one option, since Blizzard draws both with the same texture
-- The loot sparkles on quest objects. This also removes them from profession nodes — herbs, mining
-  veins — because the game draws both from one switch. Neither had a glimmer in the original game
-- The outline on quest objects, where a client draws one
+- The loot sparkles on quest objects. This also removes them from gathering nodes such as herbs and
+  mining veins — see Known limitations
+- The outline around quest objects, where a client draws one
 
 **Experimental**
 
@@ -87,12 +87,12 @@ These are never switched on by the **Vanilla (Default)** preset. Turn them on yo
 
 ## Known limitations
 
-### Removing the quest object sparkles also removes them from herbs and ore
+### Removing the loot sparkles on quest objects also removes them from gathering nodes
 
-The game draws both from one switch, so there is no way to take the sparkle off a quest object and
-leave it on a mining vein. Neither had one in the original game, so this is the right answer for
-Classic questing — but it is a real change to gathering, and worth knowing before you turn the
-option on.
+Removing the loot sparkles on quest objects also removes them from gathering nodes such as herbs
+and mining veins. The game draws both from one switch, so there is no way to take the loot sparkle
+off a quest object and leave it on a mining vein. Neither quest objects or nodes had loot sparkles
+in the original game, so this is the accepted behaviour for Vanilla Questing.
 
 ## Compatibility
 

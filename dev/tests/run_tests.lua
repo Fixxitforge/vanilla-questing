@@ -388,38 +388,41 @@ if scenario == "normal" then
 	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
 	-- ---- the tracking button's tooltip ----
 	--
-	-- Reported in play: the whole "Tracking" tooltip vanished once the option
-	-- stood down. The AddOn is a HookScript guest here, and the bug was not
-	-- what it added but what it did on the way out -- with the option off the
-	-- hook returned at the top, so it never called Show(), and on this client
-	-- that Show() was what put BLIZZARD's tooltip on screen.
+	-- Two bugs here, and the second was a too-narrow reading of the first.
 	--
-	-- Eleven versions unnoticed because the state was unreachable: until this
-	-- option became shared, ticking Track Quest POIs was overruled within the
-	-- frame, so nobody ever hovered that button with the option off.
-	pcall(SlashCmdList["VANILLAQUESTING"], "off hideMinimapQuestHelper")
-	for i = #tooltipLines, 1, -1 do tooltipLines[i] = nil end
-	pcall(hoverTrackingButton)
-	local ourLines = 0
-	for _, t in ipairs(tooltipLines) do
-		if tostring(t):find("Vanilla Questing", 1, true) then ourLines = ourLines + 1 end
+	-- Reported: the whole "Tracking" tooltip vanished once the option stood
+	-- down. An early return at the top of the hook meant Show() never ran, and
+	-- on this client that Show() is what puts Blizzard's own tooltip on
+	-- screen. Unreachable for eleven versions -- until the option became
+	-- shared, ticking Track Quest POIs was overruled within the frame, so
+	-- nobody hovered that button with the option off.
+	--
+	-- Then gating only the AddLine calls was wrong too. The note is wanted
+	-- MOST when the option is off: that is when the entry is behaving in a way
+	-- the AddOn did not cause and the player is trying to work out why. A note
+	-- that disappears exactly when the question arises is worse than none.
+	local function hoverAndCount()
+		for i = #tooltipLines, 1, -1 do tooltipLines[i] = nil end
+		pcall(hoverTrackingButton)
+		local ours = 0
+		for _, t in ipairs(tooltipLines) do
+			if tostring(t):find("Vanilla Questing", 1, true) then ours = ours + 1 end
+		end
+		return ours
 	end
-	check("the AddOn adds no line when it is not managing the entry", ourLines == 0, ourLines)
-	check("but Blizzard's own tooltip is still there",
+
+	pcall(SlashCmdList["VANILLAQUESTING"], "off hideMinimapQuestHelper")
+	check("the AddOn's line is there with the option OFF", hoverAndCount() == 1,
+		table.concat(tooltipLines, " | "))
+	check("and Blizzard's own tooltip is still there",
 		tooltipLines[1] == "Tracking", tostring(tooltipLines[1]))
-	check("and it is still shown", _G.__tooltipShown == true, tostring(_G.__tooltipShown))
+	check("and it is shown", _G.__tooltipShown == true, tostring(_G.__tooltipShown))
 
 	pcall(SlashCmdList["VANILLAQUESTING"], "on hideMinimapQuestHelper")
-	for i = #tooltipLines, 1, -1 do tooltipLines[i] = nil end
-	pcall(hoverTrackingButton)
-	ourLines = 0
-	for _, t in ipairs(tooltipLines) do
-		if tostring(t):find("Vanilla Questing", 1, true) then ourLines = ourLines + 1 end
-	end
-	check("and it does add its line while it IS managing the entry", ourLines == 1, ourLines)
+	check("and with the option ON", hoverAndCount() == 1,
+		table.concat(tooltipLines, " | "))
 	check("Blizzard's header survives that too", tooltipLines[1] == "Tracking",
 		tostring(tooltipLines[1]))
-	check("and it is shown", _G.__tooltipShown == true, tostring(_G.__tooltipShown))
 
 	-- ---- the two-way mirror: SHARED, not owned ----
 	--
@@ -1452,8 +1455,19 @@ if scenario == "native" or scenario == "no_tooltipfunc" or scenario == "no_templ
 	end
 	check("the sparkle option states what else it removes",
 		tips.noQuestSparkles and
-		tips.noQuestSparkles:find("profession loot nodes", 1, true) ~= nil,
+		tips.noQuestSparkles:find("gathering nodes", 1, true) ~= nil,
 		tips.noQuestSparkles)
+	-- The prefix is part of the string, not something the panel adds, and this
+	-- option shipped once without it. Asserted on every option that has a
+	-- limitation rather than on this one, so the next author cannot drop it
+	-- somewhere else.
+	for i = 1, #ns.modules do
+		local m = ns.modules[i]
+		if type(m.limitation) == "string" then
+			check(m.key .. "'s limitation is labelled as one",
+				m.limitation:find("^Known limitation: ") ~= nil, m.limitation)
+		end
+	end
 	check("and does not claim to be experimental",
 		tips.noQuestSparkles and
 		tips.noQuestSparkles:find("untested and potentially unstable", 1, true) == nil,

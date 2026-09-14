@@ -153,6 +153,11 @@ Blizzard paints the first line — the option's name — white by itself. Everyt
    painted white by Blizzard — it is **not** orange for an experimental option, even though the
    checkbox label is.
 2. A blank line, then `LIMIT_*` if the option has one, in `COLOR.EXPERIMENTAL`.
+
+   **`Known limitation:` is part of the `LIMIT_*` string, not something the panel adds.** Every
+   one of them opens with it. `LIMIT_noQuestSparkles` shipped once without it, which turned a
+   stated cost into what read as a second sentence of description — the orange is the only other
+   signal, and orange alone does not say *limitation*.
 3. A blank line, then `EXPERIMENTAL_NOTE` if it is experimental **and not a mirror**, in
    `COLOR.EXPERIMENTAL`. A mirror does nothing to the game — it reports a Blizzard setting — so
    "untested and potentially unstable" is a claim about this AddOn that is not true of it. This
@@ -350,9 +355,9 @@ The **key** column is what the player types after `/vq on`, `/vq off` or `/vq st
 
 | ID | Text |
 | --- | --- |
-| `TITLE_noQuestSparkles` | `Remove loot sparkles on quest objectives` |
-| `DESC_noQuestSparkles` | `Removes the sparkle effect on quest objects in the world.` |
-| `LIMIT_noQuestSparkles` | `Also removes the loot sparkles on profession loot nodes (i.e. herbs, mining veins, etc).` |
+| `TITLE_noQuestSparkles` | `Remove Loot Sparkles` |
+| `DESC_noQuestSparkles` | `Removes the sparkle effect on quest objects.` |
+| `LIMIT_noQuestSparkles` | `Known limitation: also removes the loot sparkles on gathering nodes (such as herbs, mining veins, etc).` |
 | `ON_noQuestSparkles` | `Loot sparkles removed from quest objects.` |
 | `OFF_noQuestSparkles` | `Loot sparkles on quest objects restored.` |
 | `LABEL_noQuestSparkles` | `quest object sparkles` |
@@ -367,7 +372,7 @@ this client, and neither is a cost of an option that removes outlines.
 | ID | Text |
 | --- | --- |
 | `TITLE_noOutlineMode` | `No Outline Mode` |
-| `DESC_noOutlineMode` | `Stops quest objects being drawn with an outline.` |
+| `DESC_noOutlineMode` | `Removes outline around quest objects.` |
 | `ON_noOutlineMode` | `Outlines removed from quest objects.` |
 | `OFF_noOutlineMode` | `Outlines on quest objects restored.` |
 | `LABEL_noOutlineMode` | `outline mode` |
