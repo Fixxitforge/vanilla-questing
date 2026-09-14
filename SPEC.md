@@ -1404,6 +1404,71 @@ without anyone having to remember. `noCompleteQuestPopup` is experimental and no
 the warning, and is the control in the test: without it, a change that stripped the note from every
 option would pass.
 
+### v0.33 probe
+
+#### G32 — nothing this AddOn drives is locked, and two of the five are per-character — ANSWERED
+
+```
+questPOI           locked=false secure=false readOnly=false   storedServerCharacter=true
+autoQuestWatch     locked=false secure=false readOnly=false   storedServerAccount=true
+instantQuestText   locked=false secure=false readOnly=false   storedServerAccount=true
+showBosses         locked=false secure=false readOnly=false   storedServerCharacter=true
+Outline            locked=false secure=false readOnly=false   storedServerAccount=true
+```
+
+**The flags are not a substitute for a read-back.** `questHelper` refuses its write ([G29]) while
+reporting none of the three, so a write can still fail on a variable that claims to be writable.
+`minimapShapeshiftTracking` came back `locked=true` in [G34], which proves the flags do mean
+something — they are simply not the whole story. #18 gets a cheap pre-check, not an oracle.
+
+`SetCVar` returns `success:bool` through the **global wrapper**, which is *not* the same function
+reference as `C_CVar.SetCVar`. Both return it.
+
+**Nobody asked this, and it matters most.** `questPOI` and `showBosses` are stored **per
+character**; `autoQuestWatch`, `instantQuestText` and `Outline` per account. This AddOn's own
+SavedVariables are account-wide, so a player with the map options on will find two of their five
+variables following the character and three following the account — from one set of checkboxes.
+That is the substance of #10, which until now was a preference rather than a correctness problem.
+
+#### G34 — `ShowQuestObjectHighlightEffect`, and the client documents itself — ANSWERED
+
+```
+ShowQuestObjectHighlightEffect
+   value = 1   default = 1   locked=false secure=false readOnly=false
+   help  = Determines if quest objects in the world should be highlighted
+           (e.g., sparkles, outline, etc.).
+   write = asked 0, now 0   TOOK IT
+```
+
+**This is the answer to the outline problem.** Four versions of `outlineMode` rest on the finding
+that quest objects get *either* an outline *or* a sparkle, never both — so switching the outline on
+was the only way to suppress the glimmer, and on this client outlines do not render, so the
+glimmer stayed. This variable switches the highlight off **altogether**: no outline, no sparkles.
+Which is what a Vanilla quest object looks like.
+
+Not shipped on the strength of a help string and a write. What is proven is that it exists, is
+writable, and says it governs the thing. Whether the sparkles actually stop is a look, in game.
+
+The other eight, in one line each:
+
+- **`autoQuestPopUps`** — *"Saves current pop-ups for quests that are automatically acquired or
+  completed."* **Storage, not a switch.** `noCompleteQuestPopup` cannot use it, and would have
+  corrupted saved state by trying.
+- **`questPOILocalStory`** and **`questPOIWQ`** — world-map filters, both writable. `questPOIWQ` is
+  documented as working *"in conjunction with the questPOI cvar"*.
+- **`questTextContrast`**, **`interactQuestItems`**, **`questLogOpen`**, **`trackerFilter`**,
+  **`findYourselfModeOutline`** — all real, all writable, none of them quest-helper clutter.
+- **`minimapTrackedInfov2`** — *"Stores the minimap tracking that was active last session."* Read
+  `0` with this AddOn holding the entry down, against a default of `491528`. So that is where
+  tracking persists, and it is state rather than a lever.
+
+**And the method changed.** Searching the `help` column rather than the names returned 38 commands,
+including several whose names say nothing: `SoftTargetLowPriorityIcons` (*"Show interact icons even
+when there is other visual indicators, such as quest or loot effects"*) and
+`CameraKeepCharacterCentered`. `questHelper`'s own help finally explains it: *"If enabled, allow the
+questPOI system to be toggled by the user"* — it is a permission, not a feature switch, which is
+why writing it changes nothing.
+
 #### A hook that adds nothing must still leave the frame as it found it
 
 The tracking button's tooltip disappeared entirely once the minimap option stood down. Not our

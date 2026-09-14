@@ -134,14 +134,23 @@ local ACTIVE = {
 	             --   explicit=false, forbidden=false. #16's safety claim
 	             --   survives -- a near miss, not a live bug.
 
+	g32 = false, -- ANSWERED v0.33: none of the five is locked, secure or
+	             --   readOnly. SetCVar returns success:bool through the global
+	             --   wrapper even though it is NOT the same reference as
+	             --   C_CVar.SetCVar. And the part nobody asked for: questPOI
+	             --   and showBosses are stored PER CHARACTER, the other three
+	             --   per account.
+
+	g34 = false, -- ANSWERED v0.33. ShowQuestObjectHighlightEffect exists, is
+	             --   documented as "Determines if quest objects in the world
+	             --   should be highlighted (e.g., sparkles, outline, etc.)",
+	             --   and TOOK the write to 0. autoQuestPopUps is storage, not
+	             --   a switch. minimapShapeshiftTracking is the first CVar
+	             --   seen with locked=true, which proves the flags work.
+
 	-- Still open.
-	g32 = true, -- #18. Half answered: SetCVar DOES return success:bool through
-	            --   the global wrapper (which is NOT the same reference as
-	            --   C_CVar.SetCVar). The flags half came back as "attempt to
-	            --   call a nil value" -- GetCVarInfo is not a global here, only
-	            --   C_CVar.GetCVarInfo. Re-run with that fixed.
-	g34 = true, -- the help column [G28] turned up, and the nine names it found
-	            --   that this AddOn has never asked about
+	g35 = true, -- which frame is the minimap tracking button, and does the
+	            --   tooltip guard in Minimap.lua drop our line?
 }
 
 ---------------------------------------------------------------------
@@ -3212,6 +3221,146 @@ local function sectionCVarHelp()
 	add("   " .. hits .. " total.")
 end
 
+
+---------------------------------------------------------------------
+-- [G35] Which frame IS the minimap tracking button, and who owns its tooltip?
+--
+-- `Minimap.lua` hooks `MiniMapTrackingButton or MiniMapTracking` and adds a
+-- line saying the entry is managed by this AddOn. **That line has never
+-- appeared in game.** It went unnoticed because nobody had a reason to hover
+-- that button until the option became shared and the tooltip started
+-- disappearing -- and the disappearing half was a different bug, since fixed.
+--
+-- Two candidate causes, and they need separating rather than picking between:
+--
+--   1. the hook is on the wrong frame -- the name exists but the mouse-over
+--      frame is another one, so OnEnter never fires; or
+--   2. the hook fires and bails, because
+--      `GameTooltip:GetOwner() ~= self` -- Blizzard anchors the tooltip to
+--      some other frame, and the guard meant to keep our line out of other
+--      people's tooltips keeps it out of this one.
+--
+-- Static enumeration cannot tell them apart. So this section also installs a
+-- recorder on every candidate: hover the button, then `/unrecon trackdump`.
+---------------------------------------------------------------------
+
+-- Recorded by the hover probe. Module-level so the slash command can read it.
+local trackHover = {}
+
+local TRACK_CANDIDATES = {
+	"MiniMapTrackingButton", "MiniMapTracking", "MiniMapTrackingFrame",
+	"MiniMapTrackingIcon", "MiniMapTrackingBorder", "MinimapCluster",
+	"MiniMapTrackingDropDown", "MinimapZoneTextButton",
+}
+
+local function frameName(f)
+	if f == nil then return "nil" end
+	if type(f) ~= "table" then return "<" .. type(f) .. ">" end
+	local n
+	pcall(function() n = f.GetName and f:GetName() end)
+	return n or "<unnamed>"
+end
+
+local function sectionTrackingButton()
+	head("[G35] The minimap tracking button, and its tooltip's owner")
+
+	add("   What this AddOn picks today: MiniMapTrackingButton or MiniMapTracking")
+	add("")
+	for _, n in ipairs(TRACK_CANDIDATES) do
+		local f = _G[n]
+		if f == nil then
+			mark(false, n)
+		else
+			local otype, parent, mouse, shown = "?", "?", "?", "?"
+			local onEnter, onLeave = "no", "no"
+			pcall(function() otype = f:GetObjectType() end)
+			pcall(function() parent = frameName(f:GetParent()) end)
+			pcall(function() mouse = tostring(f:IsMouseEnabled()) end)
+			pcall(function() shown = tostring(f:IsShown()) end)
+			pcall(function() if f:GetScript("OnEnter") then onEnter = "YES" end end)
+			pcall(function() if f:GetScript("OnLeave") then onLeave = "YES" end end)
+			add(string.format("   OK   %-26s [%-8s] parent=%-18s mouse=%-5s shown=%-5s OnEnter=%s OnLeave=%s",
+				n, otype, parent, mouse, shown, onEnter, onLeave))
+		end
+	end
+	add("")
+	add("   The one with OnEnter=YES is the frame the tooltip comes from. If it")
+	add("   is not the one this AddOn picks, that is the whole answer.")
+	add("")
+
+	listGlobals("Globals containing 'minimaptrack'", "minimaptrack", 30)
+	add("")
+
+	-- The recorder. Installed on every candidate that can take a script, so
+	-- one hover answers "which frame fires" as well as "who owns the tooltip".
+	local armed = 0
+	for _, n in ipairs(TRACK_CANDIDATES) do
+		local f = _G[n]
+		if type(f) == "table" and type(f.HookScript) == "function" then
+			local ok = pcall(function()
+				f:HookScript("OnEnter", function(self)
+					local entry = { frame = n, at = date("%H:%M:%S") }
+					pcall(function() entry.owner = frameName(GameTooltip:GetOwner()) end)
+					pcall(function() entry.selfIsOwner = tostring(GameTooltip:GetOwner() == self) end)
+					pcall(function() entry.shown = tostring(GameTooltip:IsShown()) end)
+					pcall(function() entry.lines = GameTooltip:NumLines() end)
+					local texts = {}
+					pcall(function()
+						for i = 1, (GameTooltip:NumLines() or 0) do
+							local fs = _G["GameTooltipTextLeft" .. i]
+							local t = fs and fs.GetText and fs:GetText()
+							if t then texts[#texts + 1] = t end
+						end
+					end)
+					entry.text = table.concat(texts, " | ")
+					trackHover[#trackHover + 1] = entry
+					UnmarkedReconDB.trackHover = trackHover
+				end)
+			end)
+			if ok then armed = armed + 1 end
+		end
+	end
+	add("   Recorder armed on " .. armed .. " frame(s).")
+	add("   Hover the minimap tracking button, then run: /unrecon trackdump")
+	add("")
+	add("   It reports which frame fired, what GameTooltip:GetOwner() was at")
+	add("   that moment, whether that owner IS the frame, and the lines already")
+	add("   on the tooltip. `selfIsOwner = false` means the guard in")
+	add("   Minimap.lua is what is dropping our line.")
+
+	if #trackHover > 0 then
+		add("")
+		add("   Already captured this session:")
+		for i = 1, #trackHover do
+			local e = trackHover[i]
+			add(string.format("      %s  frame=%s owner=%s selfIsOwner=%s shown=%s lines=%s",
+				tostring(e.at), tostring(e.frame), tostring(e.owner),
+				tostring(e.selfIsOwner), tostring(e.shown), tostring(e.lines)))
+			add("         " .. tostring(e.text))
+		end
+	end
+end
+
+-- Printed by /unrecon trackdump. A global so the slash handler below can see
+-- it without moving the section.
+function UnmarkedRecon_TrackDump()
+	if #trackHover == 0 then
+		DEFAULT_CHAT_FRAME:AddMessage("|cffff5555[Recon]|r nothing captured. Run /unrecon first" ..
+			" (it arms the recorder), then hover the minimap tracking button.")
+		return
+	end
+	DEFAULT_CHAT_FRAME:AddMessage("|cff66ccff[Recon]|r " .. #trackHover .. " hover(s):")
+	for i = 1, #trackHover do
+		local e = trackHover[i]
+		DEFAULT_CHAT_FRAME:AddMessage(string.format(
+			"   frame=%s owner=%s selfIsOwner=%s shown=%s lines=%s",
+			tostring(e.frame), tostring(e.owner), tostring(e.selfIsOwner),
+			tostring(e.shown), tostring(e.lines)))
+		DEFAULT_CHAT_FRAME:AddMessage("      " .. tostring(e.text))
+	end
+	DEFAULT_CHAT_FRAME:AddMessage("|cffffd100Run /unrecon again to fold it into the report, then /reload.|r")
+end
+
 ---------------------------------------------------------------------
 -- Never let one section take the whole run down.
 --
@@ -3344,6 +3493,7 @@ local function collect()
 	section(ACTIVE.g32, sectionCVarWriteResult, "G32")
 	section(ACTIVE.g33, sectionTrackerButtonProtection, "G33")
 	section(ACTIVE.g34, sectionCVarHelp, "G34")
+	section(ACTIVE.g35, sectionTrackingButton, "G35")
 
 	-- Any full method dumps collected via "/unrecon methods <global>" get
 	-- folded in here so they travel inside the readable report rather than
@@ -3841,6 +3991,11 @@ SlashCmdList["UNRECON"] = function(msg)
 
 	if cmd == "tipwatch" then
 		toggleTipWatch()
+		return
+	end
+
+	if cmd == "trackdump" then
+		UnmarkedRecon_TrackDump()
 		return
 	end
 
