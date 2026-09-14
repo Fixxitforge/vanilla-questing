@@ -1059,6 +1059,77 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 	end
 	check("/vq help lists commands", helpSeen)
 
+	-- ---- changing one option applies one option ----
+	--
+	-- `ns:Set` called `ns:ApplyAll`, re-applying all thirteen modules to move
+	-- one checkbox. Reported from play as the panel lagging on every click,
+	-- with shared and mirrored options worst -- and the report carried its own
+	-- diagnosis: no lag when the BLIZZARD control was moved, because that path
+	-- goes through the mirror and never calls ApplyAll.
+	--
+	-- Counted rather than timed. A timing test would be flaky here and would
+	-- not say what got slower; the number of modules applied is the thing that
+	-- actually changed, and it is exact.
+	do
+		ns:ResetDefaults(true)
+		local calls = {}
+		local saved = {}
+		for i = 1, #ns.modules do
+			local m = ns.modules[i]
+			saved[i] = { m = m, Enable = m.Enable, Disable = m.Disable }
+			local key = m.key
+			if type(m.Enable) == "function" then
+				local real = m.Enable
+				m.Enable = function(self) calls[key] = (calls[key] or 0) + 1 return real(self) end
+			end
+			if type(m.Disable) == "function" then
+				local real = m.Disable
+				m.Disable = function(self) calls[key] = (calls[key] or 0) + 1 return real(self) end
+			end
+		end
+		local function touched()
+			local n, names = 0, {}
+			for k in pairs(calls) do n = n + 1 names[#names + 1] = k end
+			table.sort(names)
+			return n, table.concat(names, ",")
+		end
+		local function clear() for k in pairs(calls) do calls[k] = nil end end
+
+		clear()
+		ns:Set("hideBossPortraits", false)
+		local n, names = touched()
+		check("one option applies one module", n == 1 and names == "hideBossPortraits",
+			n .. ": " .. names)
+
+		-- ...but a parent takes its children with it, or a sub-option is left
+		-- running under a parent that has just been switched off.
+		clear()
+		ns:Set("trackerPlainText", false)
+		n, names = touched()
+		check("a parent applies its sub-options too",
+			calls.trackerPlainText == 1 and calls.trackerPlainTextAchievements == 1,
+			n .. ": " .. names)
+		check("and nothing else", n == 2, n .. ": " .. names)
+
+		-- A bulk command still applies everything, because everything moved.
+		clear()
+		pcall(SlashCmdList["VANILLAQUESTING"], "off")
+		n = touched()
+		check("a bulk command still applies every module", n == #ns.modules,
+			n .. " of " .. #ns.modules)
+
+		clear()
+		ns:ResetDefaults(true)
+		n = touched()
+		check("and so does Defaults", n == #ns.modules, n .. " of " .. #ns.modules)
+
+		for i = 1, #saved do
+			saved[i].m.Enable = saved[i].Enable
+			saved[i].m.Disable = saved[i].Disable
+		end
+		ns:ResetDefaults(true)
+	end
+
 	-- ---- the experimental note is not shown on a mirror ----
 	--
 	-- "Untested and potentially unstable" is a claim about what this AddOn is

@@ -1404,6 +1404,92 @@ without anyone having to remember. `noCompleteQuestPopup` is experimental and no
 the warning, and is the control in the test: without it, a change that stripped the note from every
 option would pass.
 
+### v0.32 probe
+
+Six sections, five of them answered outright. The run also produced two findings about the probe
+itself, which are written up under v1.0.1 above.
+
+#### G28 — `ConsoleGetAllCommands` exists, and the entries carry help text — ANSWERED
+
+The pre-10.2.0 name. `C_Console.GetAllCommands` is absent, which settles a note in `CVars.lua`
+that had said the console could not be enumerated on this client — **it can; the AddOn was
+reaching for the newer name.**
+
+**1642 entries**, each a table:
+
+```
+{ category, command, commandType, help, scriptContents, scriptParameters }
+```
+
+`help` is the important one and was not expected. The client documents its own console variables,
+which means a variable whose **name** says nothing can still be found by its **description** —
+and `particleDensity` and `ffxGlow`, with zero mentions across Blizzard's entire interface source,
+are the standing proof that names here cannot be guessed. Followed up as `[G34]`.
+
+Nine names came out of the quest-shaped filter that this AddOn has never asked about, the pick of
+them being **`ShowQuestObjectHighlightEffect`** — not present in Blizzard's options anywhere. Also
+`interactQuestItems`, `questTextContrast`, `questPOILocalStory`, `questPOIWQ`, `autoQuestPopUps`
+(reads as an empty string), `questLogOpen`, `trackerFilter` and `findYourselfModeOutline`. And
+`minimapTrackedInfov2 = 65536`, which is where minimap tracking state appears to live.
+
+#### G29 — `showQuestTrackingTooltips` does not exist here — ANSWERED, negative
+
+Nor does `minimapShowQuestBlobs`. Both are in Advanced Interface Options' catalogue and neither is
+on this client.
+
+**So `Tooltip.lua` stays.** The module that cost six attempts and whose fix lives in
+`OnSizeChanged` is not replaceable by a CVar write, and the hope that it might be is closed rather
+than left open. A retail player's report that Blizzard removed the variable in Shadowlands is
+consistent with it never having reached this build.
+
+`questHelper` exists, reads `1`, and **refuses the write** — asked for `0`, still `1`. It is not
+reported as locked, secure or read-only; it simply does not move.
+
+#### G30 — `MinimapScriptTrackingInfo.type` is useless as a key — ANSWERED, negative
+
+It is the string `"other"` for **all seventeen entries**. `subType` is `2` for the vendor-ish rows
+and `-1` for the rest, so it does not separate them either.
+
+`findEntry()` therefore keeps matching the localised `MINIMAP_TRACKING_QUEST_POIS` name, which was
+the existing approach and is now the confirmed-best one rather than the only one tried. Track Quest
+POIs sat at index 16 on this character; `SPEC.md` was already firm that the index must never be
+hardcoded, and nothing here changes that.
+
+#### G31 — `ShowQuestUnitCircles` exists and takes the write — ANSWERED, positive
+
+Reads `1`, accepted `0`, restored. Both spellings resolve to the same variable. Whether Blizzard's
+nameplate settings put it back is a manual check; the write itself is not in question. Belongs to
+its own issue.
+
+#### G32 — `SetCVar` returns `success`, and `GetCVarInfo` is not a global — HALF ANSWERED
+
+**The global `SetCVar` passes the documented boolean through**, even though it is *not* the same
+function reference as `C_CVar.SetCVar`. So `CVars.lua` can stop inferring refusal from a read-back,
+and #18 gets the distinction it was missing.
+
+The other half came back as `attempt to call a nil value` in every flag column. **`GetCVarInfo` is
+not a global on this client** — only `C_CVar.GetCVarInfo`, which the same section confirmed exists.
+Re-run with that fixed.
+
+#### G33 — the tracker item buttons are NOT protected — ANSWERED
+
+```
+WatchFrame        [Frame]   IsProtected=false explicit=false  forbidden=false
+WatchFrameItem1   [Button]  IsProtected=false explicit=false  forbidden=false
+```
+
+So #16 records **a near miss, not a live bug**. The safety claim was generalised from parent to
+child with nothing checked, and it happened to be right.
+
+That does not retire the fix. `SetAlpha(0)` + `EnableMouse(false)` makes the combat question stop
+existing rather than depending on a measurement that could change on any patch — and the rule the
+issue was filed for stands regardless: **a measurement on a parent frame is not a measurement on
+its children.**
+
+Only `WatchFrameItem1` existed, which is one tracked quest item and is enough. `WatchFrameLine1..3`
+do not exist under those names — the tracker's lines are reached another way, which is worth
+knowing before anything assumes otherwise.
+
 ## Recon results
 
 In probe order. This client is old content on a new engine, and almost nothing about it is

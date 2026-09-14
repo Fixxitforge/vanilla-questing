@@ -18,7 +18,7 @@ M.offText = "Minimap quest helper restored."
 M.group = "Map and minimap"
 M.title = "Hide Minimap Quest Helper"
 M.order = 20
-M.desc = "Keeps the " .. C.title .. "Track Quest POIs" .. C.close .. " tracking switched off, removing both the quest markers and the blue objective areas from the minimap."
+M.desc = "Switches the " .. C.title .. "Track Quest POIs" .. C.close .. " tracking off, removing both the quest markers and the blue objective areas from the minimap."
 -- SHARED, not owned. The player has a control of their own for this -- the
 -- minimap tracking dropdown -- so the two agree with each other rather than
 -- one of them winning. Named here for the same reason a CVar rule names its
@@ -125,11 +125,14 @@ local confirmedOff = false
 -- `instantQuestText` -- once, on the way in -- and the mirror below handles
 -- whatever the player does afterwards. There is no re-assert loop any more
 -- and no read-back here: the event says whether it landed.
-local function applyOff()
+local function applyOff(index, info)
 	if applying or refused then return end
 	if not ns.db or not ns.db.settings[M.key] then return end
 
-	local index, info = findEntry()
+	-- Enable has already found the entry. Finding it again means seventeen
+	-- more pcall'd API calls for an answer we were handed, and this runs on
+	-- every options-panel click.
+	if not index then index, info = findEntry() end
 	if not index then return end
 	if not info.active then
 		-- Already off: nothing to do, no event to cause, and proof that any
@@ -157,8 +160,11 @@ local function applyOff()
 	-- line and believing a negative is exactly the bug that turned a slow
 	-- client into a permanent refusal; counting disagreements is the mirror's
 	-- job, where there is an event to count them against.
-	local _, after = findEntry()
-	if after and not after.active then confirmedOff = true end
+	local C = api()
+	local gotAfter, after = pcall(C.GetTrackingInfo, index)
+	if gotAfter and type(after) == "table" and not after.active then
+		confirmedOff = true
+	end
 end
 
 -- The two-way mirror, and the whole of what makes this option SHARED.
@@ -287,7 +293,7 @@ function M:Enable()
 		ns.db.state.minimapMarkersTracking = info.active and true or false
 	end
 
-	applyOff()
+	applyOff(index, info)
 	attachTooltip()
 end
 

@@ -111,18 +111,37 @@ local ACTIVE = {
 	             --   Settings.CreateElementInitializer takes a template the
 	             --   AddOn brings itself. Shipped as Templates.xml.
 
+	g28 = false, -- ANSWERED v0.32: ConsoleGetAllCommands exists (the pre-10.2.0
+	             --   name; C_Console.GetAllCommands does not). 1642 entries,
+	             --   each a table with command/help/category/commandType.
+	             --   Saved to UnmarkedReconDB.allCVars.
+
+	g29 = false, -- ANSWERED v0.32, negative: showQuestTrackingTooltips and
+	             --   minimapShowQuestBlobs do NOT exist on this client, so
+	             --   Tooltip.lua stays. questHelper exists and REFUSES the
+	             --   write -- it reads 1 and will not move.
+
+	g30 = false, -- ANSWERED v0.32, negative: `type` is the string "other" for
+	             --   all seventeen entries, so it is useless as a key and
+	             --   findEntry keeps matching the localised name. subType is
+	             --   2 for the vendor-ish entries and -1 for the rest.
+
+	g31 = false, -- ANSWERED v0.32, positive: ShowQuestUnitCircles exists,
+	             --   reads 1, and TOOK the write to 0. The in-game effect is
+	             --   still a manual check.
+
+	g33 = false, -- ANSWERED v0.32: WatchFrameItem1 IsProtected=false,
+	             --   explicit=false, forbidden=false. #16's safety claim
+	             --   survives -- a near miss, not a live bug.
+
 	-- Still open.
-	g28 = true, -- enumerate every CVar the client has, rather than asking
-	            --   about ones already suspected
-	g29 = true, -- showQuestTrackingTooltips / minimapShowQuestBlobs: present
-	            --   here, and do they take a write?
-	g30 = true, -- MinimapScriptTrackingInfo.type -- a stable token, or another
-	            --   localised label?
-	g31 = true, -- ShowQuestUnitCircles, the yellow ring under quest mobs
-	g32 = true, -- #18: does SetCVar report success, and are any of the five
-	            --   variables this AddOn drives locked/secure/readOnly?
-	g33 = true, -- #16: IsProtected on the tracker ITEM BUTTONS, which is not
-	            --   what was measured
+	g32 = true, -- #18. Half answered: SetCVar DOES return success:bool through
+	            --   the global wrapper (which is NOT the same reference as
+	            --   C_CVar.SetCVar). The flags half came back as "attempt to
+	            --   call a nil value" -- GetCVarInfo is not a global here, only
+	            --   C_CVar.GetCVarInfo. Re-run with that fixed.
+	g34 = true, -- the help column [G28] turned up, and the nine names it found
+	            --   that this AddOn has never asked about
 }
 
 ---------------------------------------------------------------------
@@ -193,11 +212,28 @@ local function probeMethod(obj, objName, method)
 	mark(obj and type(obj[method]) == "function", objName .. ":" .. method)
 end
 
+-- GetCVarInfo is NOT a global on this client.
+--
+-- The v0.32 run printed "attempt to call a nil value" in every flag column of
+-- [G32] before anyone noticed the column was a pcall error message rather
+-- than a value. `C_CVar.GetCVarInfo` exists and the bare name does not.
+--
+-- Note what pcall does NOT do here: calling a nil through pcall does not
+-- throw, it returns false and a message. So the section ran, the report was
+-- produced, and the wrong answer travelled all the way back looking like data.
+-- That is why the smoke test greps the report for the message rather than
+-- only checking that sections survived.
+local function cvarInfo(name)
+	local fn = (type(C_CVar) == "table" and C_CVar.GetCVarInfo) or GetCVarInfo
+	if type(fn) ~= "function" then return false end
+	return pcall(fn, name)
+end
+
 local function probeCVar(name)
 	local ok, value = pcall(GetCVar, name)
 	if ok and value ~= nil then
 		local line = "cvar " .. name .. " = " .. tostring(value)
-		local ok2, _, default, _, _, locked, secure, readonly = pcall(GetCVarInfo, name)
+		local ok2, _, default, _, _, locked, secure, readonly = cvarInfo(name)
 		if ok2 and default ~= nil then
 			line = line .. "  (default " .. tostring(default) .. ")"
 		end
@@ -2753,7 +2789,7 @@ local function sectionHiddenCVars()
 				(gotBefore and "" or " (the read itself errored)"))
 			return
 		end
-		local _, _, default, ssa, ssc, locked, secure, readonly = pcall(GetCVarInfo, name)
+		local _, _, default, ssa, ssc, locked, secure, readonly = cvarInfo(name)
 		add("   OK   " .. name .. " = " .. tostring(before) ..
 			"  (default " .. tostring(default) .. ")")
 		add("        storedServerAccount=" .. tostring(ssa) ..
@@ -2765,16 +2801,21 @@ local function sectionHiddenCVars()
 		-- still refuse, so the read-back is the answer and the flags are only
 		-- the prediction.
 		local target = (tostring(before) == tostring(testValue)) and "1" or testValue
-		local wrote = pcall(SetCVar, name, target)
+		-- [G32] established that SetCVar returns success:bool through the
+		-- global wrapper, so capture the RETURN, not the pcall flag. v0.32
+		-- printed "SetCVar pcall returned true" beside a refused write, which
+		-- said nothing at all.
+		local called, wrote = pcall(SetCVar, name, target)
 		local _, after = pcall(GetCVar, name)
 		add("        wrote " .. tostring(target) .. " -> now " .. tostring(after) ..
 			(tostring(after) == tostring(target) and "   TOOK THE WRITE" or "   REFUSED"))
+		add("        SetCVar returned " .. tostring(wrote) ..
+			(called and "" or "   (the call itself errored)"))
 		if tostring(after) ~= tostring(before) then
 			pcall(SetCVar, name, before)
 			local _, back = pcall(GetCVar, name)
 			add("        put back to " .. tostring(back))
 		end
-		add("        (SetCVar pcall returned " .. tostring(wrote) .. ")")
 	end
 
 	tryWrite("showQuestTrackingTooltips", "0")
@@ -2939,7 +2980,7 @@ local function sectionCVarWriteResult()
 	for _, c in ipairs({
 		"questPOI", "autoQuestWatch", "instantQuestText", "showBosses", "Outline",
 	}) do
-		local _, value, default, ssa, ssc, locked, secure, readonly = pcall(GetCVarInfo, c)
+		local _, value, default, ssa, ssc, locked, secure, readonly = cvarInfo(c)
 		add(string.format("      %-18s = %-6s default=%-6s locked=%-5s secure=%-5s readOnly=%-5s",
 			c, tostring(value), tostring(default),
 			tostring(locked), tostring(secure), tostring(readonly)))
@@ -3019,6 +3060,156 @@ local function sectionTrackerButtonProtection()
 	add("   is SetAlpha(0) + EnableMouse(false), which is not protected -- so the")
 	add("   question stops existing rather than being answered. This probe decides")
 	add("   whether SPEC.md records a near miss or a live bug.")
+end
+
+
+---------------------------------------------------------------------
+-- [G34] The help text, and a search of it rather than of the names.
+--
+-- [G28] returned 1642 entries, and each one carries a `help` string the client
+-- writes itself:
+--
+--   category, command, commandType, help, scriptContents, scriptParameters
+--
+-- That changes the question. Filtering by NAME finds `questPOI`; filtering by
+-- HELP finds the variable whose name says nothing and whose description says
+-- "quest". `particleDensity` and `ffxGlow` are the standing proof that this
+-- client's names cannot be guessed at, and the help column is the client
+-- telling us what it calls things.
+--
+-- Nine names came out of [G28] that this AddOn has never asked about. Each is
+-- read, described from its own help text, written, read back and put back.
+---------------------------------------------------------------------
+local function sectionCVarHelp()
+	head("[G34] What the client says these do, and whether they take a write")
+
+	local getter = ConsoleGetAllCommands
+		or (type(C_Console) == "table" and C_Console.GetAllCommands)
+	if type(getter) ~= "function" then
+		add("   No enumerator. [G28] found ConsoleGetAllCommands; if that has")
+		add("   gone the whole section is moot.")
+		return
+	end
+	local ok, list = pcall(getter)
+	if not ok or type(list) ~= "table" then
+		add("   Enumeration failed: " .. tostring(list))
+		return
+	end
+
+	local byName = {}
+	for i = 1, #list do
+		local e = list[i]
+		if type(e) == "table" and type(e.command) == "string" then
+			byName[e.command:lower()] = e
+		end
+	end
+
+	local function describe(name)
+		local e = byName[name:lower()]
+		local gotValue, value = pcall(GetCVar, name)
+		add("   " .. name)
+		add("      value    = " .. (gotValue and tostring(value) or "<read errored>"))
+		local gotInfo, _, default, _, _, locked, secure, readonly = cvarInfo(name)
+		if gotInfo then
+			add("      default  = " .. tostring(default) ..
+				"   locked=" .. tostring(locked) ..
+				" secure=" .. tostring(secure) ..
+				" readOnly=" .. tostring(readonly))
+		else
+			add("      default  = <GetCVarInfo unavailable>")
+		end
+		if e then
+			add("      category = " .. tostring(e.category) ..
+				"   commandType = " .. tostring(e.commandType))
+			add("      help     = " .. tostring(e.help))
+		else
+			add("      help     = <not in the command list>")
+		end
+	end
+
+	local function writeTest(name, target)
+		local gotBefore, before = pcall(GetCVar, name)
+		if not gotBefore or before == nil then
+			add("      write    = skipped, cannot read it")
+			return
+		end
+		if tostring(before) == tostring(target) then
+			target = (tostring(target) == "0") and "1" or "0"
+		end
+		local called, wrote = pcall(SetCVar, name, target)
+		local _, after = pcall(GetCVar, name)
+		add("      write    = asked " .. tostring(target) .. ", now " .. tostring(after) ..
+			(tostring(after) == tostring(target) and "   TOOK IT" or "   REFUSED") ..
+			"   SetCVar returned " .. tostring(wrote) ..
+			(called and "" or " (call errored)"))
+		if tostring(after) ~= tostring(before) then
+			pcall(SetCVar, name, before)
+			local _, back = pcall(GetCVar, name)
+			add("      restored = " .. tostring(back))
+		end
+	end
+
+	add("   The names [G28] turned up that this AddOn has never asked about.")
+	add("   ShowQuestObjectHighlightEffect is the one to read first: if it")
+	add("   switches off the glow on quest objects it is a whole feature for")
+	add("   one CVar write, and it is not in Blizzard's options anywhere.")
+	add("")
+	for _, c in ipairs({
+		{ "ShowQuestObjectHighlightEffect", "0" },
+		{ "interactQuestItems",             "1" },
+		{ "questTextContrast",              "1" },
+		{ "questPOILocalStory",             "0" },
+		{ "questPOIWQ",                     "0" },
+		{ "autoQuestPopUps",                "0" },
+		{ "questLogOpen",                   "0" },
+		{ "trackerFilter",                  "0" },
+		{ "findYourselfModeOutline",        "1" },
+	}) do
+		describe(c[1])
+		writeTest(c[1], c[2])
+		add("")
+	end
+
+	-- The tracking bitfield. [G30] showed `type` is "other" for every entry,
+	-- so it is useless as a key -- but the tracking state is stored SOMEWHERE,
+	-- and this is the candidate. Read only: writing a bitfield blind would be
+	-- changing settings we cannot name.
+	add("   Where minimap tracking is actually stored (read only):")
+	for _, n in ipairs({
+		"minimapTrackedInfov2", "minimapShapeshiftTracking", "contentTrackingFilter",
+	}) do
+		describe(n)
+		add("")
+	end
+
+	-- And the part that could not be done before the help column existed:
+	-- search the DESCRIPTIONS. A variable whose name says nothing and whose
+	-- help says "quest" is exactly what every earlier pass could not find.
+	add("   Every command whose HELP text mentions quest / objective / tracking,")
+	add("   whatever its name is called:")
+	local hits = 0
+	local names = {}
+	for i = 1, #list do
+		local e = list[i]
+		local h = type(e) == "table" and type(e.help) == "string" and e.help:lower()
+		if h and (h:find("quest", 1, true) or h:find("objective", 1, true)
+			or h:find("tracking", 1, true) or h:find("poi", 1, true)) then
+			names[#names + 1] = e.command .. "  --  " .. e.help
+		end
+	end
+	table.sort(names)
+	for i = 1, #names do
+		hits = hits + 1
+		if hits <= 60 then add("      " .. names[i]) end
+	end
+	if hits == 0 then
+		add("      none. Which would itself be worth knowing: it would mean the")
+		add("      help column is empty on this build and name-filtering is all")
+		add("      there is.")
+	elseif hits > 60 then
+		add("      ... and " .. (hits - 60) .. " more")
+	end
+	add("   " .. hits .. " total.")
 end
 
 ---------------------------------------------------------------------
@@ -3152,6 +3343,7 @@ local function collect()
 	section(ACTIVE.g31, sectionUnitCircles, "G31")
 	section(ACTIVE.g32, sectionCVarWriteResult, "G32")
 	section(ACTIVE.g33, sectionTrackerButtonProtection, "G33")
+	section(ACTIVE.g34, sectionCVarHelp, "G34")
 
 	-- Any full method dumps collected via "/unrecon methods <global>" get
 	-- folded in here so they travel inside the readable report rather than

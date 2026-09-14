@@ -79,8 +79,11 @@ local RULES = {
 		-- The variable is not a guess. Probe v0.19 [G19] walked the settings
 		-- registry and read it off Blizzard's own control: the option labelled
 		-- "Instant Quest Text" is backed by the boolean `instantQuestText`.
-		-- Earlier passes failed because they searched the CONSOLE, which this
-		-- client cannot enumerate (C_Console.GetAllCommands is absent).
+		-- Earlier passes failed because they searched the CONSOLE under the
+		-- wrong name. C_Console.GetAllCommands is indeed absent -- but
+		-- ConsoleGetAllCommands, the pre-10.2.0 name, is here and returns
+		-- 1642 entries. Corrected by probe v0.32 [G28]; the note used to say
+		-- the console could not be enumerated at all, which was wrong.
 		--
 		-- Classic-correct is OFF: quest text types out a line at a time rather
 		-- than landing all at once, which is half of why reading it felt like

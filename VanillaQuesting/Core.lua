@@ -220,6 +220,70 @@ end
 -- Applying settings
 ---------------------------------------------------------------------
 
+-- One module, applied. The single place Enable/Disable are called from, so
+-- the whole-list pass and the one-option pass cannot come to disagree about
+-- what applying means.
+--
+-- Reads `ns.db.settings`, not `ns:IsActive`. A sub-option under a parent that
+-- is off still gets Enable called on it; whether that does anything is the
+-- module's own business (Tracker checks its parent), and changing it here
+-- would change behaviour rather than cost.
+local function applyModule(m)
+	local on = ns.db.settings[m.key]
+	local fn = on and m.Enable or m.Disable
+	if type(fn) ~= "function" then return end
+	local ok, err = pcall(fn, m)
+	if not ok then
+		ns:Warn("apply:" .. tostring(m.key),
+			"could not " .. (on and "enable" or "disable") .. " " ..
+			tostring(m.key) .. ": " .. tostring(err))
+	end
+end
+
+-- Changing one option applies one option.
+--
+-- `ns:Set` called `ns:ApplyAll`, which walks all thirteen modules and
+-- re-applies every one of them to move a single checkbox. That was cheap when
+-- the modules were cheap. They are not any more: the minimap module rescans a
+-- seventeen-entry tracking list, the tracker modules walk every line and
+-- button in the frame, and each CVar rule that has something to restore writes
+-- and then refreshes the quest UI behind it.
+--
+-- Reported from play as the options panel lagging on every click, with the
+-- shared and mirrored options lagging longest -- and the diagnosis was in the
+-- report itself: *"lag not present when the Blizzard option is set"*. Changing
+-- Blizzard's control goes through the mirror, which writes one setting and
+-- refreshes. Changing ours went through all thirteen.
+--
+-- A bulk command still applies everything, because everything moved.
+function ns:Apply(key)
+	if not ns.db then return end
+
+	-- Before the first full pass there is nothing to be targeted about, and
+	-- ApplyAll is what raises `ns.applied` and lowers `ns.firstRun`. Skipping
+	-- it here would leave the mirror disarmed for the session.
+	if not ns.applied then return ns:ApplyAll() end
+
+	for i = 1, #ns.modules do
+		local m = ns.modules[i]
+		if m.key == key then
+			applyModule(m)
+		else
+			-- A sub-option has to follow its parent. Walked rather than
+			-- checked one level deep: nothing is nested two deep today, and a
+			-- rule that only works at depth one is a trap for whoever nests
+			-- something tomorrow.
+			local p, depth = m.parent, 0
+			while p and depth < 10 do
+				if p == key then applyModule(m) break end
+				local pm = ns.modules[p]
+				p = pm and pm.parent or nil
+				depth = depth + 1
+			end
+		end
+	end
+end
+
 function ns:ApplyAll()
 	if not ns.db then return end
 
@@ -254,17 +318,7 @@ function ns:ApplyAll()
 	end
 
 	for i = 1, #ns.modules do
-		local m = ns.modules[i]
-		local on = ns.db.settings[m.key]
-		local fn = on and m.Enable or m.Disable
-		if type(fn) == "function" then
-			local ok, err = pcall(fn, m)
-			if not ok then
-				ns:Warn("apply:" .. tostring(m.key),
-					"could not " .. (on and "enable" or "disable") .. " " ..
-					tostring(m.key) .. ": " .. tostring(err))
-			end
-		end
+		applyModule(ns.modules[i])
 	end
 
 	-- Down once the first pass is over. Everything after this really is the
@@ -311,7 +365,7 @@ end
 function ns:Set(key, value)
 	if not ns.db then return end
 	ns.db.settings[key] = value
-	ns:ApplyAll()
+	ns:Apply(key)
 end
 
 -- No reload notice here. Tested in game: after a slash toggle the next time

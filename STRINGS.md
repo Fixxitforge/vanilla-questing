@@ -249,7 +249,7 @@ The **key** column is what the player types after `/vq on`, `/vq off` or `/vq st
 | ID | Text |
 | --- | --- |
 | `TITLE_hideMinimapQuestHelper` | `Hide Minimap Quest Helper` |
-| `DESC_hideMinimapQuestHelper` | `Keeps the ` + `Track Quest POIs` in `COLOR.TITLE` + ` tracking switched off, removing both the markers and the blue objective areas from the minimap.` |
+| `DESC_hideMinimapQuestHelper` | `Switches the ` + `Track Quest POIs` in `COLOR.TITLE` + ` tracking off, removing both the quest markers and the blue objective areas from the minimap.` |
 | `ON_hideMinimapQuestHelper` | `Minimap quest markers and the blue quest areas removed.` |
 | `OFF_hideMinimapQuestHelper` | `Minimap quest helper restored.` |
 | `LABEL_hideMinimapQuestHelper` | `minimap quest helper` |

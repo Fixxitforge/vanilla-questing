@@ -897,7 +897,10 @@ end
 
 local function onSettingChanged(m)
 	if suppressed() then return end
-	ns:ApplyAll()
+	-- One checkbox moved, so one option is applied. Mid-preset this fires per
+	-- setting and `applyPreset` still runs a full pass at the end, so the
+	-- everything-moved case is still covered by an everything pass.
+	ns:Apply(m.key)
 	if applyingPreset then return end
 
 	ns.RefreshOptions()
