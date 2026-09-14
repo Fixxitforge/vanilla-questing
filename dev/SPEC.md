@@ -1438,6 +1438,62 @@ without anyone having to remember. `noCompleteQuestPopup` is experimental and no
 the warning, and is the control in the test: without it, a change that stripped the note from every
 option would pass.
 
+### Two more redraws that were not ours to make
+
+Both are the same shape as the bag one below, found one after another.
+
+#### A loading screen is not someone asking for a refresh
+
+`doCycleWorldMap` opens and closes the world map through `HideUIPanel` / `ShowUIPanel`, which
+**taints Blizzard's UI panel manager**. The `InCombatLockdown` guard prevents the immediate error
+and does nothing about the taint, which surfaces later as an unrelated blocked action with nothing
+pointing back here.
+
+It was not only reached from a deliberate toggle:
+
+```
+PLAYER_ENTERING_WORLD → ApplyAll → M:Enable → writeCVar → refreshQuestUI → cycleWorldMap
+```
+
+**Any loading screen where `questPOI` had drifted took that path**, out of combat, with no guard in
+the way — including the very first login after installing. The map opened and closed on a loading
+screen for no reason the player asked for, and the panel manager was tainted from then on.
+
+`ns.byRequest` decides it, and is **passed explicitly at every call site** rather than inferred: a
+reader seeing `ns:ApplyAll(true)` can check the claim, a reader seeing a flag set three functions
+away cannot. It is true for `ns:Set`, the panel's own callback, `/vq on|off`, `/vq reset`, the
+Defaults button, a preset, and Cancel on the reload prompt. It is false for `ADDON_LOADED`,
+`VARIABLES_LOADED`, `PLAYER_ENTERING_WORLD` and the `CVAR_UPDATE` re-assert.
+
+The write still happens on those paths; only the cycle is skipped. The map is right the next time
+it is opened, which on a loading screen is the only time anyone sees it anyway.
+
+**This does not close [#11](https://github.com/Fixxitforge/vanilla-questing/issues/11)**, and it is
+worth not claiming that it does. The taint log never appeared on the test client — `/console
+taintLog 1` produced no file after a reload or a logout — so the hypothesis that a login-time taint
+is what #11 has been chasing is untested. The change stands on its own terms.
+
+#### The tracker item buttons, and a claim generalised from parent to child
+
+`SPEC.md` and the `Tracker.lua` header both leaned on *"`WatchFrame:IsProtected()` → false, so
+hooking and hiding here is safe, in combat included"* — a measurement taken on the **parent**, cited
+as though it covered `WatchFrameItem1..N`, the quest-item **use** buttons. Those are the likeliest
+thing in the tracker to be secure, since using an item is a protected action.
+
+Probe v0.32 [G33] asked, four versions late, and the answer is false for them too. **A near miss,
+not a live bug** — but the reasoning was a guess wearing a probe's clothing, which is worse than an
+obvious guess because it cites a log.
+
+The module moved to `SetAlpha(0)` + `EnableMouse(false)` anyway, recording and restoring both.
+Alpha is not a protected operation, so **the combat question stops existing** rather than resting on
+a reading that could change on any patch — and this runs from a `hooksecurefunc` on
+`WatchFrame_Update`, which fires in combat whenever objectives tick, inside a `pcall` that would
+swallow a blocked call without a word.
+
+`Disable` no longer calls `WatchFrame_Update` either. There is nothing to rebuild: the tracker was
+never changed, only the alpha and mouse state of buttons it had already drawn. `hiddenOnes` — written
+on every pass, wiped in `Disable`, never read — went with the `Hide()` it belonged to.
+
 ### A refused write, and a redraw that was not ours to make
 
 #### `refused` latched for the session, and blocked the restore with it
@@ -2242,8 +2298,16 @@ went astray.
 - **`WatchFrame:IsProtected()` → `false`, explicitly false.** That is a measurement of
   **`WatchFrame` itself and nothing else.** It says nothing about its children, and in particular
   nothing about `WatchFrameItem1..N`, the quest-item **use** buttons — which are the likeliest
-  thing in the tracker to be secure, since using an item is a protected action. Their protection
-  has never been probed; the AddOn hides them anyway. See
+  thing in the tracker to be secure, since using an item is a protected action.
+
+  **Asked at last in probe v0.32 [G33], and the answer is false for them too** —
+  `IsProtected=false explicit=false forbidden=false`. So the claim was right, and was a near miss
+  rather than a live bug: it had been generalised from parent to child with nothing checked, for
+  four versions, while citing a log that did not contain the answer.
+
+  `hideTrackerItemButtons` no longer depends on it. It uses `SetAlpha(0)` + `EnableMouse(false)`
+  and restores both from a record, so the combat question **stops existing** rather than resting on
+  a reading that could change on any patch. See
   [issue #16](https://github.com/Fixxitforge/vanilla-questing/issues/16).
 
   **A measurement on a parent is not a measurement on its children.** This line previously read

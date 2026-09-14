@@ -447,13 +447,19 @@ end
 -- button out and cleared when it releases it. The AddOn reads it to leave
 -- achievement lines clickable, so the harness has to carry it or the fix is
 -- untested and the fallback is the only path the suite ever runs.
+-- Alpha as well as shown state. `hideTrackerItemButtons` moved from Hide() to
+-- SetAlpha(0) + EnableMouse(false) for #16 -- alpha is not a protected
+-- operation, so the combat question stops existing rather than resting on a
+-- measurement -- and a stub with no alpha could not tell the two apart.
 local function mkButton(name, kind)
-	local b = { __name = name, __mouse = true, __shown = true, type = kind }
+	local b = { __name = name, __mouse = true, __shown = true, __alpha = 1, type = kind }
 	function b:EnableMouse(v) self.__mouse = v and true or false end
 	function b:IsMouseEnabled() return self.__mouse end
 	function b:Hide() self.__shown = false end
 	function b:Show() self.__shown = true end
 	function b:IsShown() return self.__shown end
+	function b:SetAlpha(a) self.__alpha = a end
+	function b:GetAlpha() return self.__alpha end
 	return b
 end
 

@@ -290,10 +290,21 @@ end
 function ns:Apply(key)
 	if not ns.db then return end
 
+	-- Always by request: the only callers are `ns:Set` -- which is the slash
+	-- commands and the canvas panel -- and the native panel's own
+	-- value-changed callback. Every one of those is a person having just
+	-- clicked or typed something. See `ns.byRequest` below.
+	local was = ns.byRequest
+	ns.byRequest = true
+
 	-- Before the first full pass there is nothing to be targeted about, and
 	-- ApplyAll is what raises `ns.applied` and lowers `ns.firstRun`. Skipping
 	-- it here would leave the mirror disarmed for the session.
-	if not ns.applied then return ns:ApplyAll() end
+	if not ns.applied then
+		ns:ApplyAll(true)
+		ns.byRequest = was
+		return
+	end
 
 	for i = 1, #ns.modules do
 		local m = ns.modules[i]
@@ -313,9 +324,36 @@ function ns:Apply(key)
 			end
 		end
 	end
+
+	ns.byRequest = was
 end
 
-function ns:ApplyAll()
+-- `byRequest` -- did a person just ask for this?
+--
+-- It decides one thing: whether an option that needs the world map cycled to
+-- show its effect gets that cycle. Opening and closing the map is visible,
+-- and it goes through `HideUIPanel` / `ShowUIPanel`, which TAINTS Blizzard's
+-- UI panel manager -- a taint that surfaces later as an unrelated blocked
+-- action with nothing pointing back here (#17).
+--
+-- Worth doing when the player has just ticked a box and is waiting to see the
+-- result. Not worth doing on a loading screen, which is where it was also
+-- happening:
+--
+--   PLAYER_ENTERING_WORLD -> ApplyAll -> Enable -> writeCVar
+--                         -> refreshQuestUI -> cycleWorldMap
+--
+-- Any zone change where `questPOI` had drifted took that path, out of combat,
+-- with no guard in the way. The map opened and closed on a loading screen for
+-- no reason the player asked for, and the panel manager was tainted from that
+-- point on. **A loading screen is not someone asking for a refresh.**
+--
+-- Passed explicitly at every call site rather than inferred. A reader seeing
+-- `ns:ApplyAll(true)` can check the claim; a reader seeing a flag set three
+-- functions away cannot.
+function ns:ApplyAll(byRequest)
+	local wasByRequest = ns.byRequest
+	ns.byRequest = byRequest and true or false
 	if not ns.db then return end
 
 	-- Once per session, before touching anything: read the client for the
@@ -371,6 +409,8 @@ function ns:ApplyAll()
 	-- It has to be both: apply once the values are real, and ignore everything
 	-- until that has happened.
 	ns.applied = true
+
+	ns.byRequest = wasByRequest
 end
 
 -- Toggling takes effect immediately; no /reload.
@@ -422,7 +462,8 @@ function ns:ResetDefaults(silent)
 		end
 	end
 
-	ns:ApplyAll()
+	-- By request: /vq reset, or Blizzard's Defaults button.
+	ns:ApplyAll(true)
 	if not silent then
 		ns:Print("Restored default options.")
 	end
@@ -582,7 +623,8 @@ SlashCmdList["VANILLAQUESTING"] = function(msg)
 					ns.db.settings[k] = want
 				end
 			end
-			ns:ApplyAll()
+			-- By request: the player typed /vq on or /vq off.
+			ns:ApplyAll(true)
 			ns:Print(want and "Enabled all vanilla options."
 				or "Disabled all options.")
 		else

@@ -368,10 +368,21 @@ local function refreshQuestUI(rule)
 	if type(QuestMapFrame_UpdateAll) == "function" and mapIsOpen() then
 		pcall(QuestMapFrame_UpdateAll)
 	end
-	-- Only the rules the map and the tracker actually read. Cycling the map
-	-- for a variable it does not look at would be a visible jolt for nothing,
-	-- and this now fires whether or not the map is already open.
-	if rule and rule.cyclesMap then cycleWorldMap() end
+	-- Only the rules the map and the tracker actually read, and only when a
+	-- person just asked for it.
+	--
+	-- Cycling the map for a variable it does not look at would be a visible
+	-- jolt for nothing. Cycling it on a loading screen is worse than that: it
+	-- goes through HideUIPanel / ShowUIPanel, which taints Blizzard's UI panel
+	-- manager, and the taint surfaces later as an unrelated blocked action
+	-- with nothing pointing back here (#17).
+	--
+	-- Every path that reaches this from an EVENT -- login, VARIABLES_LOADED,
+	-- PLAYER_ENTERING_WORLD, the CVAR_UPDATE re-assert -- leaves `byRequest`
+	-- down, so the write still happens and the map is simply left alone. It is
+	-- right the next time it is opened, which on a loading screen is the only
+	-- time anyone sees it anyway.
+	if rule and rule.cyclesMap and ns.byRequest then cycleWorldMap() end
 end
 
 local function writeCVar(rule, value)

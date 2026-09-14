@@ -140,7 +140,9 @@ local function restore(snap)
 	if not snap or not ns.db then return end
 	wipe(ns.db.settings)
 	for k, v in pairs(snap.settings) do ns.db.settings[k] = v end
-	ns:ApplyAll()
+	-- By request: this is Cancel on the reload prompt, putting back what the
+	-- player had a moment ago.
+	ns:ApplyAll(true)
 	ns.RefreshOptions()
 end
 
@@ -404,7 +406,8 @@ function applyPreset(which)
 	end
 	if ns.SetPresetApplying then ns.SetPresetApplying(false) end
 	-- "custom" changes nothing by definition; it only records the choice.
-	ns:ApplyAll()
+	-- By request either way: the player picked a preset.
+	ns:ApplyAll(true)
 	ns.RefreshOptions()
 	-- Native mode has Blizzard's Apply button for this; the prompt belongs to
 	-- the canvas fallback only.

@@ -8,9 +8,17 @@
 --
 -- Everything below is named in the v0.15 probe log ([G15]); nothing is
 -- reached for on the strength of what a later client calls it. In particular
--- this client has WatchFrame, NOT ObjectiveTrackerFrame, and
--- WatchFrame:IsProtected() came back explicitly false -- so hooking and
--- hiding here is safe, in combat included.
+-- this client has WatchFrame, NOT ObjectiveTrackerFrame.
+--
+-- On protection, precisely: WatchFrame:IsProtected() came back explicitly
+-- false, and so did WatchFrameItem1's when it was finally asked in probe v0.32
+-- [G33]. The earlier version of this comment claimed the first measurement
+-- covered the item buttons too -- it did not, and **a measurement on a parent
+-- frame is not a measurement on its children** (#16). It happened to be right.
+--
+-- hideTrackerItemButtons does not depend on it either way: it uses alpha and
+-- mouse state rather than Hide(), so the combat question stops existing
+-- instead of resting on a reading that could change on any patch.
 --
 -- One thing that looked like work turned out not to be: "no auto-sort by
 -- distance" has nothing to remove. The only sort constants this client
@@ -228,7 +236,11 @@ do
 
 	ns:RegisterDefaults({ hideTrackerItemButtons = true })
 
-	local hiddenOnes = {}
+	-- What was taken, and what it was before. `[button] = { alpha, mouse }`.
+	--
+	-- `hiddenOnes` stood here: written on every pass, wiped in Disable, and
+	-- never read. Removed with the Hide() it belonged to (#16).
+	local taken = {}
 
 	-- WATCHFRAME_MAXQUESTS is the ceiling on tracked quests and so on item
 	-- buttons; reading it beats a number written in by hand.
@@ -238,18 +250,52 @@ do
 		return n
 	end
 
+	-- Alpha and mouse, not Hide(). #16.
+	--
+	-- `WatchFrameItem<N>` are the quest-item USE buttons -- the part of the
+	-- tracker most likely to be secure, because using an item is a protected
+	-- action. The claim that it was safe to hide them was measured on
+	-- `WatchFrame`, the PARENT, and generalised: **a measurement on a parent
+	-- frame is not a measurement on its children.**
+	--
+	-- Probe v0.32 [G33] finally asked, and the answer was reassuring:
+	-- `WatchFrameItem1:IsProtected()` is false, explicitly false, and
+	-- `IsForbidden()` too. So this was a near miss rather than a live bug.
+	--
+	-- It changes anyway. Alpha is not a protected operation, so moving to it
+	-- means the combat question **stops existing** rather than resting on a
+	-- reading that could change on any patch -- and this runs from a
+	-- `hooksecurefunc` on `WatchFrame_Update`, which fires in combat whenever
+	-- objectives tick, inside a `pcall` that would swallow a blocked call
+	-- without a word.
 	function M:trackerPass()
 		for i = 1, maxItems() do
 			local b = _G["WatchFrameItem" .. i]
-			if b and type(b.Hide) == "function" then
+			if b and type(b.SetAlpha) == "function" then
 				local shown = false
 				if type(b.IsShown) == "function" then
 					local ok, s = pcall(b.IsShown, b)
 					shown = ok and s or false
 				end
 				if shown then
-					hiddenOnes[b] = true
-					pcall(b.Hide, b)
+					-- Recorded once. A later pass reads back the alpha this
+					-- AddOn set, so remembering it would make "what it was
+					-- before" mean 0 for ever after.
+					if taken[b] == nil then
+						local gotA, alpha = pcall(b.GetAlpha, b)
+						local gotM, mouse = true, true
+						if type(b.IsMouseEnabled) == "function" then
+							gotM, mouse = pcall(b.IsMouseEnabled, b)
+						end
+						taken[b] = {
+							alpha = (gotA and alpha) or 1,
+							mouse = (gotM and mouse) and true or false,
+						}
+					end
+					pcall(b.SetAlpha, b, 0)
+					if type(b.EnableMouse) == "function" then
+						pcall(b.EnableMouse, b, false)
+					end
 				end
 			end
 		end
@@ -257,14 +303,28 @@ do
 
 	function M:Enable()
 		ensureHook()
-		if type(WatchFrame_Update) == "function" then pcall(WatchFrame_Update) end
+		-- Applied here directly rather than by calling WatchFrame_Update.
+		-- Driving Blizzard's rebuild from AddOn code is the same shape as the
+		-- bag bug in #20, and there is nothing to rebuild: the buttons are
+		-- already on screen and this only changes how they are drawn.
+		M:trackerPass()
 	end
 
 	function M:Disable()
-		wipe(hiddenOnes)
-		-- The tracker decides for itself which buttons belong on screen, so
-		-- rebuilding is both the correct restore and the simplest one.
-		if type(WatchFrame_Update) == "function" then pcall(WatchFrame_Update) end
+		-- Put back exactly what was taken, which is all the restore needs to
+		-- be. No WatchFrame_Update: the tracker has not been changed, only
+		-- the alpha and mouse state of buttons it already drew.
+		for b, was in pairs(taken) do
+			if type(b) == "table" then
+				if type(b.SetAlpha) == "function" then
+					pcall(b.SetAlpha, b, was.alpha)
+				end
+				if type(b.EnableMouse) == "function" then
+					pcall(b.EnableMouse, b, was.mouse)
+				end
+			end
+		end
+		wipe(taken)
 	end
 
 	function M:Status()

@@ -998,6 +998,54 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 		check("the map is left alone in combat", ops() == "", ops())
 		check("and is still open, not half-cycled", WorldMapFrame:IsShown())
 		_G.__inCombat = false
+
+		-- ---- #17: a loading screen is not someone asking for a refresh ----
+		--
+		-- The cycle goes through HideUIPanel / ShowUIPanel, which taints
+		-- Blizzard's UI panel manager. The combat guard above prevents the
+		-- immediate error and does nothing about the taint, which surfaces
+		-- later as an unrelated blocked action with nothing pointing back
+		-- here.
+		--
+		-- And it was not only reached from a deliberate toggle:
+		--
+		--   PLAYER_ENTERING_WORLD -> ApplyAll -> Enable -> writeCVar
+		--                         -> refreshQuestUI -> cycleWorldMap
+		--
+		-- Any loading screen where questPOI had drifted took that path, out of
+		-- combat, with no guard in the way -- including the very first login
+		-- after installing.
+		-- Staged by writing the table directly, not through SetCVar: SetCVar
+		-- raises CVAR_UPDATE, the mirror re-asserts on the spot, and the drift
+		-- is gone before the loading screen arrives.
+		pcall(SlashCmdList["VANILLAQUESTING"], "on hideMapQuestHelper")
+		ns.db.state.questPOI = "1"
+		cvars.questPOI = "1"              -- drifted back
+		_G.closeWorldMap()
+		_G.__clearMapOps()
+		pcall(fire, "PLAYER_ENTERING_WORLD")
+		check("a loading screen re-asserts the variable", cvars.questPOI == "0",
+			cvars.questPOI)
+		check("and does NOT cycle the map to do it", ops() == "", ops())
+
+		-- The same write, asked for by a person, still cycles. Otherwise this
+		-- is a mute rather than a gate, and the on-screen helper would stay
+		-- stale until the map was next opened by hand.
+		pcall(SlashCmdList["VANILLAQUESTING"], "off hideMapQuestHelper")
+		ns.db.state.questPOI = "1"
+		cvars.questPOI = "1"
+		_G.__clearMapOps()
+		pcall(SlashCmdList["VANILLAQUESTING"], "on hideMapQuestHelper")
+		check("but a slash command still does", ops() == "show,hide", ops())
+
+		-- And the bulk commands are the player too.
+		pcall(SlashCmdList["VANILLAQUESTING"], "off hideMapQuestHelper")
+		ns.db.state.questPOI = "1"
+		cvars.questPOI = "1"
+		_G.__clearMapOps()
+		pcall(SlashCmdList["VANILLAQUESTING"], "on")
+		check("as is /vq on", ops() == "show,hide", ops())
+		pcall(SlashCmdList["VANILLAQUESTING"], "reset")
 		_G.closeWorldMap()
 
 		ns:ResetDefaults(true)
@@ -1873,7 +1921,14 @@ if scenario == "normal" or scenario == "no_button_type" then
 	ns:Set("trackerPlainText", true)
 	check("and active again once the parent is back",
 		ns:IsActive("trackerPlainTextAchievements") == true)
-	check("quest item buttons are hidden", WatchFrameItem1:IsShown() == false)
+	-- Alpha and mouse, not Hide(). #16: these are the quest-item USE buttons,
+	-- the part of the tracker most likely to be secure, and alpha is not a
+	-- protected operation -- so the combat question stops existing rather than
+	-- resting on a measurement that could change on any patch.
+	check("quest item buttons are made invisible",
+		WatchFrameItem1:GetAlpha() == 0, WatchFrameItem1:GetAlpha())
+	check("and unclickable with it", WatchFrameItem1:IsMouseEnabled() == false)
+	check("but not hidden -- the frame is left alone", WatchFrameItem1:IsShown() == true)
 
 	-- The tracker rebuilds constantly and puts its buttons back each time. A
 	-- one-shot fix at login would pass a naive test and fail in play.
@@ -1883,7 +1938,30 @@ if scenario == "normal" or scenario == "no_button_type" then
 	check("still not clickable after further rebuilds", questStill == false)
 	check("achievement lines still follow the sub-option after rebuilds",
 		achievementStill == false)
-	check("item buttons stay hidden after further rebuilds", WatchFrameItem1:IsShown() == false)
+	check("item buttons stay invisible after further rebuilds",
+		WatchFrameItem1:GetAlpha() == 0, WatchFrameItem1:GetAlpha())
+
+	-- And turning it off hands the buttons back exactly as they were, without
+	-- driving WatchFrame_Update -- the same rule as the bags (#20). The
+	-- previous alpha is recorded ONCE: a later pass reads back the 0 this
+	-- AddOn set, so re-recording would make "what it was before" mean 0 for
+	-- ever after.
+	do
+		local before = WatchFrameItem1:GetAlpha()
+		ns:Set("hideTrackerItemButtons", false)
+		check("switching it off restores the alpha",
+			WatchFrameItem1:GetAlpha() == 1, WatchFrameItem1:GetAlpha())
+		check("and the mouse with it", WatchFrameItem1:IsMouseEnabled() == true)
+		check("and it was 0 while the option was on", before == 0, before)
+
+		ns:Set("hideTrackerItemButtons", true)
+		WatchFrame_Update()
+		WatchFrame_Update()
+		ns:Set("hideTrackerItemButtons", false)
+		check("and an on/off cycle across rebuilds still restores 1",
+			WatchFrameItem1:GetAlpha() == 1, WatchFrameItem1:GetAlpha())
+		ns:Set("hideTrackerItemButtons", true)
+	end
 
 	-- Turning it off must hand the clicks back: a subtractive AddOn leaves no
 	-- trace when disabled.

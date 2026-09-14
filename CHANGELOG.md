@@ -8,6 +8,10 @@ cost to find, and why it was made that way — is the version history in [`dev/S
 
 ## 1.1.0
 
+- The world map no longer opens and closes by itself on a loading screen. It still refreshes when
+  you change a map option yourself.
+- The quest item buttons beside tracked quests are now made invisible rather than hidden, which
+  keeps the AddOn clear of the game's protected-action rules in combat.
 - A console variable that refuses one write is given another chance at the next loading screen,
   instead of that option staying dead for the rest of the session.
 - Switching an option off now always tries to put its setting back, even if a write failed earlier.
