@@ -370,11 +370,30 @@ elseif scenario == "cvar_refused" then
 	check("still only one warning after 5 more events", warns == 1, warns)
 	check("minimap side still worked", tracking[4].active == false, tracking[4].active)
 
+elseif scenario == "tracking_slow" then
+	-- A client that applies the write a moment late, which is what the API
+	-- actually promises: SetTracking returns nothing and the change is
+	-- announced by MINIMAP_UPDATE_TRACKING.
+	--
+	-- The AddOn used to read back on the very next line and latch `refused` on
+	-- the answer, so a slow client became a permanent refusal -- markers left
+	-- showing, and an accusation in chat about a setting that worked.
+	check("a slow write still lands", tracking[4].active == false,
+		tostring(tracking[4].active))
+	local warns = 0
+	for _, m in ipairs(chatlog) do
+		if tostring(m):find("would not turn off") then warns = warns + 1 end
+	end
+	check("and is never called refused", warns == 0, warns)
+
 elseif scenario == "tracking_refused" then
 	check("tracking unchanged", tracking[4].active == true)
+	-- One disagreement is not evidence any more, so drive enough passes for
+	-- the AddOn to be sure before asking whether it warned.
+	for i = 1, 5 do pcall(fire, "MINIMAP_UPDATE_TRACKING") end
 	local warns = 0
 	for _, m in ipairs(chatlog) do if tostring(m):find("would not turn off") then warns = warns + 1 end end
-	check("warned exactly once", warns == 1, warns)
+	check("warned exactly once once it is sure", warns == 1, warns)
 	for i = 1, 5 do pcall(fire, "MINIMAP_UPDATE_TRACKING") end
 	warns = 0
 	for _, m in ipairs(chatlog) do if tostring(m):find("would not turn off") then warns = warns + 1 end end

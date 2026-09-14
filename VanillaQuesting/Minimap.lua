@@ -121,13 +121,25 @@ local function notice()
 		C.highlight .. "/vq off hideMinimapQuestHelper" .. C.close .. ".")
 end
 
+-- How many passes may disagree before the write is called refused. Three is
+-- not a magic number: it is "more than a frame or two", which is all the race
+-- needs, while still standing down on a client that truly ignores the call
+-- rather than retrying forever.
+local VERIFY_ATTEMPTS = 3
+local failedVerifies = 0
+
 local function enforce()
 	if applying or refused then return end
 	if not ns.db or not ns.db.settings[M.key] then return end
 
 	local index, info = findEntry()
 	if not index then return end
-	if not info.active then return end   -- already off, nothing to do and no event to cause
+	if not info.active then
+		-- Already off: nothing to do, no event to cause, and proof that any
+		-- earlier disagreement was the client being slow rather than refusing.
+		failedVerifies = 0
+		return
+	end
 
 	-- The player just turned it on themselves; say why it is about to bounce.
 	if settled then notice() end
@@ -138,12 +150,34 @@ local function enforce()
 		return
 	end
 
-	-- Verify rather than assume the call took effect.
+	-- Verify, but not on the very next line.
+	--
+	-- `C_Minimap.SetTracking` returns nothing, and the client raises
+	-- MINIMAP_UPDATE_TRACKING when the change lands -- so an immediate
+	-- read-back can be answering from before the write. At login it often is,
+	-- while the tracking list is still being built.
+	--
+	-- Latching on that one reading turned a slow client into a permanent
+	-- refusal: the AddOn stood down, printed an accusation in chat, and left
+	-- the markers showing on a setting that would have worked. Reported from
+	-- play, and the code had been that way since the feature existed -- it
+	-- only surfaced once the entry happened to be ON at login, because this
+	-- function returns above when it is already off.
+	--
+	-- So one disagreement is not evidence. `enforce` runs again on every
+	-- MINIMAP_UPDATE_TRACKING and on every world entry; an entry still showing
+	-- after several passes is a write that is genuinely being ignored, which
+	-- is what `refused` is for.
 	local _, after = findEntry()
 	if after and after.active then
-		refused = true
-		ns:Warn("mm:refused",
-			"quest POI tracking would not turn off; minimap markers are untouched.")
+		failedVerifies = failedVerifies + 1
+		if failedVerifies >= VERIFY_ATTEMPTS then
+			refused = true
+			ns:Warn("mm:refused",
+				"quest POI tracking would not turn off; minimap markers are untouched.")
+		end
+	else
+		failedVerifies = 0
 	end
 end
 

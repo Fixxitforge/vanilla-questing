@@ -302,20 +302,57 @@ local tracking = {
 	{ name = "Track Digsites",     active = false },
 }
 local trackingLocked = false
+local trackingSlow, trackingPending, trackingStaleReads = false, nil, 0
 C_Minimap = {
 	GetNumTrackingTypes = function() return #tracking end,
-	GetTrackingInfo = function(i) return tracking[i] end,
+	GetTrackingInfo = function(i)
+		-- A slow client answers from before the write for one read.
+		--
+		-- C_Minimap.SetTracking returns nothing and the change is announced by
+		-- MINIMAP_UPDATE_TRACKING, so the value is not guaranteed to be
+		-- visible on the very next line. Modelling it as instant is what let
+		-- the AddOn ship a read-back that could not fail here and did fail in
+		-- game.
+		if trackingPending and trackingStaleReads > 0 then
+			trackingStaleReads = trackingStaleReads - 1
+			local snapshot = {}
+			for k, v in pairs(tracking[i] or {}) do snapshot[k] = v end
+			if i == trackingPending.index then snapshot.active = trackingPending.was end
+			return snapshot
+		end
+		if trackingPending then
+			local p = trackingPending
+			trackingPending = nil
+			if tracking[p.index] then
+				tracking[p.index].active = p.on
+				fire("MINIMAP_UPDATE_TRACKING")
+			end
+		end
+		return tracking[i]
+	end,
 	SetTracking = function(i, on)
 		if trackingLocked then return true end
-		if tracking[i] and tracking[i].active ~= on then
-			tracking[i].active = on and true or false
-			fire("MINIMAP_UPDATE_TRACKING")
+		if not tracking[i] then return true end
+		if tracking[i].active == (on and true or false) then return true end
+		if trackingSlow then
+			trackingPending = { index = i, on = on and true or false,
+				was = tracking[i].active }
+			-- A whole lookup pass, not one read. findEntry walks the list from
+			-- index 1 looking for the entry by name, so a single stale read is
+			-- spent on an unrelated row and the verification sees the new
+			-- value anyway -- which made this scenario pass with the bug in
+			-- place on the first attempt at it.
+			trackingStaleReads = #tracking
+			return true
 		end
+		tracking[i].active = on and true or false
+		fire("MINIMAP_UPDATE_TRACKING")
 		return true
 	end,
 }
 _G.tracking = tracking
 _G.lockTracking = function() trackingLocked = true end
+_G.slowTracking = function() trackingSlow = true end
 
 
 -- ---- objective tracker (Tier 2) ----
@@ -617,6 +654,7 @@ elseif scenario == "outline_late_off" then
 	__setCVarDefaults({ Outline = "2" }, { Outline = "0" })
 elseif scenario == "cvar_refused" then lockCVar("questPOI")
 elseif scenario == "tracking_refused" then lockTracking()
+elseif scenario == "tracking_slow" then slowTracking()
 elseif scenario == "no_cminimap" then C_Minimap = nil
 elseif scenario == "no_entry" then
 	tracking[4].name = "Something Else"
