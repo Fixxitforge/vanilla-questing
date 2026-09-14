@@ -27,6 +27,16 @@ jobs:
           toc_version=$(sed -n 's/^## Version:[[:space:]]*//p' VanillaQuesting/VanillaQuesting.toc | tr -d '\r')
           tag_version="${GITHUB_REF_NAME#v}"
           echo "toc=$toc_version" >> "$GITHUB_OUTPUT"
+          # A build suffix means this is a test build, not a release. The
+          # comparison below would catch it anyway, but with a message about
+          # tags that sends the reader to the wrong place.
+          case "$toc_version" in
+            *-*)
+              echo "::error::VanillaQuesting.toc says $toc_version -- that is a TEST BUILD."
+              echo "::error::Drop the -N build suffix before tagging a release."
+              exit 1
+              ;;
+          esac
           if [ "$toc_version" != "$tag_version" ]; then
             echo "::error::Tag is $GITHUB_REF_NAME but VanillaQuesting.toc says $toc_version."
             echo "::error::The .toc is the single source of truth. Fix it and re-tag."

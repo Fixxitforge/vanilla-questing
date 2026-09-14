@@ -28,6 +28,9 @@ local C      = ns.color
 local WHITE  = C.title
 local YELLOW = C.body
 local ORANGE = C.experimental
+-- Known limitations are informational, not a caution. See the palette note in
+-- Core.lua for why they stopped sharing the orange.
+local LIMIT  = C.limitation
 local GREY   = C.muted
 
 -- Said once, in one place, and shown wherever an experimental option is --
@@ -704,7 +707,7 @@ local function build()
 			local function body()
 				local text = m.desc or ""
 				if m.limitation then
-					text = text .. "\n\n" .. ORANGE .. m.limitation .. C.close
+					text = text .. "\n\n" .. LIMIT .. m.limitation .. C.close
 				end
 				if showsExperimentalNote(m) then
 					text = text .. "\n\n" .. ORANGE .. EXPERIMENTAL_NOTE .. C.close
@@ -818,7 +821,7 @@ local function tooltipFor(m)
 	-- A known cost of the option, stated where the player decides rather than
 	-- only in a readme they may never open.
 	if m.limitation then
-		tip = tip .. "|n|n" .. ORANGE .. m.limitation .. "|r"
+		tip = tip .. "|n|n" .. LIMIT .. m.limitation .. "|r"
 	end
 	if showsExperimentalNote(m) then
 		tip = tip .. "|n|n" .. ORANGE .. EXPERIMENTAL_NOTE .. C.close
@@ -1210,10 +1213,30 @@ local function registerNative()
 	-- puts it immediately after the module it belongs to.
 	local nativeInitializers = {}
 
+	-- An experimental option's NAME is orange in this panel too.
+	--
+	-- Reversal of a v1.0.0 decision, and the reason it was made is worth
+	-- keeping: [G23b] established that the native panel draws the checkbox
+	-- label and the tooltip TITLE from one string, so colouring the label
+	-- necessarily colours the tooltip's header. That was judged worse than a
+	-- plain label -- every other tooltip title is Blizzard's white, and one
+	-- orange header would look like a mistake.
+	--
+	-- It is not. The thing that is experimental is the option, the list is
+	-- what gets scanned, and a mark that appears in the canvas panel but not
+	-- the native one means the two disagree about what an experimental option
+	-- looks like. An orange header is a small cost for a mark that is actually
+	-- present where people read.
+	local function displayName(m)
+		local name = m.title or m.key
+		if m.experimental then return ORANGE .. name .. C.close end
+		return name
+	end
+
 	local function addCheckbox(m)
 		local oks, setting = pcall(Settings.RegisterAddOnSetting,
 			category, "VanillaQuesting_" .. m.key, m.key, ns.db.settings,
-			varType("Boolean"), m.title or m.key, ns.defaults[m.key] and true or false)
+			varType("Boolean"), displayName(m), ns.defaults[m.key] and true or false)
 		if not oks or type(setting) ~= "table" then return false end
 
 		if m.needsApply then askForApply(setting) end

@@ -3,7 +3,7 @@
 Reference material for developing this AddOn: what the client actually exposes, how other people
 solved the same problems, and what a port to another client would have to deal with.
 
-This is not documentation of this AddOn — that is `SPEC.md`. It is the notebook behind it.
+This is not documentation of this AddOn — that is `../SPEC.md`. It is the notebook behind it.
 
 | | |
 | --- | --- |

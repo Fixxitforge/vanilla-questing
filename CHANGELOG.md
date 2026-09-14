@@ -4,7 +4,7 @@ What changed in each version. Newest first.
 
 Entries say what shipped. They do not link issues: an issue can be reopened after a release, and
 then the changelog is claiming something the tracker contradicts. The long form — what a change
-cost to find, and why it was made that way — is the version history in [`SPEC.md`](SPEC.md).
+cost to find, and why it was made that way — is the version history in [`dev/SPEC.md`](dev/SPEC.md).
 
 ## 1.0.1
 

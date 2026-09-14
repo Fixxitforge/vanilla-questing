@@ -1376,30 +1376,37 @@ if scenario == "native" or scenario == "no_tooltipfunc" or scenario == "no_templ
 			end
 		end
 
-		-- The registered name is always plain. That is what makes the fallback
-		-- safe: if nothing below works, the label is white, never orange.
-		check("the registered setting name is never coloured",
-			expBox and expBox.setting:GetName():find("|cff", 1, true) == nil,
+		-- An experimental option's name IS coloured here, and its tooltip
+		-- title comes out orange with it. Both are deliberate.
+		--
+		-- [G23] settled the mechanism: the checkbox label and the tooltip
+		-- title both come from `data.name`, and there is no SetTooltipFunc to
+		-- take the tooltip over with. Orange in both or neither.
+		--
+		-- v1.0.0 chose neither, on the grounds that an orange tooltip title
+		-- would look like a defect while a plain label was only a preference
+		-- unmet. Reversed: the thing that is experimental is the option, the
+		-- list is what gets scanned, and a mark present in the canvas panel
+		-- but absent from the native one means the two panels disagree about
+		-- what an experimental option looks like.
+		check("an experimental option's registered name is orange",
+			expBox and expBox.setting:GetName():find("|cffff8019", 1, true) ~= nil,
 			expBox and expBox.setting:GetName() or "none")
+		check("and a normal option's is not coloured at all",
+			normalBox and normalBox.setting:GetName():find("|cff", 1, true) == nil,
+			normalBox and normalBox.setting:GetName() or "none")
 
 		local expTip = expBox and _G.__renderCheckboxTooltip(expBox)
 		local title = expTip and expTip[1]
-		check("the experimental option's tooltip title is white",
-			title and title.r == 1 and title.g == 1 and title.b == 1,
-			title and (tostring(title.r) .. "," .. tostring(title.g) .. "," .. tostring(title.b))
-				or "no title")
-		check("and carries no colour escape of its own",
-			title and tostring(title.text):find("|cff", 1, true) == nil,
+		check("so the tooltip title carries the same orange",
+			title and tostring(title.text):find("|cffff8019", 1, true) ~= nil,
 			title and tostring(title.text) or "no title")
 
-		-- No colour on the label either, and that is settled rather than
-		-- pending. [G23] dumped a checkbox initializer's whole key set: the
-		-- label and the tooltip title both come from `data.name`, and there is
-		-- no SetTooltipFunc to take the tooltip over with. Orange in both or
-		-- neither, so neither -- an orange tooltip title is a defect and a
-		-- plain label is only a preference unmet.
-		check("no option's name is coloured in this panel",
-			(expBox and expBox.data.name:find("|cff", 1, true) == nil)
+		-- The two panels have to agree. The canvas one colours the label by
+		-- SetTextColor rather than an escape, so this asserts the intent
+		-- reaches both rather than comparing the mechanisms.
+		check("the option name is marked in this panel as well as the canvas one",
+			(expBox and expBox.data.name:find("|cffff8019", 1, true) ~= nil)
 				and (normalBox and normalBox.data.name:find("|cff", 1, true) == nil),
 			(expBox and expBox.data.name or "none") .. " / "
 				.. (normalBox and normalBox.data.name or "none"))

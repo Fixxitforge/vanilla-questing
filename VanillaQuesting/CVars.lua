@@ -203,7 +203,7 @@ local RULES = {
 		-- under the description; it does not add a label. This one shipped
 		-- without the prefix once, which made a stated cost read as a second
 		-- sentence of description.
-		limitation = "Known limitation: also removes the loot sparkles on gathering nodes (such as herbs, mining veins, etc).",
+		limitation = "Known limitation: also removes the loot sparkles on gathering nodes, such as herbs, mining veins, etc.",
 	},
 	{
 		-- SHARED, the same shape as Instant Quest Text and Automatic Quest

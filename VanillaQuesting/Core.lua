@@ -46,11 +46,25 @@ ns.color = {
 	muted       = GRAY_FONT_COLOR_CODE      or "|cff808080",
 	close       = FONT_COLOR_CODE_CLOSE     or "|r",
 
-	-- This AddOn's own. One orange, used for every warning-ish thing:
-	-- the Experimental heading, the experimental note, and known limitations.
-	-- There were two near-identical oranges; this is the survivor.
+	-- This AddOn's own.
+	--
+	-- `brand` is the chat blue, and it carries the informational things: the
+	-- chat prefix, the tracking-button note, and **known limitations**.
+	--
+	-- `experimental` is the orange, and it carries the ones that are a
+	-- caution: the Experimental heading and its description, the option names
+	-- under it, and the "untested and potentially unstable" note.
+	--
+	-- Limitations used to be orange too, and the two were competing. A known
+	-- limitation is not a warning -- it is a fact about what the option does,
+	-- stated where the player decides -- and painting it the same colour as
+	-- "this might break your game" overstates it and dilutes the real warning
+	-- at the same time. One orange, one blue, and each means one thing.
 	brand        = "|cff66ccff",
 	experimental = "|cffff8019",
+	-- A named alias rather than reusing `brand` at the call sites, so the two
+	-- can be pulled apart later without hunting for which blue meant what.
+	limitation   = "|cff66ccff",
 	warning      = "|cffff9955",
 	on           = "|cff55ff55",
 	off          = "|cffff5555",

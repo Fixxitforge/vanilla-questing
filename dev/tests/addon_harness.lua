@@ -181,7 +181,21 @@ _G.fire = fire
 _G.fireCount = fireCount
 _G.maxEventDepth = function() return maxDepth end
 
-C_AddOns = { GetAddOnMetadata = function(_, k) if k == "Version" then return "1.0.0" end end }
+-- Read from the .toc, not hardcoded.
+--
+-- It was "1.0.0" here for eleven versions while the .toc moved on, so every
+-- check that mentioned the version was asserting a constant against itself.
+-- AGENT.md listed "the stub in addon_harness.lua" as a place to remember to
+-- update by hand; it is not one any more. Same fix the probe made for its own
+-- RECON_VERSION after shipping 0.4 while announcing 0.3.
+local tocVersion = (function()
+	local f = io.open("../../VanillaQuesting/VanillaQuesting.toc")
+	if not f then return "?" end
+	local text = f:read("*a")
+	f:close()
+	return text:match("##%s*Version:%s*([^\r\n]+)") or "?"
+end)()
+C_AddOns = { GetAddOnMetadata = function(_, k) if k == "Version" then return tocVersion end end }
 
 Settings = {
 	RegisterCanvasLayoutCategory = function(frame, name)

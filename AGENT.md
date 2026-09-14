@@ -82,6 +82,7 @@ So:
 ```
 VanillaQuesting/
   VanillaQuesting.toc   <- the ONLY place the version number exists
+                           (MAJOR.MINOR.PATCH-BUILD while testing; the -BUILD goes at release)
   Templates.xml         the description row for the settings list; Blizzard has none
   Core.lua              addon table, palette, events, saved variables, slash commands
   CVars.lua             table-driven console-variable rules (RULES)
@@ -99,16 +100,16 @@ VanillaQuesting/
 AGENT.md                this file
 CHANGELOG.md            short, per-version, user-facing. The release workflow reads it.
 .github/workflows/release.yml   builds the zip and publishes on a version tag
-SPEC.md                 the living record: work list, architecture, rules, version history,
-                        recon conclusions. Long. Structured as
-                        core -> Version history -> Recon results.
-STRINGS.md              every player-visible string, labelled. A RECORD of what ships.
 README.md               the public front page
 dev/README.md           what the probe is, why old logs are kept, how to run the tests
+dev/SPEC.md             the living record: work list, architecture, rules, version history,
+                        recon conclusions. Long. Structured as
+                        core -> Version history -> Recon results.
+dev/STRINGS.md          every player-visible string, labelled. A RECORD of what ships.
 dev/UnmarkedRecon/      the probe AddOn. Dev-only, never folded into Vanilla Questing.
                         Recon.lua + Templates.xml. Sections G1..G27; the ACTIVE
                         table switches them on and off.
-dev/recon-log-*.txt     raw probe output. Every conclusion in SPEC.md is evidence from one.
+dev/logs/recon-log-*.txt  raw probe output. Every conclusion in dev/SPEC.md is evidence from one.
                         Kept, never pruned: a later run switches settled sections off, so an
                         earlier log is often the only remaining record of an answer.
 dev/BLIP-TEXTURE-WORKFLOW.md   how the minimap blip atlas would be replaced
@@ -128,17 +129,17 @@ Change one of these and the others are part of the same change, not a follow-up.
 
 | If I change… | …then also |
 | --- | --- |
-| **The version** | `VanillaQuesting.toc` **only** — everything reads it back through `GetAddOnMetadata`. Then the stub in `dev/tests/addon_harness.lua`, a `## <version>` section in `CHANGELOG.md`, and the tag (see Releasing). |
-| **Any player-visible string** | `STRINGS.md`, in the same pass. Both panels if it appears in both. |
-| **An option's description or limitation** | `STRINGS.md`, `README.md` if it is user-facing behaviour, the native tooltip *and* the canvas fallback tooltip — they have drifted apart twice. |
-| **A module** | Give it a unique `order`; add it to the panel and to `/vq status` (all three are guarded by tests). Update `SPEC.md`'s work list. |
-| **Anything about what the AddOn can't do** | All **three** Known limitations sections: `README.md`, `SPEC.md`, and the **CurseForge listing**. See below — they are written at different depths on purpose, but they must never disagree about the facts. |
+| **The version** | `VanillaQuesting.toc` **only** — everything reads it back through `GetAddOnMetadata`, the test harness included. Then a `## <version>` section in `CHANGELOG.md`, and the tag (see Releasing). |
+| **Any player-visible string** | `dev/STRINGS.md`, in the same pass. Both panels if it appears in both. |
+| **An option's description or limitation** | `dev/STRINGS.md`, `README.md` if it is user-facing behaviour, the native tooltip *and* the canvas fallback tooltip — they have drifted apart twice. |
+| **A module** | Give it a unique `order`; add it to the panel and to `/vq status` (all three are guarded by tests). Update `dev/SPEC.md`'s work list. |
+| **Anything about what the AddOn can't do** | All **three** Known limitations sections: `README.md`, `dev/SPEC.md`, and the **CurseForge listing**. See below — they are written at different depths on purpose, but they must never disagree about the facts. |
 | **A feature, or a command** | The **CurseForge listing** too. It is a public promise and goes stale silently. |
 | **A rule I learn the hard way** | This file. |
 
 ### Backlog and bugs do **not** live in a file
 
-They are [GitHub Issues](https://github.com/Fixxitforge/vanilla-questing/issues). `SPEC.md` points at
+They are [GitHub Issues](https://github.com/Fixxitforge/vanilla-questing/issues). `dev/SPEC.md` points at
 the tracker and does not list them — a copy goes stale the first time an issue is closed
 elsewhere.
 
@@ -154,7 +155,7 @@ or whenever a new limitation is found.
 | --- | --- |
 | **CurseForge** | The cleanest. What it means for the player, with the technical reasoning left out. |
 | **`README.md`** | A little more detail, a little more technical. Names the CVar or the frame where that helps someone reading the code. |
-| **`SPEC.md`** | Fully technical. The measurement, the probe section, what was tried and rejected. |
+| **`dev/SPEC.md`** | Fully technical. The measurement, the probe section, what was tried and rejected. |
 
 Different depth, never different facts. If the listing says a thing is impossible and the spec
 says it is merely unshipped, one of them is lying to somebody.
@@ -176,6 +177,16 @@ the **Releases → Draft a new release** page on GitHub, which creates the tag i
 
 - **Versioning.** `MAJOR.MINOR.PATCH`. The `.toc` is the single source of truth — a version
   string hardcoded in Lua is how the probe once shipped announcing 0.4 while its `.toc` said 0.3.
+
+  **Between releases the `.toc` carries a build suffix: `MAJOR.MINOR.PATCH-N`**, `N` starting at 1
+  and going up by one every time a build is handed over for testing. It exists so a tester can see
+  at a glance which build they actually have — several rounds have been spent on a symptom that
+  turned out to be the previous zip still installed, and `/vq status` and the AddOn list both show
+  this string.
+
+  **The suffix is dropped in the commit that releases**, so `1.1.0-7` becomes `1.1.0` and the tag
+  matches. The release workflow refuses to build a `.toc` with a suffix and says why, rather than
+  letting the tag-mismatch check report it as a tagging error.
 - **Branch.** Work lands on `main` directly.
 - **"AddOn"**, not "addon", in every user-visible string and in comments.
 - **One name per feature.** The module key is the saved-settings key is the name the player

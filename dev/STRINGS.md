@@ -120,7 +120,7 @@ only when this client lacks something the AddOn expected, so most players never 
 | `PANEL.CATEGORY` | Blizzard's AddOn list | `<AddOn name>` | Same variable as `ID.NAME`. |
 | `PANEL.VERSION` | Grey heading at the foot of the list | `v<version>` in `COLOR.MUTED` | Read from the `.toc`, never typed. |
 | `PANEL.SECTION_EXPERIMENTAL` | Heading above the experimental options | `Experimental` in `COLOR.EXPERIMENTAL` | |
-| `PANEL.OPTION_NAME` | Each checkbox label | `TITLE_*` from section 5. Orange (`COLOR.EXPERIMENTAL`) for an experimental option in the **canvas** panel only | The native panel draws the label and the tooltip title from one string and offers no way to separate them (`[G23b]`), so it is left uncoloured there — Blizzard's yellow label, white title. An orange tooltip title would be worse than a plain label, and `/vq status` follows the panel rather than diverging from it. |
+| `PANEL.OPTION_NAME` | Each checkbox label | `TITLE_*` from section 5. Orange (`COLOR.EXPERIMENTAL`) for an experimental option, in **both** panels | The native panel draws the label and the tooltip title from one string and offers no way to separate them (`[G23b]`), so an experimental option's tooltip **title** comes out orange too. Accepted from v1.1.0: the thing that is experimental is the option, the list is what gets scanned, and a mark present in one panel but not the other means the two disagree about what an experimental option looks like. Until then it was left plain here, to keep every tooltip title Blizzard's white. |
 | `PANEL.PRESET_LABEL` | The dropdown's own label | `Preset` | |
 
 ### Preset choices
@@ -152,7 +152,7 @@ Blizzard paints the first line — the option's name — white by itself. Everyt
 1. `DESC_*` from section 5, in `COLOR.BODY`. The tooltip's first line is the option's name,
    painted white by Blizzard — it is **not** orange for an experimental option, even though the
    checkbox label is.
-2. A blank line, then `LIMIT_*` if the option has one, in `COLOR.EXPERIMENTAL`.
+2. A blank line, then `LIMIT_*` if the option has one, in `COLOR.LIMITATION`.
 
    **`Known limitation:` is part of the `LIMIT_*` string, not something the panel adds.** Every
    one of them opens with it. `LIMIT_noQuestSparkles` shipped once without it, which turned a
@@ -357,7 +357,7 @@ The **key** column is what the player types after `/vq on`, `/vq off` or `/vq st
 | --- | --- |
 | `TITLE_noQuestSparkles` | `Remove Loot Sparkles` |
 | `DESC_noQuestSparkles` | `Removes the sparkle effect on quest objects.` |
-| `LIMIT_noQuestSparkles` | `Known limitation: also removes the loot sparkles on gathering nodes (such as herbs, mining veins, etc).` |
+| `LIMIT_noQuestSparkles` | `Known limitation: also removes the loot sparkles on gathering nodes, such as herbs, mining veins, etc.` |
 | `ON_noQuestSparkles` | `Loot sparkles removed from quest objects.` |
 | `OFF_noQuestSparkles` | `Loot sparkles on quest objects restored.` |
 | `LABEL_noQuestSparkles` | `quest object sparkles` |
@@ -414,6 +414,7 @@ These four are the AddOn's own, and have no Blizzard equivalent to inherit:
 | `COLOR.BRAND` | `|cff66ccff` — light blue | The chat prefix, tooltip headers that are ours, `Managed by`. Chosen to stand clear of Blizzard's white body text and yellow highlights. |
 | `COLOR.EXPERIMENTAL` | `|cffff8019` — orange | The `Experimental` heading and its tooltip, the experimental note, and known-limitation lines. The AddOn's only orange. |
 | `COLOR.WARNING` | `|cffff9955` — pale orange | Warning messages in chat. |
+| `COLOR.LIMITATION` | `|cff66ccff` | A `LIMIT_*` line, in both panels. The same blue as `COLOR.BRAND`, named separately so the two can diverge later. It was `COLOR.EXPERIMENTAL` until v1.1.0: a known limitation is a fact about what the option does, not a caution, and sharing the orange overstated it while diluting the real warning. |
 | `COLOR.ON` / `COLOR.OFF` | `|cff55ff55` / `|cffff5555` | The words `on` and `off` in `/vq status`. |
 
 `COLOR.HIGHLIGHT` and `COLOR.BODY` are deliberately the same value doing two jobs — that is what
