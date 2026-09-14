@@ -6,6 +6,23 @@ Entries say what shipped. They do not link issues: an issue can be reopened afte
 then the changelog is claiming something the tracker contradicts. The long form — what a change
 cost to find, and why it was made that way — is the version history in [`SPEC.md`](SPEC.md).
 
+## 1.0.1
+
+- A clean install no longer announces anything in chat on first login. The AddOn was reading the
+  game's console variables before the client had loaded them, and mistook its own first pass for
+  the player changing something.
+- **Plain Text Achievements**, a new sub-option under Plain Text Tracker, takes the links out of
+  tracked achievement lines as well as quests.
+- Turning the minimap option off now puts Blizzard's *Track Quest POIs* back, and says nothing
+  while doing it.
+- Outline Mode now only reports Blizzard's own setting rather than holding an opinion about it.
+  `/vq on`, `/vq off`, Defaults and both presets all leave it alone.
+- Switching an option off now always switches its effect off, including when the option had
+  turned itself on to follow a change made in Blizzard's own options.
+- Hide Boss Portraits no longer asks for a UI reload.
+- `/vq status <option>` reports one option instead of the whole list, and the command list is five
+  lines rather than seven.
+
 ## 1.0.0
 
 First release.

@@ -29,17 +29,15 @@ or `/reload`, then type `/vq` to open the options.
 | Command | What it does |
 | --- | --- |
 | `/vq` | Open the options panel |
-| `/vq on` | Enable all vanilla options |
-| `/vq off` | Disable all options |
-| `/vq on <option>` | Turn one option on |
-| `/vq off <option>` | Turn one option off |
-| `/vq status` | List every option and its current state |
+| `/vq on [option]` | Enable all vanilla options, or one `[option]` |
+| `/vq off [option]` | Disable all options, or one `[option]` |
+| `/vq status [option]` | List status of all options, or one `[option]` |
 | `/vq reset` | Restore default options |
 | `/vq help` | List the commands |
 
 `/vanillaquesting` works anywhere `/vq` does, if something else has claimed the short form.
 
-`<option>` is one of the names below — `/vq status` lists them in game:
+`[option]` is one of the names below — `/vq status` lists them in game:
 
 `hideMapQuestHelper` · `hideMinimapQuestHelper` · `hideBossPortraits` · `noInstantQuestText` ·
 `hideCharacterFrame` · `hideTooltipsQuestProgress` · `noAutoQuestTracking` · `trackerPlainText` ·

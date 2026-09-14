@@ -511,6 +511,13 @@ what is still missing is the commit-flag value that asks Apply to appear. Probe 
 **One ordering.** `ns:SortedModules()` is the single source; the options panel and `/vq status`
 both use it, so they cannot drift apart as options are added.
 
+**One status row.** `/vq status` and `/vq status <option>` print through the same `statusLine`,
+so a whole-list reading and a single-option reading cannot disagree about what *on* means. The
+only difference is indentation: the full list indents a sub-option under its parent, and a row
+asked for by name has nothing to sit under. Like `/vq on|off <option>`, the name is resolved
+through `resolveSetting`, so a display key, a saved-setting name and an old v1 name all work,
+case-insensitively.
+
 **"AddOn", not "addon".** Blizzard's own capitalisation, in every user-visible string and in
 the comments.
 
@@ -1267,6 +1274,53 @@ so a fit there appeared to survive. It now runs it last, fires `OnSizeChanged` f
 part that matters — the tooltip checks no longer tick the frame over before measuring. **A fix
 that needs a frame tick to look right is a fix the player watches happen.** With the size hook
 removed, four checks go red at 62 pixels where 34 is correct: the grow, caught at last.
+
+### v1.0.1 — a fix that was reverted, and the test that would have kept it
+
+#### Adopting an option on has to claim the variable too
+
+Reported from the client: Outline Mode disabled, the player moves Blizzard's own *Outline Mode*
+to 1, 2 or 3, then unticks the Vanilla Questing option — and Blizzard's setting stays where it
+was. Ticking and unticking a second time worked. That second pass is the whole diagnosis: the
+first untick had nothing to hand back.
+
+The two-way mirror adopts an option **on** by writing `ns.db.settings[key]` directly. It has to:
+the variable already holds the value this AddOn would have asked for, so there is nothing to
+apply. But writing the setting directly means `Enable` never runs, and `Enable` is what records
+`state[cvar]` — the marker that says *this AddOn drove this variable*. `Disable` opens with
+`if original == nil then return end` and wrote nothing at all. **An option that reads off with
+its effect still running.**
+
+The marker is now set on the adopt-on path as well. It is an ownership marker and nothing else —
+what it holds is not read, so recording "now" is as good as recording the value.
+
+The comment that used to sit there said there was nothing to remember "that has not been
+remembered already". That was true while `Disable` kept the marker. It stopped being true when
+`Disable` started clearing the marker as it hands the variable back, and the comment stayed
+behind explaining why the code was right.
+
+#### Why it came back
+
+This exact bug was found and fixed once already. The fix then went out with
+`git revert f62c8e3` — a revert of "Off means off", a different change that shared the commit —
+and nothing noticed, because **no scenario covered adopt-on-then-switch-off**. Five cases now do,
+across all three of the mirrored variables and all three on-values of `Outline`, and the suite
+was run with the fix removed to watch them go red first. The rule in `dev/README.md` is the one
+that matters here: a new scenario is not finished until it has been run against the broken code
+and seen to fail.
+
+#### `/vq status <option>`
+
+The command list was seven lines for five commands, because `/vq on` and `/vq on <option>` were
+written as separate rows. They are one command with an optional argument, and the help now says
+so in the shape the player reads: `/vq on [option]`. `/vq status` gained the same optional
+argument.
+
+One renderer prints both readings. `statusLine` is shared, so a whole-list reading and a
+single-option reading cannot come to disagree about what *on* means — the same reason
+`ns:SortedModules()` is the single source of ordering. The only difference is indentation: the
+full list indents a sub-option under its parent, and a row asked for by name has nothing to sit
+under.
 
 ## Recon results
 

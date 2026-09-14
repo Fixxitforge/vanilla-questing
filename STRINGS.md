@@ -38,7 +38,7 @@ Every line is prefixed automatically. Do not repeat the name inside a message.
 | `CHAT.OFF_ALL` | `/vq off` | `Disabled all options.` |
 | `CHAT.OPTION_CHANGED` | `/vq on <option>` / `/vq off <option>` | `<optionKey>` in `COLOR.HIGHLIGHT`, then ` on` in `COLOR.ON` or ` off` in `COLOR.OFF`, then `. <effect>.` — `<effect>` is the option's own `ON_*` / `OFF_*` text from section 5 |
 | `CHAT.RESET` | `/vq reset` | `Restored default options.` |
-| `CHAT.UNKNOWN_OPTION` | `/vq on wrongname` | `Unknown option '<option>'.` in `COLOR.WARNING` + ` Try ` + `/vq help` in `COLOR.HIGHLIGHT` + ` for list of commands.` |
+| `CHAT.UNKNOWN_OPTION` | `/vq on wrongname`, `/vq status wrongname` | `Unknown option '<option>'.` in `COLOR.WARNING` + ` Try ` + `/vq help` in `COLOR.HIGHLIGHT` + ` for list of commands.` |
 | `CHAT.UNKNOWN_COMMAND` | `/vq wrongword` | `Unknown command '<word>'.` in `COLOR.WARNING` + ` Try ` + `/vq help` in `COLOR.HIGHLIGHT` + ` for list of commands.` |
 | `CHAT.NO_PANEL` | `/vq` when the options panel could not be built | `Options panel unavailable.` in `COLOR.WARNING` + ` Use ` + `/vq on|off <option>` in `COLOR.HIGHLIGHT` + `.` |
 
@@ -47,7 +47,8 @@ Every line is prefixed automatically. Do not repeat the name inside a message.
 | ID | Trigger | Text |
 | --- | --- | --- |
 | `CHAT.STATUS_TITLE` | `/vq status` | `<AddOn name> v<version> - Status and list of options` |
-| `CHAT.STATUS_ROW` | one per option | two spaces, then `on ` in `COLOR.ON` or `off ` in `COLOR.OFF`, two spaces, `<optionKey>` in `COLOR.HIGHLIGHT`, then ` (experimental)` in `COLOR.EXPERIMENTAL` where it applies. The option name is never recoloured — the note after it carries the mark. |
+| `CHAT.STATUS_ONE_TITLE` | `/vq status <option>` | `<AddOn name> v<version> - Status of one option` |
+| `CHAT.STATUS_ROW` | one per option, and the single row under `CHAT.STATUS_ONE_TITLE` | two spaces, then `on ` in `COLOR.ON` or `off ` in `COLOR.OFF`, two spaces, `<optionKey>` in `COLOR.HIGHLIGHT`, then ` (experimental)` in `COLOR.EXPERIMENTAL` where it applies. The option name is never recoloured — the note after it carries the mark. In the full list a sub-option is indented by three further spaces, so the list reads the way the panel looks; asked for by name it is the only row on screen and is not indented. |
 | `CHAT.HELP_TITLE` | `/vq help` | `<AddOn name> v<version> - List of commands` |
 | `CHAT.HELP_ROW` | one per command | two spaces, `<command>` in `COLOR.HIGHLIGHT`, then `  -  `, then the description below |
 
@@ -59,11 +60,9 @@ is not monospaced, so padding to a column comes out ragged.
 | ID | Command | Description |
 | --- | --- | --- |
 | `HELP.OPEN` | `/vq` | `Open the options panel` |
-| `HELP.ON` | `/vq on` | `Enable all vanilla options` |
-| `HELP.OFF` | `/vq off` | `Disable all options` |
-| `HELP.STATUS` | `/vq status` | `List every option and its current state` |
-| `HELP.ON_ONE` | `/vq on <option>` | `Turn one option on` |
-| `HELP.OFF_ONE` | `/vq off <option>` | `Turn one option off` |
+| `HELP.ON` | `/vq on [option]` | `Enable all vanilla options, or one [option]` |
+| `HELP.OFF` | `/vq off [option]` | `Disable all options, or one [option]` |
+| `HELP.STATUS` | `/vq status [option]` | `List status of all options, or one [option]` |
 | `HELP.RESET` | `/vq reset` | `Restore default options` |
 
 ### Chat: when a Blizzard control is changed instead
@@ -225,7 +224,7 @@ so they should start uppercase.
 
 `LABEL_*` appears only inside warnings, in the middle of a sentence, so it too starts lowercase.
 
-The **key** column is what the player types after `/vq on` and what appears in tooltips.
+The **key** column is what the player types after `/vq on`, `/vq off` or `/vq status`, and what appears in tooltips.
 
 ### hideMapQuestHelper
 

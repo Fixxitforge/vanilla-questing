@@ -399,25 +399,40 @@ end)
 -- Slash command
 ---------------------------------------------------------------------
 
-local function status()
+-- One option, as the status list prints it. `indent` is what makes a
+-- sub-option sit under its parent in the full list; asked for by name it is
+-- the only line on screen, so there is nothing to sit under.
+local function statusLine(m, indent)
+	-- What it is doing, not what it is set to. A sub-option under a parent
+	-- that is off is doing nothing, and saying "on" next to a tracker that
+	-- is plainly still clickable is the readout arguing with the game.
+	local on = ns:IsActive(m.key)
+	-- The live CVar readout is for developer eyes; the player wants to
+	-- know what is on.
+	-- Every option name in the same yellow, experimental or not. The
+	-- "(experimental)" note after it carries the mark on its own, and the
+	-- panel cannot colour its names at all (see [G23b]) -- so colouring
+	-- them here made the two disagree about what an option looks like.
+	ns:Print("  " .. (on and (C.on .. "on " .. C.close) or (C.off .. "off " .. C.close)) ..
+		"  " .. (indent and m.parent and "   " or "") ..
+		C.highlight .. tostring(m.key) .. C.close ..
+		(m.experimental and (" " .. C.experimental .. "(experimental)" .. C.close) or ""))
+end
+
+-- No argument lists everything; a key prints that one option. Same line, same
+-- wording, same colours either way -- two readouts that could disagree about
+-- what "on" means would be worse than no single-option lookup at all.
+local function status(only)
+	if only then
+		ns:Print(ns.title .. " v" .. tostring(ns.version) .. " - Status of one option")
+		statusLine(ns.modules[only])
+		return
+	end
 	ns:Print(ns.title .. " v" .. tostring(ns.version) .. " - Status and list of options")
 	local ordered = ns:SortedModules()
 	for i = 1, #ordered do
-		local m = ordered[i]
-		-- What it is doing, not what it is set to. A sub-option under a parent
-		-- that is off is doing nothing, and saying "on" next to a tracker that
-		-- is plainly still clickable is the readout arguing with the game.
-		local on = ns:IsActive(m.key)
-		-- The live CVar readout is for developer eyes; the player wants to
-		-- know what is on.
-		-- Every option name in the same yellow, experimental or not. The
-		-- "(experimental)" note after it carries the mark on its own, and the
-		-- panel cannot colour its names at all (see [G23b]) -- so colouring
-		-- them here made the two disagree about what an option looks like.
 		-- A sub-option is indented, so the list reads the way the panel looks.
-		ns:Print("  " .. (on and (C.on .. "on " .. C.close) or (C.off .. "off " .. C.close)) ..
-			"  " .. (m.parent and "   " or "") .. C.highlight .. tostring(m.key) .. C.close ..
-			(m.experimental and (" " .. C.experimental .. "(experimental)" .. C.close) or ""))
+		statusLine(ordered[i], true)
 	end
 end
 
@@ -517,15 +532,26 @@ SlashCmdList["VANILLAQUESTING"] = function(msg)
 			ns:Print("  " .. C.highlight .. cmd .. C.close .. "  -  " .. what)
 		end
 		line("/vq", "Open the options panel")
-		line("/vq on", "Enable all vanilla options")
-		line("/vq off", "Disable all options")
-		line("/vq status", "List every option and its current state")
-		line("/vq on <option>", "Turn one option on")
-		line("/vq off <option>", "Turn one option off")
+		line("/vq on [option]", "Enable all vanilla options, or one [option]")
+		line("/vq off [option]", "Disable all options, or one [option]")
+		line("/vq status [option]", "List status of all options, or one [option]")
 		line("/vq reset", "Restore default options")
 
 	elseif cmd == "status" then
-		status()
+		if arg == "" then
+			status()
+		else
+			local key = resolveSetting(arg)
+			-- resolveSetting answers from the saved settings, which is the
+			-- right handle for /vq on|off. Printing a status line needs the
+			-- module behind it, so a key with no module is still unknown here.
+			if key and ns.modules[key] then
+				status(key)
+			else
+				ns:Print(C.warning .. "Unknown option \'" .. arg .. "\'." .. C.close ..
+					" Try " .. C.highlight .. "/vq help" .. C.close .. " for list of commands.")
+			end
+		end
 
 	elseif cmd == "" then
 		-- Only a bare /vq opens the panel. An unrecognised word is a mistake,

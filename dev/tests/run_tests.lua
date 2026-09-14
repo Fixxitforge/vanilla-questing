@@ -993,6 +993,82 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 		if tostring(m):find("/vq status", 1, true) then helpSeen = true end
 	end
 	check("/vq help lists commands", helpSeen)
+
+	-- ---- the help text itself ----
+	--
+	-- Held as literals on purpose, the same way EXPERIMENTAL_NOTE_TEXT is:
+	-- change the wording in the AddOn and this goes red, which is the reminder
+	-- that STRINGS.md and the README table are part of the same change.
+	--
+	-- The bracket form is what the player sees. `/vq on` and `/vq on <option>`
+	-- used to be two separate lines, which made one command look like two and
+	-- pushed the list to seven rows for five commands.
+	before3 = #chatlog
+	pcall(SlashCmdList["VANILLAQUESTING"], "help")
+	helpText = table.concat(chatlog, "\n", before3 + 1)
+	for _, want in ipairs({
+		"/vq on [option]",
+		"Enable all vanilla options, or one [option]",
+		"/vq off [option]",
+		"Disable all options, or one [option]",
+		"/vq status [option]",
+		"List status of all options, or one [option]",
+	}) do
+		check("help says " .. want, helpText:find(want, 1, true) ~= nil, helpText)
+	end
+	for _, gone in ipairs({ "/vq on <option>", "/vq off <option>",
+		"Turn one option on", "Turn one option off",
+		"List every option and its current state" }) do
+		check("help no longer says " .. gone, helpText:find(gone, 1, true) == nil)
+	end
+
+	-- ---- /vq status <option> ----
+	ns:ResetDefaults(true)
+	before3 = #chatlog
+	ok, err = pcall(SlashCmdList["VANILLAQUESTING"], "status hideBossPortraits")
+	check("/vq status <option> runs", ok, err)
+	local oneText = table.concat(chatlog, "\n", before3 + 1)
+	check("it is titled as one option",
+		oneText:find("- Status of one option", 1, true) ~= nil, oneText)
+	check("and prints the option asked for",
+		oneText:find("hideBossPortraits", 1, true) ~= nil, oneText)
+	-- Two lines, header and row. A single-option lookup that prints the whole
+	-- list is the bug this is here to catch.
+	check("and nothing else", #chatlog - before3 == 2, #chatlog - before3)
+
+	-- The same handle as /vq on|off: display key, saved-setting name and the
+	-- old v1 names, case-insensitively.
+	for _, alias in ipairs({ "showBosses", "HIDEBOSSPORTRAITS" }) do
+		before3 = #chatlog
+		pcall(SlashCmdList["VANILLAQUESTING"], "status " .. alias)
+		check("/vq status accepts " .. alias,
+			table.concat(chatlog, "\n", before3 + 1):find("- Status of one option", 1, true) ~= nil)
+	end
+
+	-- And it reports what the option is doing, not what it is set to.
+	ns:Set("hideBossPortraits", false)
+	before3 = #chatlog
+	pcall(SlashCmdList["VANILLAQUESTING"], "status hideBossPortraits")
+	check("a switched-off option reads off",
+		table.concat(chatlog, "\n", before3 + 1):find("off", 1, true) ~= nil)
+	ns:Set("hideBossPortraits", true)
+
+	-- A sub-option under a parent that is off is doing nothing, whichever way
+	-- it is asked for.
+	ns:Set("trackerPlainText", false)
+	before3 = #chatlog
+	pcall(SlashCmdList["VANILLAQUESTING"], "status trackerPlainTextAchievements")
+	check("a sub-option under an off parent reads off",
+		ns:IsActive("trackerPlainTextAchievements") == false and
+		table.concat(chatlog, "\n", before3 + 1):find("off", 1, true) ~= nil)
+
+	before3 = #chatlog
+	ok, err = pcall(SlashCmdList["VANILLAQUESTING"], "status wibble")
+	check("/vq status with a bad name runs", ok, err)
+	check("and complains rather than listing everything",
+		table.concat(chatlog, "\n", before3 + 1):find("Unknown option", 1, true) ~= nil)
+
+	ns:ResetDefaults(true)
 end
 
 if fail > 0 then os.exit(1) end
@@ -1840,6 +1916,54 @@ if scenario == "normal" then
 	cvars.Outline = "0"
 	ns:Set("outlineMode", true)
 	check("but from off it asks for 2, Blizzard's own default", cvars.Outline == "2", cvars.Outline)
+	ns:ResetDefaults(true)
+
+	-- ---- adopting an option on must claim the variable ----
+	--
+	-- Reported from the client: Outline disabled, player moves Blizzard's
+	-- Outline Mode to 1/2/3, then unticks the VQ option -- and Blizzard's
+	-- setting stays where it was. Ticking and unticking a second time fixed
+	-- it, which is the tell: the first untick had nothing to hand back.
+	--
+	-- The mirror adopts an option ON by writing ns.db.settings directly, so
+	-- Enable never runs and never marks the variable as ours. Disable then
+	-- finds no ownership and returns before writing anything -- an option
+	-- that reads off with its effect still running.
+	--
+	-- This shipped, was fixed, and was then lost again to a revert, because
+	-- no scenario covered adopt-on-then-switch-off. It does now.
+	for _, case in ipairs({
+		{ key = "outlineMode",        cvar = "Outline",          on = "1", off = "0" },
+		{ key = "outlineMode",        cvar = "Outline",          on = "2", off = "0" },
+		{ key = "outlineMode",        cvar = "Outline",          on = "3", off = "0" },
+		{ key = "noInstantQuestText", cvar = "instantQuestText", on = "0", off = "1" },
+		{ key = "noAutoQuestTracking", cvar = "autoQuestWatch",  on = "0", off = "1" },
+	}) do
+		local label = case.key .. " at " .. case.cvar .. " " .. case.on
+		ns:ResetDefaults(true)
+		ns:Set(case.key, false)
+		VanillaQuestingDB.state[case.cvar] = nil
+		cvars[case.cvar] = case.off
+		fire("CVAR_UPDATE")
+
+		-- the player moves Blizzard's own control
+		cvars[case.cvar] = case.on
+		fire("CVAR_UPDATE")
+		check(label .. ": the option adopts on",
+			ns.db.settings[case.key] == true, tostring(ns.db.settings[case.key]))
+		check(label .. ": and adopting marks the variable as ours",
+			VanillaQuestingDB.state[case.cvar] ~= nil,
+			tostring(VanillaQuestingDB.state[case.cvar]))
+
+		-- ...and then unticks the VQ option, once
+		ns:Set(case.key, false)
+		check(label .. ": one untick is enough to switch it off",
+			cvars[case.cvar] == case.off, cvars[case.cvar])
+		check(label .. ": and the variable is handed back",
+			VanillaQuestingDB.state[case.cvar] == nil,
+			tostring(VanillaQuestingDB.state[case.cvar]))
+	end
+
 	ns:ResetDefaults(true)
 end
 

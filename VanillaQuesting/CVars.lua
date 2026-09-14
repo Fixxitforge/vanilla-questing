@@ -526,9 +526,24 @@ ns:RegisterEvent("CVAR_UPDATE", function()
 					ns.db.settings[rule.key] = shouldBeOn
 
 					if shouldBeOn then
-						-- Adopted rather than applied: the player set this
-						-- themselves, so there is no pre-AddOn value to
-						-- remember that has not been remembered already.
+						-- Adopted rather than applied: the player moved the
+						-- variable themselves, so this AddOn wrote nothing.
+						--
+						-- It still has to mark the variable as ours, or
+						-- switching the option off afterwards finds no
+						-- ownership and does nothing at all -- an option that
+						-- reads off with its effect still running. The mirror
+						-- writes `settings` directly rather than through
+						-- ApplyAll, so Enable never runs to mark it.
+						--
+						-- The comment here used to say there was nothing to
+						-- remember "that has not been remembered already".
+						-- That was true while Disable kept the marker; it
+						-- stopped being true when Disable started clearing it
+						-- as it hands the variable back.
+						if ns.db.state[rule.cvar] == nil then
+							ns.db.state[rule.cvar] = now
+						end
 						ns:Print(C.highlight .. rule.blizzOption .. C.close ..
 							" was changed in Blizzard's options, so " .. C.highlight ..
 							rule.key .. C.close .. " is now " .. C.on .. "on" .. C.close .. ".")
