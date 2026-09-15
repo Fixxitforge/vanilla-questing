@@ -427,7 +427,18 @@ local function refreshQuestUI(rule, mapWasOpen)
 	-- PLAYER_ENTERING_WORLD, the CVAR_UPDATE re-assert -- leaves `byRequest`
 	-- down. Cycling on a loading screen is a visible jolt nobody asked for,
 	-- and the map is right the next time it is opened anyway.
-	if ns.byRequest then
+	--
+	-- **Unless the cycle is switched off** -- `/vq mapcycle off`, the test
+	-- switch for [#46]. The question that switch exists to answer is whether
+	-- the cycle is needed at all: Blizzard's own handler already toggles the
+	-- quest-log pane on this same event, so the AddOn may have spent four
+	-- versions re-implementing something the game does itself. With it off,
+	-- a by-request change falls through to the paragraph below and the map is
+	-- simply put back where it was, which is the experiment -- the client's
+	-- own open, undone by us, is itself an open and a close.
+	--
+	-- Temporary. It goes when #46 is answered, in either direction.
+	if ns.byRequest and ns:MapCycleWanted() then
 		cycleWorldMap(mapWasOpen)
 		return
 	end

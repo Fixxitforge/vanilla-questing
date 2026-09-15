@@ -1982,6 +1982,120 @@ polarity flipped, so `/vq on outlineMode` under the old meaning asked for outlin
 one removes them. An alias that does the opposite of what the typist means is worse than an
 "Unknown option" that points at `/vq help`.
 
+### v1.1.1 — combat refuses, a sub-option follows, and one question is put on a switch
+
+#### Nothing that needs a reload happens in combat — [#24](https://github.com/Fixxitforge/vanilla-questing/issues/24)
+
+`ReloadUI` was called from three places in `Options.lua` and none of them checked
+`InCombatLockdown`. The audit raised it as *"worth a look, not yet a finding"*; all three were
+real.
+
+Two questions, and only the first is technical. **Is `ReloadUI` callable in combat here?**
+Unprobed, and it stopped mattering: **is reloading mid-fight behaviour we want?** No — and the
+answer taken is **refusal, not deferral**.
+
+- Only one option needs the UI rebuilt, `hideMapQuestHelper`, and **the rebuild is what makes it
+  visible**. Applying it in a fight would write the player's console variable and show them
+  nothing.
+- Writing `questPOI` is what makes the CLIENT try to open the world map, and `ShowUIPanel` refuses
+  in combat when the caller is tainted. That is [#11](https://github.com/Fixxitforge/vanilla-questing/issues/11),
+  thrown by Blizzard's handler on our behalf, and this page has said for two versions that **the
+  only thing that would prevent it is not writing `questPOI` in combat at all.**
+- Deferring to `PLAYER_REGEN_ENABLED` is not free: the map cycle was deferred that way and threw
+  the same error it was avoiding.
+
+So, in combat:
+
+| | |
+| --- | --- |
+| `/vq on`, `/vq off`, `/vq reset` | refused whole — *"Command blocked: some settings cannot be changed during combat."* |
+| `/vq on\|off hideMapQuestHelper` | refused by name, saying the UI has to reload for it |
+| the same option in either panel | the change is put back and chat says why; the prompt is never raised |
+| every other option, by name or by checkbox | **allowed** — they take effect the moment they are written |
+
+**Bulk commands are refused unconditionally**, not only when the reload-needing option would
+actually move. A command that sometimes works in a fight and sometimes does not is worse to
+explain than one that never does, and this is a rule the player holds in their head while
+something is hitting them.
+
+`ns:InCombat`, `ns:RefuseInCombat` and `ns:BlockedByCombat` live in `Core.lua` so the wording has
+one home — the same reason `statusLine` renders both readings of `/vq status`. `doRebuild` keeps
+its own guard as a backstop: reaching it in combat means something found a way round the other
+two, and the right answer there is still not to reload.
+
+**It does not close #11.** The `CVAR_UPDATE` re-assert can still write `questPOI` in combat — a
+foreign write mid-fight is put back, and the client's blocked open follows. The suite drives the
+client's half through that path now, because the command no longer reaches it.
+
+#### A sub-option follows its parent — [#45](https://github.com/Fixxitforge/vanilla-questing/issues/45)
+
+`trackerPlainTextAchievements` kept its saved value while its parent was off and got it back
+untouched. That is what Blizzard's greyed sub-options do, it was deliberate, and it had a test
+asserting it. Reported from play as the wrong call, and it is: the child ships **on**, almost
+nobody unticks it deliberately, and a player switching the whole feature back on expects all of
+it — while the one who did untick it has a box to put back, in front of them, at the cost of one
+click.
+
+Both directions. Off with the parent as well as on, so the box says what is happening rather than
+holding a value that is doing nothing. Setting the child **on its own** still moves only the
+child: the cascade is a consequence of the parent moving, not a rule that the two are one option.
+
+It lives in `ns:Apply`, in the walk that already finds a key's descendants, so the slash commands,
+the native panel and the canvas panel all get it without any of them knowing about it.
+
+**The panel still greys the child while the parent is off**, and that is not the same decision.
+It now greys an unticked box rather than one holding a stale choice, and it is what stops a player
+ticking an option that cannot do anything yet — which would put the panel and `/vq status` in
+open disagreement.
+
+#### The map cycle is on a switch — [#46](https://github.com/Fixxitforge/vanilla-questing/issues/46)
+
+The question is whether `cycleWorldMap` is needed at all. Blizzard's own `CVAR_UPDATE` handler
+ends in `HandleUserActionToggleQuestLog`, which toggles the quest-log pane on the same event —
+so the AddOn may have spent four versions re-implementing, and fighting, something the game does
+itself.
+
+**No stub can answer it.** The harness knows whether the AddOn called `HideUIPanel`; it cannot
+know whether the on-screen quest helper redrew. So the build carries both paths:
+
+```
+/vq mapcycle           what it is set to
+/vq mapcycle off       the AddOn stops cycling
+/vq mapcycle on        back to v1.1.0's behaviour (the default)
+```
+
+With it off, a by-request change falls through to the path that undoes an open our own write
+caused — so the map still ends where it was found, and the client's open followed by our close is
+itself an open and a close. That is the experiment: if the helper refreshes anyway, the cycle goes,
+and #46, [#44](https://github.com/Fixxitforge/vanilla-questing/issues/44) and half of #11 go with it.
+
+**It is not an option.** Not in either panel, not in `/vq help`, not in `README.md` and **not on
+the CurseForge listing** — deliberately, and written down here because the doc-sync rule would
+otherwise send the next reader to add it. It is outside `settings` so that a preset, a reset or a
+bulk command cannot move it in the middle of a test. **It goes when #46 is answered, either way.**
+
+#### The rest of the cycle
+
+- **[#54](https://github.com/Fixxitforge/vanilla-questing/issues/54)** — the minimap option states
+  that the `!` and `?` stay. Known limitations 3, above.
+- **[#51](https://github.com/Fixxitforge/vanilla-questing/issues/51)** — `initDB`'s migration
+  blocks ran `< 2`, `< 4`, `< 3`. Harmless today and a trap for the first migration that depends
+  on an earlier one. No scenario could catch it — they all end at the same database whichever
+  order the blocks ran in — so the guard reads the source, which is the only place the ordering
+  exists.
+- **[#50](https://github.com/Fixxitforge/vanilla-questing/issues/50)** — the suite runs on every
+  push and pull request, not only when a tag is being built. Full-depth checkout, because
+  `lint_hygiene.py` reads `git log --all` and a shallow clone checks one commit while reporting
+  nothing wrong.
+- **[#7](https://github.com/Fixxitforge/vanilla-questing/issues/7)** — the canvas panel's live
+  status readout is gone. `Status()` stays with no caller: `/vq status` deliberately reports what
+  an option is *doing* rather than what a variable reads, so the methods are kept for
+  [#15](https://github.com/Fixxitforge/vanilla-questing/issues/15).
+- **[#12](https://github.com/Fixxitforge/vanilla-questing/issues/12)** — the Experimental note is
+  `GameFontNormal`, the size of the option labels, instead of `GameFontHighlightSmall`. The row's
+  fixed 40px height is the other half and is untouched: one thing at a time when the only test is
+  a screenshot, and `[G27]` found the settings list deciding row heights on its own.
+
 ### v0.33 probe
 
 #### G32 — nothing this AddOn drives is locked, and two of the five are per-character — ANSWERED

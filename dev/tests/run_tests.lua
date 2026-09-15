@@ -1033,6 +1033,52 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 			ops() == "blizz-open,hide,show,hide", ops())
 		check("and a map that was shut is left shut", not WorldMapFrame:IsShown())
 
+		-- #46's test switch, and both halves of it.
+		--
+		-- The build carries the cycle and a way to switch it off, because the
+		-- question -- does Blizzard's own toggle already refresh the on-screen
+		-- helper, making the cycle four versions of re-implementing the game
+		-- -- cannot be answered without a client. What CAN be asserted here is
+		-- that the switch does what it says: with it off the AddOn stops
+		-- cycling, and the map still ends where it was found, because the
+		-- client's own open is still ours to undo.
+		-- Off first, so the "on" below is a real transition and really
+		-- writes. An option already where it is asked to go writes nothing,
+		-- raises no CVAR_UPDATE, and would prove nothing about the map.
+		pcall(SlashCmdList["VANILLAQUESTING"], "off hideMapQuestHelper")
+		SetCVar("questPOI", "1")
+		ns.db.state.questPOI = "1"
+		_G.closeWorldMap()
+		pcall(SlashCmdList["VANILLAQUESTING"], "mapcycle off")
+		check("the switch reports itself off", ns:MapCycleWanted() == false)
+		_G.__clearMapOps()
+		pcall(SlashCmdList["VANILLAQUESTING"], "on hideMapQuestHelper")
+		check("with the cycle off the AddOn does not cycle",
+			ops():find("show", 1, true) == nil, ops())
+		check("but it still undoes the client's own open",
+			ops() == "blizz-open,hide", ops())
+		check("so a shut map is still left shut", not WorldMapFrame:IsShown())
+
+		-- Open before, and it stays open: the client's open changed nothing,
+		-- so there is nothing of ours to undo.
+		SetCVar("questPOI", "1")
+		ns.db.state.questPOI = "1"
+		_G.openWorldMap()
+		_G.__clearMapOps()
+		pcall(SlashCmdList["VANILLAQUESTING"], "off hideMapQuestHelper")
+		check("and an open map is left open with the cycle off",
+			WorldMapFrame:IsShown(), ops())
+
+		pcall(SlashCmdList["VANILLAQUESTING"], "mapcycle on")
+		check("and the switch goes back on", ns:MapCycleWanted() == true)
+		-- Nothing else may move it: it is not a setting, so a reset does not
+		-- reach it. A tester losing the switch halfway through a round trip is
+		-- the whole reason it lives outside `settings`.
+		ns.db.mapCycle = false
+		pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+		check("a reset does not move the test switch", ns:MapCycleWanted() == false)
+		pcall(SlashCmdList["VANILLAQUESTING"], "mapcycle on")
+
 		-- An option the map does not read must not touch it at all.
 		ns.db.state.questPOI = "1"
 		_G.openWorldMap()

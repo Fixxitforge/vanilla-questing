@@ -143,6 +143,12 @@ Change one of these and the others are part of the same change, not a follow-up.
 | **A module** | Give it a unique `order`; add it to the panel and to `/vq status` (all three are guarded by tests). Update `dev/SPEC.md`'s work list. |
 | **Anything about what the AddOn can't do** | All **three** Known limitations sections: `README.md`, `dev/SPEC.md`, and `dev/LISTING.md` (the CurseForge listing). See below — they are written at different depths on purpose, but they must never disagree about the facts. |
 | **A feature, or a command** | `dev/LISTING.md`, in the same pass — that is the CurseForge listing, and it is a public promise that goes stale silently. |
+
+**One command is deliberately not on any of those pages: `/vq mapcycle`.** It is #46's test
+switch, not a feature — it exists so a single build can be asked both halves of a question that
+needs a client to answer, and it is removed when the question is answered. Not in `/vq help`, not
+in `README.md`, not on the listing. Written down here because the row above would otherwise read
+as an omission to be fixed.
 | **A rule I learn the hard way** | This file. |
 
 ### Backlog and bugs do **not** live in a file
