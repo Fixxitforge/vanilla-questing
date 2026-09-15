@@ -211,6 +211,13 @@ local function initDB()
 			end
 			db.state.minimapQuestPOITracking = nil
 		end
+		if db.dbVersion < 3 then
+			-- The preset was stored as well as derived, and the stored copy
+			-- went unread from v0.11.0 onwards -- the panel has computed it
+			-- from the options ever since. Clear the orphan rather than leave
+			-- a key in everyone's saved variables that nothing consults.
+			db.preset = nil
+		end
 		if db.dbVersion < 4 then
 			-- `outlineMode` became `noOutlineMode`, and the polarity flipped
 			-- with it: the old option was ON when outlines were showing, the
@@ -227,13 +234,6 @@ local function initDB()
 			-- new rule records it again for this one.
 			db.settings.outlineMode = nil
 			db.state.Outline = nil
-		end
-		if db.dbVersion < 3 then
-			-- The preset was stored as well as derived, and the stored copy
-			-- went unread from v0.11.0 onwards -- the panel has computed it
-			-- from the options ever since. Clear the orphan rather than leave
-			-- a key in everyone's saved variables that nothing consults.
-			db.preset = nil
 		end
 		db.dbVersion = DB_VERSION
 	end

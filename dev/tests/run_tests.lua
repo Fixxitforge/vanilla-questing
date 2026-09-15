@@ -233,6 +233,28 @@ if scenario == "normal" then
 		pcall(SlashCmdList["VANILLAQUESTING"], "reset")
 	end
 
+	-- #51: the migration blocks run in ascending order.
+	--
+	-- They did not. `< 2`, then `< 4`, then `< 3` -- harmless, because the two
+	-- out-of-order blocks touch nothing in common, and a trap for the first
+	-- migration that depends on an earlier one having run, which is the normal
+	-- thing for a migration to do. No scenario can catch that: every one of
+	-- them ends at the same database whichever order the blocks ran in. So it
+	-- is read off the source, which is the only place the ordering exists.
+	do
+		local f = io.open("../../VanillaQuesting/Core.lua")
+		local src = f and f:read("*a") or ""
+		if f then f:close() end
+		local seen, ascending = nil, true
+		for n in src:gmatch("db%.dbVersion < (%d+)") do
+			n = tonumber(n)
+			if seen and n <= seen then ascending = false end
+			seen = n
+		end
+		check("initDB's migration blocks are in ascending order", ascending and seen ~= nil,
+			tostring(seen))
+	end
+
 	-- old names still resolve as handles
 	pcall(SlashCmdList["VANILLAQUESTING"], "on showBosses")
 	check("old v1 name still accepted", VanillaQuestingDB.settings.hideBossPortraits == true)
