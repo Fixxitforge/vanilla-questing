@@ -74,6 +74,50 @@ local C = ns.color
 
 local PREFIX = C.brand .. "[" .. ns.title .. "]" .. C.close .. " "
 
+-- In combat, and existence-checked like everything else the client owns.
+--
+-- One helper rather than a local per file: `CVars.lua` has had its own since
+-- the map cycle needed one, and a second copy of the same three lines is how
+-- two answers to "are we in combat" come to disagree.
+function ns:InCombat()
+	if type(InCombatLockdown) ~= "function" then return false end
+	local ok, yes = pcall(InCombatLockdown)
+	return ok and yes and true or false
+end
+
+-- What the player is told when a change is refused because of combat (#24).
+--
+-- Both messages live here so the slash commands and both options panels
+-- cannot come to word it differently -- the same reason `statusLine` renders
+-- the whole list and a single option.
+--
+-- Refused, not deferred and not half-applied. Only one option needs the UI
+-- rebuilt -- Hide World Map Quest Helper -- and the rebuild is what makes the
+-- change visible, so applying it in a fight would write the console variable
+-- and show the player nothing. Worse, writing `questPOI` is what makes the
+-- CLIENT try to open the world map, which it may not do in combat: that is
+-- the "Interface action failed because of an AddOn" in #11, thrown by
+-- Blizzard's own handler on our behalf. Not writing it in combat is the only
+-- thing that prevents it.
+function ns:RefuseInCombat(key)
+	if key then
+		ns:Print(C.warning .. "Cannot change " .. tostring(key) ..
+			" during combat." .. C.close ..
+			" The UI has to reload for it to take effect.")
+	else
+		ns:Print(C.warning ..
+			"Command blocked: some settings cannot be changed during combat." ..
+			C.close)
+	end
+end
+
+-- True if this option cannot take effect without the UI being rebuilt, and so
+-- cannot be changed in combat.
+function ns:BlockedByCombat(key)
+	local m = key and ns.modules and ns.modules[key]
+	return (m and m.needsApply and ns:InCombat()) and true or false
+end
+
 function ns:Print(msg)
 	if DEFAULT_CHAT_FRAME then
 		DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. tostring(msg))
@@ -312,6 +356,20 @@ function ns:Apply(key)
 		return
 	end
 
+	-- A parent's switch moves its children with it (#45).
+	--
+	-- It used to move only the EFFECT: the child kept its saved value while
+	-- the parent was off and got it back untouched, which is what Blizzard's
+	-- greyed sub-options do. Reported from play as the wrong call, and it is:
+	-- the child ships on, almost nobody turns it off deliberately, and a
+	-- player switching the whole feature back on expects all of it -- while
+	-- the one who did turn it off has a tick to put back, in front of them,
+	-- which costs one click.
+	--
+	-- Both directions. Off with the parent as well as on, so the box says
+	-- what is happening rather than holding a value that is doing nothing.
+	local cascade = ns.db.settings[key]
+
 	for i = 1, #ns.modules do
 		local m = ns.modules[i]
 		if m.key == key then
@@ -323,7 +381,11 @@ function ns:Apply(key)
 			-- something tomorrow.
 			local p, depth = m.parent, 0
 			while p and depth < 10 do
-				if p == key then applyModule(m) break end
+				if p == key then
+					ns.db.settings[m.key] = cascade and true or false
+					applyModule(m)
+					break
+				end
 				local pm = ns.modules[p]
 				p = pm and pm.parent or nil
 				depth = depth + 1
@@ -597,6 +659,22 @@ SlashCmdList["VANILLAQUESTING"] = function(msg)
 	cmd = cmd:lower()
 	local arg = msg:match("^%s*%S*%s+(%S+)") or ""
 
+	-- Bulk commands are refused outright in combat (#24).
+	--
+	-- `/vq on`, `/vq off` and `/vq reset` all move Hide World Map Quest
+	-- Helper, which cannot take effect without the UI being rebuilt -- and
+	-- writing its variable is what makes the client try to open the world map,
+	-- which it may not do mid-fight. Unconditionally, rather than only when
+	-- that option would actually move: a command that sometimes works in
+	-- combat and sometimes does not is worse to explain than one that never
+	-- does, and this is a rule the player has to hold in their head while
+	-- something is hitting them.
+	if ns:InCombat() and (cmd == "reset"
+		or ((cmd == "on" or cmd == "off") and arg == "")) then
+		ns:RefuseInCombat(nil)
+		return
+	end
+
 	if cmd == "reset" then
 		ns:ResetDefaults()
 
@@ -635,7 +713,12 @@ SlashCmdList["VANILLAQUESTING"] = function(msg)
 				or "Disabled all options.")
 		else
 			local key = resolveSetting(arg)
-			if key then
+			if key and ns:BlockedByCombat(key) then
+				-- One option by name, and it is the one that needs a reload.
+				-- Everything else is allowed in combat, because it takes
+				-- effect the moment it is written.
+				ns:RefuseInCombat(key)
+			elseif key then
 				ns:Set(key, want)
 				local m = ns.modules[key]
 				-- "showBosses turned on" read as though the portraits were

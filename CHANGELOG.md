@@ -9,6 +9,13 @@
   them. The option now says so.
 - The fallback options panel no longer shows a grey developer readout beside each option.
 - The note under the **Experimental** heading is the same size as the option names it sits above.
+- **Plain Text Achievements now follows Plain Text Quest Tracker.** Switching the tracker option on
+  switches achievements on with it, and switching it off takes them off. It can still be unticked
+  on its own while the tracker option is on.
+- **Nothing is changed during combat that would need the UI to reload.** `/vq on`, `/vq off` and
+  `/vq reset` are refused outright while you are fighting, as is Hide World Map Quest Helper on its
+  own, in chat and in both options panels — with an orange line saying why. Every other option can
+  still be changed mid-fight, because those take effect the moment they are set.
 
 ## 1.1.0
 

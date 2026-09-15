@@ -1055,20 +1055,80 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 		check("the map is left alone in combat", ops() == "", ops())
 		check("and is still open, not half-cycled", WorldMapFrame:IsShown())
 
-		-- #11, and the client's half of it. With the map SHUT, our write makes
-		-- Blizzard's handler try to open it -- and `ShowUIPanel` refuses,
-		-- because `CheckProtectedFunctionsAllowed` is
-		-- `InCombatLockdown() and not issecure()` and our SetCVar is what made
-		-- that execution insecure. The client prints "Interface action failed
-		-- because of an AddOn" and nothing moves. That error is NOT this
-		-- AddOn's cycle, which returned at the combat guard long before.
+		-- #24: in combat the command is refused, so nothing is written.
+		--
+		-- Hide World Map Quest Helper is the one option that cannot take
+		-- effect without the UI being rebuilt, and writing its variable is
+		-- what makes the CLIENT try to open the world map -- which it may not
+		-- do mid-fight. This is the whole of #11's remedy: not writing
+		-- `questPOI` in combat at all.
+		ns.db.state.questPOI = "1"
+		cvars.questPOI = "1"
+		ns.db.settings.hideMapQuestHelper = false
+		_G.closeWorldMap()
+		_G.__clearMapOps()
+		local blocked0 = _G.__blizzMapBlocked
+		local before24 = #chatlog
+		pcall(SlashCmdList["VANILLAQUESTING"], "on hideMapQuestHelper")
+		check("the reload-needing option is refused in combat",
+			cvars.questPOI == "1", cvars.questPOI)
+		check("and the setting does not move either",
+			ns.db.settings.hideMapQuestHelper == false,
+			tostring(ns.db.settings.hideMapQuestHelper))
+		check("so the client is never asked to open the map",
+			_G.__blizzMapBlocked == blocked0, _G.__blizzMapBlocked)
+		check("and the AddOn does not touch it either", ops() == "", ops())
+		local said24
+		for i = before24 + 1, #chatlog do
+			if tostring(chatlog[i]):find("during combat", 1, true) then said24 = chatlog[i] end
+		end
+		check("and the player is told why", said24 ~= nil, said24)
+
+		-- Bulk commands go the same way, whatever they would have moved.
+		-- Set explicitly first: an option that is already where `/vq off`
+		-- would leave it proves nothing about the command being refused.
+		ns.db.settings.hideTooltipsQuestProgress = true
+		local before24b = #chatlog
+		pcall(SlashCmdList["VANILLAQUESTING"], "off")
+		check("/vq off is blocked in combat too",
+			ns.db.settings.hideTooltipsQuestProgress == true,
+			tostring(ns.db.settings.hideTooltipsQuestProgress))
+		local saidBulk
+		for i = before24b + 1, #chatlog do
+			if tostring(chatlog[i]):find("Command blocked", 1, true) then saidBulk = chatlog[i] end
+		end
+		check("and says which class of thing is blocked", saidBulk ~= nil, saidBulk)
+
+		-- An option that needs no reload still works in combat: it takes
+		-- effect the moment it is written, and nothing in the client has to
+		-- be rebuilt to show it.
+		pcall(SlashCmdList["VANILLAQUESTING"], "off hideTooltipsQuestProgress")
+		check("an option that needs no reload is still allowed in combat",
+			ns.db.settings.hideTooltipsQuestProgress == false,
+			tostring(ns.db.settings.hideTooltipsQuestProgress))
+		pcall(SlashCmdList["VANILLAQUESTING"], "on hideTooltipsQuestProgress")
+
+		-- #11, and the client's half of it, on the path that can still write
+		-- in combat: the re-assert. Something else moves `questPOI` mid-fight,
+		-- the AddOn puts it back, and Blizzard's own CVAR_UPDATE handler tries
+		-- to open the map -- `ShowUIPanel` refuses, because
+		-- `CheckProtectedFunctionsAllowed` is `InCombatLockdown() and not
+		-- issecure()` and our SetCVar is what made that execution insecure.
+		-- The client prints "Interface action failed because of an AddOn" and
+		-- nothing moves. That error is NOT this AddOn's cycle, which returned
+		-- at the combat guard long before.
+		--
+		-- Kept because refusing the COMMAND does not reach this path, and a
+		-- model of the client that only the blocked path exercised would stop
+		-- measuring anything the moment the command stopped writing.
+		ns.db.settings.hideMapQuestHelper = true
 		ns.db.state.questPOI = "1"
 		cvars.questPOI = "1"
 		_G.closeWorldMap()
 		_G.__clearMapOps()
-		local blocked0 = _G.__blizzMapBlocked
-		pcall(SlashCmdList["VANILLAQUESTING"], "on hideMapQuestHelper")
-		check("in combat the client's own open is blocked, not ours",
+		blocked0 = _G.__blizzMapBlocked
+		pcall(fire, "CVAR_UPDATE", "questPOI", "1")
+		check("a re-assert in combat still reaches the client's own open",
 			_G.__blizzMapBlocked > blocked0, _G.__blizzMapBlocked)
 		check("and the AddOn does not touch the map either way", ops() == "", ops())
 		check("and a shut map stays shut", not WorldMapFrame:IsShown())
@@ -1306,6 +1366,30 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 		ok, err = pcall(_G.popupAccept)
 		check("Reload runs", ok, err)
 		check("Reload reloads the UI", _G.__reloads > r0, _G.__reloads - r0)
+		pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+
+		-- #24: in combat the prompt is not raised at all, the change goes
+		-- back, and nothing reloads. A reload mid-fight is not something to
+		-- offer -- and the write that needs it is the one that makes the
+		-- client try to open the world map, which it may not do in combat.
+		local wasCombat = VanillaQuestingDB.settings.hideMapQuestHelper
+		local r2 = _G.__reloads
+		_G.__popup = nil
+		_G.__inCombat = true
+		local beforeC = #chatlog
+		pcall(rawget(mapRow, "script_OnClick"), mapRow)
+		check("in combat the reload prompt is not raised",
+			_G.__popup == nil, tostring(_G.__popup))
+		check("and the setting is put back",
+			VanillaQuestingDB.settings.hideMapQuestHelper == wasCombat,
+			tostring(VanillaQuestingDB.settings.hideMapQuestHelper))
+		check("and nothing reloaded", _G.__reloads == r2, _G.__reloads - r2)
+		local saidC
+		for i = beforeC + 1, #chatlog do
+			if tostring(chatlog[i]):find("during combat", 1, true) then saidC = chatlog[i] end
+		end
+		check("and chat says why", saidC ~= nil, saidC)
+		_G.__inCombat = false
 		pcall(SlashCmdList["VANILLAQUESTING"], "reset")
 	end
 
@@ -1837,6 +1921,25 @@ if scenario == "native" or scenario == "no_tooltipfunc" or scenario == "no_templ
 		-- its own question on Cancel.
 		check("Apply never asks", _G.__popup == nil, tostring(_G.__popup))
 		check("Apply rebuilds straight away", _G.__reloads == r0 + 1, _G.__reloads - r0)
+
+		-- #24, the native panel's half: in combat the change is refused
+		-- rather than parked or applied, and the UI is not rebuilt.
+		local wasC = ns.db.settings[mapKey]
+		local rc = _G.__reloads
+		_G.__inCombat = true
+		local beforeN = #chatlog
+		pcall(mapSetting.SetValue, mapSetting, not wasC)
+		pcall(_G.pressApply)
+		check("Apply in combat does not rebuild the UI",
+			_G.__reloads == rc, _G.__reloads - rc)
+		check("and the option is put back where it was",
+			ns.db.settings[mapKey] == wasC, tostring(ns.db.settings[mapKey]))
+		local saidN
+		for i = beforeN + 1, #chatlog do
+			if tostring(chatlog[i]):find("during combat", 1, true) then saidN = chatlog[i] end
+		end
+		check("and the panel says why, naming the option", saidN ~= nil, saidN)
+		_G.__inCombat = false
 	end
 
 	-- An option that needs no rebuild takes effect at once and never asks.
@@ -2077,10 +2180,38 @@ if scenario == "normal" or scenario == "no_button_type" then
 	-- the game.
 	check("a sub-option is active while its parent is on",
 		ns:IsActive("trackerPlainTextAchievements") == true)
-	ns:Set("trackerPlainText", false)
-	check("its saved value survives the parent going off",
+
+	-- #45: the child follows its parent's switch, in both directions.
+	--
+	-- This asserted the opposite for four versions -- "its saved value
+	-- survives the parent going off" -- which was Blizzard's greyed-child
+	-- behaviour and was deliberate. Reported from play as the wrong call: the
+	-- child ships on, the common case is a player switching the whole feature
+	-- back on and expecting all of it, and a box holding a value that is
+	-- doing nothing reads as "on" to everyone who looks at it.
+	ns.db.settings.trackerPlainTextAchievements = false
+	ns:Set("trackerPlainText", true)
+	check("switching the parent on switches the child on with it",
 		ns.db.settings.trackerPlainTextAchievements == true)
-	check("but it is not active", ns:IsActive("trackerPlainTextAchievements") == false)
+
+	-- Set again rather than relying on the line above having worked: with the
+	-- cascade removed, a child left off by the first half would satisfy the
+	-- second half for the wrong reason, and a check that cannot fail is not a
+	-- check.
+	ns.db.settings.trackerPlainTextAchievements = true
+	ns:Set("trackerPlainText", false)
+	check("and switching the parent off takes the child off too",
+		ns.db.settings.trackerPlainTextAchievements == false)
+	check("so it is not active", ns:IsActive("trackerPlainTextAchievements") == false)
+
+	-- Setting the child alone still moves only the child: the cascade is a
+	-- consequence of the PARENT moving, not a rule that the two are one
+	-- option.
+	ns.db.settings.trackerPlainTextAchievements = true
+	ns:Set("trackerPlainTextAchievements", false)
+	check("the child on its own does not drag the parent anywhere",
+		ns.db.settings.trackerPlainText == false)
+	ns.db.settings.trackerPlainTextAchievements = true
 
 	local b5 = #chatlog
 	pcall(SlashCmdList["VANILLAQUESTING"], "status")
