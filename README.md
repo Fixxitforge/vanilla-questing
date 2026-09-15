@@ -139,6 +139,8 @@ If it is making your adventures better, you can support development with a coffe
 
 ## Create a release
 
-Releases → Draft a new release → Create new tag: `vX.X.X` → Publish.
+1. Releases → Draft a new release → Create new tag: `vX.X.X` → Publish.
 
 The workflow in `.github/workflows/` builds the zip and fills in the title and notes from the changelog.
+
+2. Upload to CurseForge → Copy and paste changelog, without the install instructions.
