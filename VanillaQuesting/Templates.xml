@@ -24,12 +24,26 @@
         whole reason this file exists rather than reusing Blizzard's label.
 
         The 37px indent lines the text up with the checkbox labels below it.
+
+        GameFontNormal, for #12. It shipped at GameFontHighlightSmall and read
+        smaller than the options it describes. GameFontNormal is what the
+        option labels use, and what Blizzard's own option rows use. Its yellow
+        never reaches the screen, because the caller wraps the string in a
+        colour escape and that is where the orange comes from, so this is a
+        size change and nothing else. It is also a font object this client has
+        already rendered, in the canvas panel and in the probe's own windows,
+        rather than a name taken on trust.
+
+        The frame's fixed 40px height is the other half of #12 and is NOT
+        changed here: one thing at a time, and [G27] showed the settings list
+        decides row heights on its own. GetExtent() returned nil and the rows
+        still drew.
     -->
     <Frame name="VanillaQuestingDescriptionTemplate" virtual="true">
         <Size x="600" y="40"/>
         <Layers>
             <Layer level="ARTWORK">
-                <FontString parentKey="Text" inherits="GameFontHighlightSmall"
+                <FontString parentKey="Text" inherits="GameFontNormal"
                             justifyH="LEFT" justifyV="TOP">
                     <Size x="560" y="0"/>
                     <Anchors>

@@ -8,6 +8,7 @@
   `?` over a turn-in stay on the minimap — the game draws those itself, and no setting reaches
   them. The option now says so.
 - The fallback options panel no longer shows a grey developer readout beside each option.
+- The note under the **Experimental** heading is the same size as the option names it sits above.
 
 ## 1.1.0
 
