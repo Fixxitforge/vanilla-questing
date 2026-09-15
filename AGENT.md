@@ -100,6 +100,9 @@ VanillaQuesting/
 AGENT.md                this file
 CHANGELOG.md            short, per-version, user-facing. The release workflow reads it.
 .github/workflows/release.yml   builds the zip and publishes on a version tag
+.github/workflows/tests.yml     runs dev/tests/run.sh on every push and pull request.
+                        Checks out the FULL history: lint_hygiene.py reads `git log --all`
+                        and a shallow clone silently checks one commit.
 README.md               the public front page
 dev/README.md           what the probe is, why old logs are kept, how to run the tests
 dev/SPEC.md             the living record: work list, architecture, rules, version history,
@@ -402,6 +405,10 @@ Needs `lua5.1` and `luacheck` (`apt-get install lua-check`). The run prints the 
 and the number of scenarios; **do not write either down anywhere**, here or in `dev/README.md` —
 both were stated as a number, both went stale, and at the last audit this file said ten,
 `dev/README.md` said twelve and `run.sh` ran seventeen.
+
+**And it runs in CI now**, on every push and every pull request
+(`.github/workflows/tests.yml`), not only when a tag is being built. Between v1.0.0 and v1.1.0
+fifty commits landed on `main` with no automated check at all.
 
 Every scenario exists because something escaped. A new guard belongs with the bug that earned it,
 and it should be checked by breaking the fix and watching it go red — a guard that has never

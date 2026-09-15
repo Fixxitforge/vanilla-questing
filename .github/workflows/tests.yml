@@ -1,0 +1,36 @@
+# Run the suite on every push and every pull request.
+#
+# Not folded into release.yml with a second trigger: that job also builds the
+# zip and publishes, and a push to main has no business walking any part of
+# that path.
+#
+# The argument for it, from #50: fifty commits landed on main between v1.0.0
+# and v1.1.0 with no automated check, and the suite ran for the first time
+# when a release was already being built. One of those commits deleted a
+# comment block and took four file-local functions out with it -- legal Lua,
+# accepted by `luac -p`, and caught by luacheck four days later. On a
+# push-run workflow it would have been caught on the commit.
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  suite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # lint_hygiene.py reads `git log --all`, so a shallow clone would
+          # check the identities of one commit and say nothing about the rest.
+          fetch-depth: 0
+
+      - name: Run the test suite
+        run: |
+          sudo apt-get update -qq
+          # luacheck too, not just the interpreter. run.sh skips it with a
+          # notice when it is absent, which is right on a developer's machine
+          # and wrong here -- a skip is not a pass.
+          sudo apt-get install -y -qq lua5.1 lua-check
+          cd dev/tests && ./run.sh
