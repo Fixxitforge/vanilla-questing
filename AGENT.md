@@ -105,7 +105,6 @@ dev/README.md           what the probe is, why old logs are kept, how to run the
 dev/SPEC.md             the living record: work list, architecture, rules, version history,
                         recon conclusions. Long. Structured as
                         core -> Version history -> Recon results.
-dev/STRINGS.md          every player-visible string, labelled. A RECORD of what ships.
 dev/LISTING.md          the CurseForge listing's text. The FILE is the source, the page is
                         the copy -- see "The CurseForge page" below.
 dev/UnmarkedRecon/      the probe AddOn. Dev-only, never folded into Vanilla Questing.
@@ -137,8 +136,7 @@ Change one of these and the others are part of the same change, not a follow-up.
 | If I change… | …then also |
 | --- | --- |
 | **The version** | `VanillaQuesting.toc` **only** — everything reads it back through `GetAddOnMetadata`, the test harness included. Then a `## <version>` section in `CHANGELOG.md`, and the tag (see Releasing). |
-| **Any player-visible string** | `dev/STRINGS.md`, in the same pass. Both panels if it appears in both. |
-| **An option's description or limitation** | `dev/STRINGS.md`, `README.md` if it is user-facing behaviour, the native tooltip *and* the canvas fallback tooltip — they have drifted apart twice. |
+| **An option's description or limitation** | `README.md` if it is user-facing behaviour, the native tooltip *and* the canvas fallback tooltip — they have drifted apart twice. |
 | **A module** | Give it a unique `order`; add it to the panel and to `/vq status` (all three are guarded by tests). Update `dev/SPEC.md`'s work list. |
 | **Anything about what the AddOn can't do** | All **three** Known limitations sections: `README.md`, `dev/SPEC.md`, and `dev/LISTING.md` (the CurseForge listing). See below — they are written at different depths on purpose, but they must never disagree about the facts. |
 | **A feature, or a command** | `dev/LISTING.md`, in the same pass — that is the CurseForge listing, and it is a public promise that goes stale silently. |

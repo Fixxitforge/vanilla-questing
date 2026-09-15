@@ -1136,8 +1136,13 @@ the harness has to reproduce it or the test proves nothing.
 
 `STRINGS.md` came back rewritten and is applied in full: every option key renamed, every title,
 description, chat line, warning, preset label and dialog replaced with the version in that file.
-**`STRINGS.md` is the authority for player-facing text from here on.** Anything new added to the
-AddOn needs a human pass through that file before the version it lands in can go public.
+**`STRINGS.md` was the authority for player-facing text from this version on.** Anything new added
+to the AddOn needed a human pass through that file before the version it landed in could go public.
+
+That rule no longer stands and the file is gone. It was a second copy of every string the AddOn
+already contains, and a copy is only as good as the last time somebody remembered to update it —
+which is the argument this file makes against a work list in a file, applied to itself. The tests
+hold the strings that matter as literals, so changing the wording in the AddOn still goes red.
 
 #### Categories
 

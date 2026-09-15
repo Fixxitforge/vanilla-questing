@@ -6,7 +6,7 @@ local pass, fail = 0, 0
 
 -- The description line under the Experimental heading. Held here as a literal
 -- on purpose: change the wording in the AddOn and this goes red, which is the
--- reminder that STRINGS.md is part of the same change.
+-- reminder that the panel and the docs are part of the same change.
 local EXPERIMENTAL_NOTE_TEXT = "These are not enabled by the Vanilla preset."
 local function check(label, cond, detail)
 	if cond then pass = pass + 1; print("  [ok]   " .. label)
@@ -1447,7 +1447,7 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 	--
 	-- Held as literals on purpose, the same way EXPERIMENTAL_NOTE_TEXT is:
 	-- change the wording in the AddOn and this goes red, which is the reminder
-	-- that STRINGS.md and the README table are part of the same change.
+	-- that the README table is part of the same change.
 	--
 	-- The bracket form is what the player sees. `/vq on` and `/vq on <option>`
 	-- used to be two separate lines, which made one command look like two and
