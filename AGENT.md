@@ -119,7 +119,8 @@ dev/audits/             external reviews, kept verbatim. Each finding is verifie
                         against the code before it becomes an issue -- an audit is
                         evidence, not a verdict.
 dev/tests/              the off-client suite. ./run.sh runs, in this order:
-                        lint_forward_refs.py, luacheck, luac -p on every Lua file
+                        lint_forward_refs.py, lint_provenance.py, luacheck,
+                        luac -p on every Lua file
                         including the probe, XML well-formedness on every XML file,
                         a probe smoke test -- and then every scenario in its
                         SCENARIOS list. The count is whatever the run prints at the

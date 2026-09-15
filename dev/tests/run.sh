@@ -20,6 +20,14 @@ lintfail=0
     "VanillaQuesting/*.lua" "dev/UnmarkedRecon/*.lua" \
     "dev/knowledge/*.lua" ) || lintfail=1
 
+# Provenance. Every repository this one links to is one it means to link to,
+# no coding-session links, no model identifiers, every commit author known.
+# These were run once by hand from outside the repository, which is the wrong
+# place for a check that has to keep being true: it cannot fail a build, and
+# it goes stale the moment nobody remembers to run it. Every check in it is an
+# allowlist, so it says what MAY appear rather than naming what may not.
+( cd ../.. && python3 dev/tests/lint_provenance.py ) || lintfail=1
+
 # luacheck: unused and shadowed locals, undefined globals, assignments nobody
 # reads. Added for #37, from the Questie audit -- it would have caught the
 # duplicate `local applyingPreset` (#22) as a shadowed variable, where it took
