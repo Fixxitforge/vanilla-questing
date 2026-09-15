@@ -38,6 +38,11 @@ THIRD_PARTY = {
 IDENTITIES = {
     ("Claude", "noreply@anthropic.com"),
     ("Fixxit", "329487885+Fixxitforge@users.noreply.github.com"),
+    # The same person, from a GitHub account with email privacy switched off:
+    # a web-UI commit then carries the real address as the author. Six of them
+    # are in the history already, so this entry has to stay whether or not the
+    # setting is ever changed -- `git log --all` never forgets.
+    ("Fixxit", "fixxitforge@gmail.com"),
     # Editing a file through GitHub's web UI commits as GitHub, with the
     # account as the author. Committer, never author.
     ("GitHub", "noreply@github.com"),
