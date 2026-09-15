@@ -119,7 +119,7 @@ dev/audits/             external reviews, kept verbatim. Each finding is verifie
                         against the code before it becomes an issue -- an audit is
                         evidence, not a verdict.
 dev/tests/              the off-client suite. ./run.sh runs, in this order:
-                        lint_forward_refs.py, lint_provenance.py, luacheck,
+                        lint_forward_refs.py, lint_hygiene.py, luacheck,
                         luac -p on every Lua file
                         including the probe, XML well-formedness on every XML file,
                         a probe smoke test -- and then every scenario in its
@@ -377,8 +377,13 @@ all of it pushed to `main`. Then the tag is one command.
 ## Running the tests
 
 ```
-cd dev/tests && ./run.sh
+cd dev/tests && ./run.sh        failures and the totals
+cd dev/tests && ./run.sh -v     every check, passing ones included
 ```
+
+**It is quiet unless something fails.** A passing run is one line. A failing one prints the
+failures and nothing else, so they are not buried under thirty green lines — which is the same
+reason the static-failure notice is repeated at the bottom.
 
 Needs `lua5.1` and `luacheck` (`apt-get install lua-check`). The run prints the number of checks
 and the number of scenarios; **do not write either down anywhere**, here or in `dev/README.md` —
