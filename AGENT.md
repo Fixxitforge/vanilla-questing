@@ -149,8 +149,8 @@ They are [GitHub Issues](https://github.com/Fixxitforge/vanilla-questing/issues)
 the tracker and does not list them — a copy goes stale the first time an issue is closed
 elsewhere.
 
-**Every issue I open gets:** a label, the repository owner as assignee, and a body that says what
-the behaviour is, why it matters, and what has already been ruled out.
+**Every issue I open gets:** a label and a body that says what the behaviour is, why it matters,
+and what has already been ruled out. **No assignee.**
 
 ### The three Known limitations sections
 
