@@ -152,6 +152,13 @@ elsewhere.
 **Every issue I open gets:** a label and a body that says what the behaviour is, why it matters,
 and what has already been ruled out. **No assignee.**
 
+**And it is opened in my name, never the author's.** The tracker is a record of who found what.
+An issue filed under his account is a claim he never made, and nothing in the thread lets him
+tell it apart from one he wrote himself. This is already how it works — the credential these
+sessions carry posts as the agent account — so the rule is written down for the day that changes:
+if the only token to hand would file under the author's name, stop and say so rather than opening
+it anyway. The same goes for comments and for closing something.
+
 ### The three Known limitations sections
 
 They exist deliberately, at three depths, and all three are updated whenever any one of them is —
