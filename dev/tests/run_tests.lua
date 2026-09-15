@@ -983,11 +983,16 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 		ns.db.state.questPOI = "1"
 		SetCVar("questPOI", "0")
 		_G.openWorldMap()
+		_G.__maximizeWorldMap()
 		_G.__clearMapOps()
 		pcall(SlashCmdList["VANILLAQUESTING"], "off hideMapQuestHelper")
-		check("an open map is closed, reopened and closed again",
-			ops() == "hide,show,hide", ops())
-		check("and the map ends closed", not WorldMapFrame:IsShown())
+		-- #44: the round trip is what refreshes the helper; where it LEAVES the
+		-- map is a separate question, and the answer is "where it found it".
+		-- A player who had the map open asked for an option to change, not for
+		-- their map to be taken away.
+		check("an open map is closed and reopened", ops() == "hide,show", ops())
+		check("and is left open, because that is how it was found",
+			WorldMapFrame:IsShown())
 
 		-- A shut map is opened for an instant and shut again: half a round
 		-- trip does not refresh the helper, so there is no shortcut here.
@@ -1004,7 +1009,7 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 		pcall(SlashCmdList["VANILLAQUESTING"], "on hideMapQuestHelper")
 		check("a shut map is opened by the client, then cycled and closed",
 			ops() == "blizz-open,hide,show,hide", ops())
-		check("and it ends closed too", not WorldMapFrame:IsShown())
+		check("and a map that was shut is left shut", not WorldMapFrame:IsShown())
 
 		-- An option the map does not read must not touch it at all.
 		ns.db.state.questPOI = "1"

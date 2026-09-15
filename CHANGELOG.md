@@ -35,6 +35,9 @@ cost to find, and why it was made that way — is the version history in [`dev/S
 - **The map is only taken through its close-and-open refresh when you change the option yourself.**
   When the AddOn puts the setting back after something else has moved it, the map is left as it
   was rather than cycling in front of you.
+- **The map refresh leaves the map as it found it.** Changing a map option with the map open used
+  to close it; now it closes and reopens, and you keep the map you were looking at. With the map
+  shut it stays shut, as before.
 - **Outline Mode's saved setting is not carried across the rename to No Outline Mode.** The option
   it replaces meant the opposite, so the new one starts at its own default rather than inventing a
   preference from the old value.
@@ -47,8 +50,9 @@ cost to find, and why it was made that way — is the version history in [`dev/S
 - **The options panel no longer lags on every click.** Changing one option re-applied all of them.
 - **The world map no longer opens by itself at login or on a loading screen.** The game opens it
   whenever the map quest helper setting is written, and the AddOn now shuts it again when it was
-  the AddOn's own write that opened it. It still opens and closes once when you change a map
-  option yourself — that round trip is what makes the on-screen quest helper pick the change up.
+  the AddOn's own write that opened it. It still takes the map through a close and an open when
+  you change a map option yourself — that round trip is what makes the on-screen quest helper pick
+  the change up.
 - **The AddOn no longer taints the game's quest tracker at login or when you change an option**,
   which could surface much later as *"Interface action failed because of an AddOn"* on something
   unrelated.

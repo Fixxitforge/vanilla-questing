@@ -348,19 +348,24 @@ end
 -- reachable any other way that has been found, so this does the thing that
 -- works rather than the thing that ought to.
 --
--- The map ends CLOSED either way:
+-- The map ends where it STARTED (#44), and `mapWasOpen` is what "started"
+-- means: the state before the write, not the state now. The client opens the
+-- map on a questPOI write before this runs, so reading it here would answer
+-- "open" every time.
 --
---   already open  ->  close, open, close
---   already shut  ->  open, close
+--   started open  ->  close, open              -- left open
+--   started shut  ->  close, open, close       -- left shut
 --
--- So a shut map is opened for an instant. That is deliberate: the round trip
--- is what refreshes the helper, and half of one does not.
+-- The leading close is skipped when the map really is shut at this point,
+-- which is only a client that does not open it for us. A shut map is still
+-- opened for an instant: the round trip is what refreshes the helper, and
+-- half of one does not.
 --
 -- HideUIPanel and ShowUIPanel have never been probed on this client, so they
 -- are existence-checked and the frame's own Hide and Show -- which every Frame
 -- has -- are the fallback. The panel functions are preferred because they keep
 -- the UI panel manager's idea of what is open in step with reality.
-local function doCycleWorldMap()
+local function doCycleWorldMap(mapWasOpen)
 	if type(WorldMapFrame) ~= "table" then return false end
 
 	local hide = (type(HideUIPanel) == "function") and HideUIPanel or WorldMapFrame.Hide
@@ -375,7 +380,7 @@ local function doCycleWorldMap()
 
 	if mapIsOpen() then step(hide) end
 	step(show)
-	step(hide)
+	if not mapWasOpen then step(hide) end
 	return ok
 end
 
@@ -390,9 +395,9 @@ local function inCombat()
 	return ok and yes and true or false
 end
 
-local function cycleWorldMap()
+local function cycleWorldMap(mapWasOpen)
 	if inCombat() then return false end
-	return doCycleWorldMap()
+	return doCycleWorldMap(mapWasOpen)
 end
 
 -- Shut the map, and nothing else.
@@ -416,14 +421,14 @@ local function refreshQuestUI(rule, mapWasOpen)
 
 	-- A person just asked: take the map through a close and an open, which is
 	-- the only thing that makes the on-screen quest helper pick up a questPOI
-	-- change. It ends closed.
+	-- change. It ends where it started (#44).
 	--
 	-- Every path that reaches this from an EVENT -- login, VARIABLES_LOADED,
 	-- PLAYER_ENTERING_WORLD, the CVAR_UPDATE re-assert -- leaves `byRequest`
 	-- down. Cycling on a loading screen is a visible jolt nobody asked for,
 	-- and the map is right the next time it is opened anyway.
 	if ns.byRequest then
-		cycleWorldMap()
+		cycleWorldMap(mapWasOpen)
 		return
 	end
 

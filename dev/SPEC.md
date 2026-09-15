@@ -1509,6 +1509,22 @@ all**, which is a behaviour change with its own cost and is left to #11 rather t
 Third time the rule has earned itself: *reasoning about a mechanism is not evidence of which code
 triggers it.*
 
+#### The cycle ends where it started — [#44](https://github.com/Fixxitforge/vanilla-questing/issues/44)
+
+Taken in the same pass, because it is the same three lines and the same `mapWasOpen`. The round
+trip is what refreshes the on-screen helper; where it *leaves* the map is a separate question, and
+the answer is where it found it. A player who had the map open asked for an option to change, not
+for their map to be taken away.
+
+```
+   started open  ->  close, open              -- left open
+   started shut  ->  close, open, close       -- left shut
+```
+
+"Started" means before the write, not now: the client has already opened the map by the time the
+cycle runs, so reading the state at that point answers "open" every time. That is why this could
+not be done before `mapWasOpen` existed, and why the two changes are one change.
+
 #### Measured in game, 2026-09-15
 
 Reported from play, against `1.1.0`:
@@ -1518,7 +1534,7 @@ Reported from play, against `1.1.0`:
 | `/console questPOI 1` in play, map shut | the map **opens**, with no pins on it and pins still on the tracker |
 | `/reload` afterwards | nothing — `questPOI` is already `0`, so nothing is written |
 | a login where nothing is written | nothing |
-| `/vq on` and `/vq off` | the map ends **shut**, whether it started open or shut |
+| `/vq on` and `/vq off` | the map ends **shut**, whether it started open or shut — which is what #44 asked to change, and build 8 does |
 
 The first row is the mechanism above, from a **secure** write: the player's console command opens
 the map in the client's own context. The AddOn then re-asserts `0` behind it, which is why the map
@@ -1526,7 +1542,18 @@ that is left open has no pins on it. The tracker keeps its pins because `WatchFr
 is only recomputed in the `questHelper` branch and in the map's own dropdown — a `questPOI` write
 never updates it.
 
-**No login has yet been observed writing `questPOI`**, which is the one case the argument turns on:
+**Build 7, tested on the login that does write: no map, no flash, nothing.** `/vq off
+hideMapQuestHelper`, log out, delete the SavedVariables file, log back in — the sequence below,
+which is the only one that produces "option on, `questPOI` at 1" at a login. Reported from play:
+nothing appears.
+
+**What that does not say is which of two things happened**, and it cannot be known from the
+outside: either the client opened the map and the guard shut it again inside the same call, or the
+client never opened it on that path at all. The player sees the same thing either way, which is the
+outcome that was wanted — but the guard has not been *seen* to fire, and this page should not
+pretend otherwise. It costs one `IsShown` on the paths that write `questPOI` and does nothing else.
+
+Why the test has to be done that way:
 `questPOI` is `storedServerCharacter` ([G32]), so the value only reads back as `1` on a character
 that has never had it set. Deleting `VanillaQuestingDB` *while logged in* does not produce that
 state — the in-memory table is written back out at `/reload`. The test that does is: `/vq off
@@ -1553,6 +1580,42 @@ must never become one. Neither `HideUIPanel` nor `ShowUIPanel` appears anywhere 
 
 If it turns out no login ever writes `questPOI` on a live account, this guard never fires and costs
 nothing. It is written so that the test tells us which, rather than the other way round.
+
+#### "No error message" is not evidence of "not blocked"
+
+Build 7, in combat, map shut, `/vq on` and `/vq off`: **no blocked-action message either way.**
+That is not the same as nothing being blocked.
+
+```lua
+-- Blizzard_UIParent/Mists/UIParent.lua:1893
+local INTERFACE_ACTION_BLOCKED_SHOWN = false;
+function DisplayInterfaceActionBlockedMessage()
+	if ( not INTERFACE_ACTION_BLOCKED_SHOWN ) then
+		...
+		INTERFACE_ACTION_BLOCKED_SHOWN = true;
+	end
+end
+```
+
+**The client prints "Interface action failed because of an AddOn" at most once per UI session**, and
+nothing resets the flag short of a `/reload`. So a session that has already seen it once — for any
+reason, from any AddOn — is silent for the rest of its life. Three readings fit the observation and
+only one of them is "fixed":
+
+1. nothing was written (`/vq on` with the option already on writes nothing, raises no
+   `CVAR_UPDATE`, and reaches none of this);
+2. the message had already been shown earlier in that session;
+3. the call genuinely was not blocked, which would mean `CVAR_UPDATE` reaches Blizzard's handler
+   on a secure path rather than on ours.
+
+The test that separates them, for #11: `/reload` first, then in combat with the map **shut**, run
+`/vq off hideMapQuestHelper` — a write that definitely happens — and watch two things, the message
+*and* the map. Message → blocked, as read from the source. No message and the map opens → reading 3,
+and the taint model above is wrong. No message and nothing at all → nothing was written; try the
+other direction.
+
+Written down because "the symptom stopped" is exactly the kind of evidence this project has been
+caught by before, and a once-per-session message is a trap built for the purpose.
 
 #### The harness was the reason this was invisible
 

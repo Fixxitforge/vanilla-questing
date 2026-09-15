@@ -198,7 +198,13 @@ the **Releases → Draft a new release** page on GitHub, which creates the tag i
   **The suffix is dropped in the commit that releases**, so `1.1.0-7` becomes `1.1.0` and the tag
   matches. The release workflow refuses to build a `.toc` with a suffix and says why, rather than
   letting the tag-mismatch check report it as a tagging error.
-- **Branch.** Work lands on `main` directly.
+- **Branch: `main`, always.** Commit and push straight to `main` — not a feature branch, not a
+  working branch, not one named after the agent that happened to be running. Anything that lands
+  on a side branch has to be merged by hand before it can be tagged, and a release candidate
+  sitting one merge away from `main` is a release candidate nobody can tag.
+- **No pull requests.** The work is tracked in the issue it belongs to, not in a PR. Push to
+  `main` as soon as the change is done and the suite is green, and say on the issue what shipped.
+  A PR here would be a review of one person's work by the same person, with an extra click.
 - **"AddOn"**, not "addon", in every user-visible string and in comments.
 - **One name per feature.** The module key is the saved-settings key is the name the player
   types. The CVar name stays an implementation detail inside `CVars.lua`.
@@ -339,6 +345,11 @@ git tag -a v1.2.3 -m "v1.2.3" && git push origin v1.2.3
 
 The job **fails on purpose** if the tag and the `.toc` disagree about the version. That is the
 check, not an inconvenience.
+
+The tag is cut from `main`, so everything in the release has to BE on `main` first — see the
+branch rule above. "Prepare the repo for release" means: the suffix dropped from the `.toc`, the
+`CHANGELOG.md` section for that version finished, `dev/LISTING.md` current, the suite green, and
+all of it pushed to `main`. Then the tag is one command.
 
 ---
 
