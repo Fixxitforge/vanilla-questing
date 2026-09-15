@@ -27,6 +27,17 @@ M.desc = "Switches the " .. C.title .. "Track Quest POIs" .. C.close .. " tracki
 -- Not `blizzVariable`, which is for annotating a row in Blizzard's settings
 -- panel. This one lives in a dropdown on the minimap and there is no row.
 M.blizzOption = "Track Quest POIs"
+-- What the tracking entry does NOT cover, said on the option itself (#54).
+--
+-- The questgiver `!` and the turn-in `?` are drawn by the engine, not by Lua:
+-- no frame, no global, no CVar, and nothing in the 205-method minimap dump
+-- renders one. The only lever is `Minimap:SetBlipTexture`, which swaps the
+-- whole icon sheet -- see dev/BLIP-TEXTURE-WORKFLOW.md, and issues #3 and #4.
+-- So the entry takes the pins and the blue areas off and leaves the marks.
+--
+-- The "Known limitation:" prefix is part of the string, in every `limitation`
+-- field; the panel paints the line and puts it under the description.
+M.limitation = "Known limitation: does not remove the ! and ? from the minimap."
 
 -- One name: module key, saved-settings key and typed handle are all the same.
 ns:RegisterDefaults({

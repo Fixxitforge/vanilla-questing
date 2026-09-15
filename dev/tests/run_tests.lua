@@ -1740,6 +1740,13 @@ if scenario == "native" or scenario == "no_tooltipfunc" or scenario == "no_templ
 	for _, c in ipairs(boxes) do
 		tips[c.setting:GetVariable():gsub("VanillaQuesting_", "")] = c.tooltip
 	end
+	-- #54: the minimap entry takes the pins and the blue areas off and leaves
+	-- the questgiver marks, which are engine-drawn and have no lever at all.
+	-- A player reading "Hide Minimap Quest Helper" would expect otherwise.
+	check("the minimap option says the ! and ? stay",
+		tips.hideMinimapQuestHelper and
+		tips.hideMinimapQuestHelper:find("! and ?", 1, true) ~= nil,
+		tips.hideMinimapQuestHelper)
 	check("the sparkle option states what else it removes",
 		tips.noQuestSparkles and
 		tips.noQuestSparkles:find("gathering nodes", 1, true) ~= nil,

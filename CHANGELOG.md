@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.1
+
+### Changed
+
+- **Hide Minimap Quest Helper says what it does not remove.** The `!` over a questgiver and the
+  `?` over a turn-in stay on the minimap — the game draws those itself, and no setting reaches
+  them. The option now says so.
+
 ## 1.1.0
 
 ### New

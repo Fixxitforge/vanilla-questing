@@ -356,6 +356,36 @@ client will not let an AddOn do cleanly, not things left undone.
    **`Known limitation:` is part of every `limitation` string**, not a label the panel adds. This
    one shipped without it once, which turned a stated cost into what read as a second sentence of
    description. The suite now asserts the prefix on every option that has one.
+3. **The questgiver `!` and the turn-in `?` stay on the minimap.** `hideMinimapQuestHelper`
+   switches the *Track Quest POIs* tracking off, which takes the numbered quest pins and the blue
+   objective area with it. The marks over questgivers and turn-in NPCs are drawn by the engine and
+   are reached by none of it.
+
+   This entry can say which call refuses and why, which is the bar the first entry failed for four
+   versions:
+
+   - **No frame.** The v0.5 probe's 205-method dump of `Minimap` has no blob and no blip renderer,
+     and a global-name sweep found **0 globals containing "blip"**. There is nothing to `Hide`.
+   - **No CVar.** Probe v0.32's full enumeration of the client's console variables turned up
+     nothing that governs them, and the tracking list is one entry, already used.
+   - **One lever, and it is artwork.** `Minimap:SetBlipTexture(path)` swaps the entire icon sheet,
+     `Interface\MINIMAP\ObjectIconsAtlas` — vendors, trainers, flight masters and herbs included.
+     There is a setter and **no getter**, so the default path is the only way back.
+     `Minimap:SetToDefaults()` removes the whole minimap frame and must never be called.
+
+   So removing them means shipping an edited `.blp` with the questgiver cells erased, not writing
+   Lua. The workflow is in `dev/BLIP-TEXTURE-WORKFLOW.md`, and the work is
+   [#3](https://github.com/Fixxitforge/vanilla-questing/issues/3) (the `!`) and
+   [#4](https://github.com/Fixxitforge/vanilla-questing/issues/4) (the `?` beside the gold bullet,
+   which is close enough to Classic that it is an opt-in rather than a default).
+
+   Which *index* the engine picks for a questgiver blip was chased and dropped:
+   `C_Minimap.GetPOITextureCoords(i)` maps an index to a rectangle, and nothing exposes the
+   mapping the other way. The image settles it, not the probe.
+
+   Stated on the option itself as well as here ([#54](https://github.com/Fixxitforge/vanilla-questing/issues/54)):
+   a player reading "Hide Minimap Quest Helper" reasonably expects the marks to go with everything
+   else, and the panel is where they are when they wonder.
 
 ## Architecture
 

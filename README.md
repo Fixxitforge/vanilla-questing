@@ -86,6 +86,15 @@ These are never switched on by the **Vanilla (Default)** preset. Turn them on yo
 
 ## Known limitations
 
+### The minimap keeps the `!` and `?` questgiver marks
+
+**Hide Minimap Quest Helper** takes the quest markers and the blue objective areas off the
+minimap. It does not take off the `!` over a questgiver or the `?` over someone waiting for a
+turn-in. Those are drawn by the engine rather than by the interface: there is no frame to hide
+and no setting to switch, and the only lever the client offers replaces the whole minimap icon
+sheet — herbs, vendors and trainers included. Removing them means shipping edited artwork, which
+is [being looked at](https://github.com/Fixxitforge/vanilla-questing/issues/3).
+
 ### Removing the loot sparkles on quest objects also removes them from gathering nodes
 
 Removing the loot sparkles on quest objects also removes them from gathering nodes such as herbs
