@@ -117,6 +117,12 @@ dev/logs/recon-log-*.txt  raw probe output. Every conclusion in dev/SPEC.md is e
                         Kept, never pruned: a later run switches settled sections off, so an
                         earlier log is often the only remaining record of an answer.
 dev/BLIP-TEXTURE-WORKFLOW.md   how the minimap blip atlas would be replaced
+dev/knowledge/          the notebook behind the spec: Blizzard's own interface source for
+                        this build, the client's generated API index, the wiki's
+                        compatibility and protection tags, and CLIENT-BEHAVIOUR.md --
+                        the things only the game could answer. Two answers to "what does
+                        this client do" are allowed, the source or a log; memory is not
+                        a third.
 dev/audits/             external reviews, kept verbatim. Each finding is verified
                         against the code before it becomes an issue -- an audit is
                         evidence, not a verdict.

@@ -8,6 +8,7 @@ This is not documentation of this AddOn — that is `../SPEC.md`. It is the note
 | | |
 | --- | --- |
 | [`CLIENT-SOURCE.md`](CLIENT-SOURCE.md) | **Start here.** Blizzard's own interface source for build 5.5.4.69585, how to fetch it, which file each flavour really loads, and the things reading it settled |
+| [`CLIENT-BEHAVIOUR.md`](CLIENT-BEHAVIOUR.md) | What only the game answered: what taints, what renders, what refuses a write, and where the test harness had the client backwards. Every entry cites a probe, a log or a report from play |
 | [`api-index.txt`](api-index.txt) | Every system, function and event the client documents. 533 systems, 4,590 functions, 1,483 events |
 | [`api-signatures.txt`](api-signatures.txt) | Full signatures and structures, for the systems this AddOn touches |
 | [`api-compat.txt`](api-compat.txt) | Which of 7,362 API functions exist on Classic Era, TBC, **Mists** and retail, with protection tags. From the wiki; fills two gaps Blizzard's own documentation has |
