@@ -1,4 +1,4 @@
-![Vanilla Questing banner image](.github/vanilla-questing-banner.png)
+![Vanilla Questing banner image](https://media.forgecdn.net/attachments/1943/79/vanilla-questing-banner_smaller-png.png)
 
 # Vanilla Questing
 
