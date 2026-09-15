@@ -1,11 +1,5 @@
 # Changelog
 
-What changed in each version. Newest first.
-
-Entries say what shipped. They do not link issues: an issue can be reopened after a release, and
-then the changelog is claiming something the tracker contradicts. The long form — what a change
-cost to find, and why it was made that way — is the version history in [`dev/SPEC.md`](dev/SPEC.md).
-
 ## 1.1.0
 
 ### New
@@ -56,11 +50,10 @@ cost to find, and why it was made that way — is the version history in [`dev/S
 - **The AddOn no longer taints the game's quest tracker at login or when you change an option**,
   which could surface much later as *"Interface action failed because of an AddOn"* on something
   unrelated.
-- Switching an option off now always switches its effect off — including when the option had turned
-  itself on to follow a change made in Blizzard's options.
-- Switching an option off now always tries to put its setting back, even if an earlier write
-  failed. A setting the game refuses once is given another chance at the next loading screen
-  instead of that option staying dead for the session.
+- Switching an option off now always puts the game's setting back. Two paths used to leave the
+  effect running: an option that had turned itself on to follow a change made in Blizzard's options
+  was never marked as this AddOn's to undo, and a setting the game had refused once stayed refused
+  for the rest of the session. A refusal is now retried at the next loading screen.
 - The minimap tracking button's tooltip no longer disappears when the option is off.
 
 ## 1.0.0

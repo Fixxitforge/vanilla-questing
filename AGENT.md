@@ -225,6 +225,13 @@ the **Releases → Draft a new release** page on GitHub, which creates the tag i
 - **Report the effect, not the switch.** `/vq on X` says what changed, never the CVar transition.
 - **Colours come from `ns.color` in `Core.lua`.** Nowhere else. The yellows and whites are the
   game's own globals so the AddOn cannot drift from the interface it sits inside.
+- **The changelog is for players, not for me.** `CHANGELOG.md` is public — it is the release
+  notes the workflow publishes — so it carries entries and nothing else. No preamble explaining
+  how to write it, no notes-to-self about how it is kept: those live here. Entries say what
+  shipped, in the player's terms. **They do not link issues** — an issue can be reopened after a
+  release, and then the changelog is claiming something the tracker contradicts. The long form —
+  what a change cost to find, and why it was made that way — is the version history in
+  `dev/SPEC.md`.
 - **Commit messages** say what changed and what it cost to find. No model identifiers anywhere in
   the repository.
 
