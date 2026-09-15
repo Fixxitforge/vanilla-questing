@@ -78,11 +78,15 @@ Needs `lua5.1`, the client's own Lua version, and `luacheck` (`apt-get install l
 static pass — the suite runs without it and says so, but CI installs it, so the same forward-reference and scoping rules
 apply here as in game — a trap this project has hit twice.
 
-Twelve scenarios, including the ones that matter for a subtractive AddOn: a client with no Settings
-API, one that refuses a CVar write, one with no `C_Minimap`, and one where registration half
-succeeds and the panel must fall back rather than half-work.
+Every scenario in `run.sh`'s `SCENARIOS` list, including the ones that matter for a subtractive
+AddOn: a client with no Settings API, one that refuses a CVar write, one with no `C_Minimap`, and
+one where registration half succeeds and the panel must fall back rather than half-work. The run
+prints how many there are and how many checks they make; the number is deliberately not written
+down here, because it was written down in three places and disagreed with itself in all three.
 
-**Three static checks run before any scenario**, because each catches something the others cannot:
+**The static checks run before any scenario**, because each catches something the others cannot.
+`run.sh` also parses every XML file and runs `recon_smoke.lua`, which is why a broken probe or an
+illegal `--` inside an XML comment fails the suite rather than reaching the client:
 
 | | catches |
 | --- | --- |
@@ -117,7 +121,14 @@ in a sequence the client does not use:
 
 A new scenario is not finished until it has been run against the broken code and seen to fail.
 
-**A stub that models only our half models nothing.** `hoverTrackingButton` called the AddOn's
+**A stub that models only our half models nothing — including the events we RAISE.** `SetCVar`
+raises `CVAR_UPDATE`, and until 1.1.0-7 nobody in this harness listened to it but the AddOn. On the
+client, `QuestMapFrame` has been listening since before we loaded, and its `questPOI` branch opens
+the world map. So the suite could not ask what the map does in response to our own write, and 1047
+checks passed on a build that left it open. The harness now registers Blizzard's handler, modelled
+from Blizzard's own source, before the AddOn loads.
+
+The older half of the same rule, which is where it started: `hoverTrackingButton` called the AddOn's
 `OnEnter` hooks and nothing else — no Blizzard `OnEnter`, no owner, no header line, and `Show()`
 was an empty function. So the frame the AddOn is a *guest* on did not exist in the model, and the
 question "what does the frame look like when our hook does nothing" could not be asked. It took a

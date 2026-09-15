@@ -14,7 +14,7 @@ cost to find, and why it was made that way — is the version history in [`dev/S
   gathering nodes such as herbs and mining veins, because the game draws both from one switch —
   neither had one in the original game. Under **UI & Graphics**, on by default.
 - **Plain Text Achievements**, a sub-option under Plain Text Quest Tracker. Tracked achievement
-  lines go plain text along with quests; untick it to keep achievements clickable.
+  lines go plain text along with quests. On by default; untick it to keep achievements clickable.
 - **`/vq status <option>`** reports one option instead of the whole list.
 
 ### Changed
@@ -30,6 +30,14 @@ cost to find, and why it was made that way — is the version history in [`dev/S
 - The command list is five lines rather than seven: `/vq on [option]`, `/vq off [option]` and
   `/vq status [option]` are one command each, not two.
 - Hide Boss Portraits no longer asks for a UI reload.
+- The quest item buttons beside tracked quests are hidden by a safer route, which keeps the AddOn
+  clear of the game's protected-action rules in combat.
+- **The map is only taken through its close-and-open refresh when you change the option yourself.**
+  When the AddOn puts the setting back after something else has moved it, the map is left as it
+  was rather than cycling in front of you.
+- **Outline Mode's saved setting is not carried across the rename to No Outline Mode.** The option
+  it replaces meant the opposite, so the new one starts at its own default rather than inventing a
+  preference from the old value.
 
 ### Fixed
 
@@ -37,19 +45,19 @@ cost to find, and why it was made that way — is the version history in [`dev/S
   game's console variables before the client had loaded them, and mistook its own first pass for
   the player changing something.
 - **The options panel no longer lags on every click.** Changing one option re-applied all of them.
-- **The world map no longer opens and closes by itself on a loading screen.** It still refreshes
-  when you change a map option yourself.
-- **The AddOn no longer taints the game's quest tracker at login**, which could surface much later
-  as *"Interface action failed because of an AddOn"* on something unrelated.
+- **The world map no longer opens by itself at login or on a loading screen.** The game opens it
+  whenever the map quest helper setting is written, and the AddOn now shuts it again when it was
+  the AddOn's own write that opened it. It still opens and closes once when you change a map
+  option yourself — that round trip is what makes the on-screen quest helper pick the change up.
+- **The AddOn no longer taints the game's quest tracker at login or when you change an option**,
+  which could surface much later as *"Interface action failed because of an AddOn"* on something
+  unrelated.
 - Switching an option off now always switches its effect off — including when the option had turned
   itself on to follow a change made in Blizzard's options.
 - Switching an option off now always tries to put its setting back, even if an earlier write
   failed. A setting the game refuses once is given another chance at the next loading screen
   instead of that option staying dead for the session.
-- Turning off the bag item highlight puts the highlights back at once, with your bags open.
 - The minimap tracking button's tooltip no longer disappears when the option is off.
-- The quest item buttons beside tracked quests are made invisible rather than hidden, which keeps
-  the AddOn clear of the game's protected-action rules in combat.
 
 ## 1.0.0
 

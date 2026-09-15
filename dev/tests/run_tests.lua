@@ -28,6 +28,24 @@ check("PLAYER_LOGIN without error", ok, err)
 
 check("no runaway event recursion (depth " .. maxEventDepth() .. ")", maxEventDepth() < 10, maxEventDepth())
 
+-- #36: the world map does not open by itself on a login that writes questPOI.
+--
+-- Nobody asked for anything here, so the cycle is skipped -- and until v1.1.0-7
+-- that left the map standing open, because Blizzard's own CVAR_UPDATE handler
+-- opens it and has no path that closes it again. `questPOI` is stored PER
+-- CHARACTER, so this is the first login of every character after installing,
+-- not only a clean install.
+--
+-- Asserted on the boot sequence itself rather than in a block of its own:
+-- this scenario starts with questPOI at the client default of 1, so the login
+-- pass writes it, which is exactly the case in question.
+if scenario == "normal" or scenario == "no_settings" or scenario == "settings_refuses" then
+	check("the client opened the map on our login write", _G.__blizzMapOpens > 0,
+		_G.__blizzMapOpens)
+	check("and the AddOn shut it again, so login ends with the map closed",
+		not WorldMapFrame:IsShown())
+end
+
 -- #13: a clean install is not a change the player made.
 --
 -- The AddOn writes its own CVars on the first pass, every write raises
@@ -973,11 +991,19 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 
 		-- A shut map is opened for an instant and shut again: half a round
 		-- trip does not refresh the helper, so there is no shortcut here.
+		--
+		-- `blizz-open` first, and it is not ours. Writing questPOI makes the
+		-- CLIENT open the map from its own CVAR_UPDATE handler, synchronously,
+		-- before this AddOn's cycle gets a turn -- so the cycle finds a map
+		-- that is already open and closes it before reopening. The sequence
+		-- the player sees ends CLOSED either way, which is the assertion that
+		-- matters and the one confirmed in game.
+		SetCVar("questPOI", "1")
 		_G.closeWorldMap()
 		_G.__clearMapOps()
-		SetCVar("questPOI", "1")
 		pcall(SlashCmdList["VANILLAQUESTING"], "on hideMapQuestHelper")
-		check("a shut map is opened and closed again", ops() == "show,hide", ops())
+		check("a shut map is opened by the client, then cycled and closed",
+			ops() == "blizz-open,hide,show,hide", ops())
 		check("and it ends closed too", not WorldMapFrame:IsShown())
 
 		-- An option the map does not read must not touch it at all.
@@ -1001,6 +1027,24 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 		pcall(SlashCmdList["VANILLAQUESTING"], "off hideMapQuestHelper")
 		check("the map is left alone in combat", ops() == "", ops())
 		check("and is still open, not half-cycled", WorldMapFrame:IsShown())
+
+		-- #11, and the client's half of it. With the map SHUT, our write makes
+		-- Blizzard's handler try to open it -- and `ShowUIPanel` refuses,
+		-- because `CheckProtectedFunctionsAllowed` is
+		-- `InCombatLockdown() and not issecure()` and our SetCVar is what made
+		-- that execution insecure. The client prints "Interface action failed
+		-- because of an AddOn" and nothing moves. That error is NOT this
+		-- AddOn's cycle, which returned at the combat guard long before.
+		ns.db.state.questPOI = "1"
+		cvars.questPOI = "1"
+		_G.closeWorldMap()
+		_G.__clearMapOps()
+		local blocked0 = _G.__blizzMapBlocked
+		pcall(SlashCmdList["VANILLAQUESTING"], "on hideMapQuestHelper")
+		check("in combat the client's own open is blocked, not ours",
+			_G.__blizzMapBlocked > blocked0, _G.__blizzMapBlocked)
+		check("and the AddOn does not touch the map either way", ops() == "", ops())
+		check("and a shut map stays shut", not WorldMapFrame:IsShown())
 		_G.__inCombat = false
 
 		-- ---- taint: nothing calls WatchFrame_Update at login ----
@@ -1063,7 +1107,40 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 		pcall(fire, "PLAYER_ENTERING_WORLD")
 		check("a loading screen re-asserts the variable", cvars.questPOI == "0",
 			cvars.questPOI)
-		check("and does NOT cycle the map to do it", ops() == "", ops())
+		-- One `hide`, not a cycle. The client opened the map because we wrote;
+		-- putting it back is the whole of the handling, and it is not a
+		-- refresh -- there is no `show` in that sequence (#36).
+		check("and does NOT cycle the map to do it",
+			ops() == "blizz-open,hide", ops())
+		check("and the map does not stay open behind the loading screen",
+			not WorldMapFrame:IsShown())
+
+		-- And the other half of the same rule: a map that was ALREADY open is
+		-- not ours to shut. The player, or another AddOn's write, put it
+		-- there. Only an open that our own write caused is undone.
+		pcall(SlashCmdList["VANILLAQUESTING"], "on hideMapQuestHelper")
+		ns.db.state.questPOI = "1"
+		cvars.questPOI = "1"
+		_G.openWorldMap()
+		_G.__maximizeWorldMap()
+		_G.__clearMapOps()
+		pcall(fire, "PLAYER_ENTERING_WORLD")
+		check("a loading screen still re-asserts", cvars.questPOI == "0", cvars.questPOI)
+		check("and a map that was already open is left open",
+			WorldMapFrame:IsShown() and ops() == "", ops())
+		_G.closeWorldMap()
+
+		-- The CVAR_UPDATE re-assert, which is the path another AddOn takes.
+		-- Their write is what the client answers with an open map; ours is a
+		-- write to a map that is open by then, so it is left alone. #44 is
+		-- where that gets revisited.
+		ns.db.state.questPOI = "1"
+		_G.closeWorldMap()
+		_G.__clearMapOps()
+		SetCVar("questPOI", "1")          -- somebody else moves it
+		check("a foreign write is re-asserted", cvars.questPOI == "0", cvars.questPOI)
+		check("and the AddOn adds no map operations of its own", ops() == "blizz-open", ops())
+		_G.closeWorldMap()
 
 		-- The same write, asked for by a person, still cycles. Otherwise this
 		-- is a mute rather than a gate, and the on-screen helper would stay
@@ -1071,17 +1148,22 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 		pcall(SlashCmdList["VANILLAQUESTING"], "off hideMapQuestHelper")
 		ns.db.state.questPOI = "1"
 		cvars.questPOI = "1"
+		_G.closeWorldMap()
 		_G.__clearMapOps()
 		pcall(SlashCmdList["VANILLAQUESTING"], "on hideMapQuestHelper")
-		check("but a slash command still does", ops() == "show,hide", ops())
+		check("but a slash command still cycles",
+			ops() == "blizz-open,hide,show,hide", ops())
+		check("and ends closed", not WorldMapFrame:IsShown())
 
 		-- And the bulk commands are the player too.
 		pcall(SlashCmdList["VANILLAQUESTING"], "off hideMapQuestHelper")
 		ns.db.state.questPOI = "1"
 		cvars.questPOI = "1"
+		_G.closeWorldMap()
 		_G.__clearMapOps()
 		pcall(SlashCmdList["VANILLAQUESTING"], "on")
-		check("as is /vq on", ops() == "show,hide", ops())
+		check("as is /vq on", ops() == "blizz-open,hide,show,hide", ops())
+		check("and it ends closed as well", not WorldMapFrame:IsShown())
 		pcall(SlashCmdList["VANILLAQUESTING"], "reset")
 		_G.closeWorldMap()
 

@@ -395,26 +395,69 @@ local function cycleWorldMap()
 	return doCycleWorldMap()
 end
 
-local function refreshQuestUI(rule)
-	-- Only the rules the map and the tracker actually read, and only when a
-	-- person just asked for it.
-	--
-	-- Cycling the map for a variable it does not look at would be a visible
-	-- jolt for nothing. Cycling it on a loading screen is worse than that: it
-	-- goes through HideUIPanel / ShowUIPanel, which taints Blizzard's UI panel
-	-- manager, and the taint surfaces later as an unrelated blocked action
-	-- with nothing pointing back here (#17).
+-- Shut the map, and nothing else.
+--
+-- Not half a cycle, and not a refresh. This exists for one job: undoing an
+-- open that THIS AddOn's own write caused. See `refreshQuestUI`.
+local function closeWorldMap()
+	if inCombat() then return false end
+	if type(WorldMapFrame) ~= "table" then return false end
+	local hide = (type(HideUIPanel) == "function") and HideUIPanel or WorldMapFrame.Hide
+	if type(hide) ~= "function" then return false end
+	return pcall(hide, WorldMapFrame) and true or false
+end
+
+-- `mapWasOpen` is read by the caller BEFORE its `SetCVar`, because the client
+-- dispatches CVAR_UPDATE inside that call rather than on the next frame. By
+-- the time this runs, Blizzard's handler has already had its turn.
+local function refreshQuestUI(rule, mapWasOpen)
+	-- Only the rules the map and the tracker actually read.
+	if not (rule and rule.cyclesMap) then return end
+
+	-- A person just asked: take the map through a close and an open, which is
+	-- the only thing that makes the on-screen quest helper pick up a questPOI
+	-- change. It ends closed.
 	--
 	-- Every path that reaches this from an EVENT -- login, VARIABLES_LOADED,
 	-- PLAYER_ENTERING_WORLD, the CVAR_UPDATE re-assert -- leaves `byRequest`
-	-- down, so the write still happens and the map is simply left alone. It is
-	-- right the next time it is opened, which on a loading screen is the only
-	-- time anyone sees it anyway.
-	if rule and rule.cyclesMap and ns.byRequest then cycleWorldMap() end
+	-- down. Cycling on a loading screen is a visible jolt nobody asked for,
+	-- and the map is right the next time it is opened anyway.
+	if ns.byRequest then
+		cycleWorldMap()
+		return
+	end
+
+	-- What is left is the half of it that is not a refresh at all.
+	--
+	-- Writing `questPOI` makes the CLIENT open the world map. Blizzard's own
+	-- CVAR_UPDATE handler ends in
+	-- `QuestMapFrame:GetParent():HandleUserActionToggleQuestLog()`
+	-- (Blizzard_UIPanels_Game/Wrath/QuestMapFrame.lua:253), and that function
+	-- -- `QuestLogOwnerMixin:HandleUserActionToggleQuestLog`,
+	-- Blizzard_WorldMap/Wrath/QuestLogOwnerMixin.lua:37 -- has **no closed
+	-- branch**. Every path through it ends at `SetDisplayState` with one of
+	-- the three OPEN states, and `SetDisplayState` calls `ShowUIPanel` for all
+	-- of them. It toggles the quest-log side panel; as far as the map itself
+	-- goes it only ever opens it.
+	--
+	-- Until v1.1.0 that was hidden: the cycle ran on every path and ended
+	-- closed, so the open was a flash. Gating the cycle on `byRequest` was
+	-- right -- a loading screen is not someone asking for a refresh -- and it
+	-- left the open standing, which is worse than the flash it removed.
+	--
+	-- So put back what our own write moved, and nothing else. Open before,
+	-- open after: the player (or another AddOn) had it open, and it is not
+	-- ours to shut. Shut before, open after: the client opened it because we
+	-- wrote, and shutting it is the whole of the handling.
+	if not mapWasOpen and mapIsOpen() then closeWorldMap() end
 end
 
 local function writeCVar(rule, value)
 	if refused[rule.cvar] then return false end
+
+	-- Before the write, because the client raises CVAR_UPDATE inside SetCVar
+	-- and its own handler opens the map from there.
+	local mapWasOpen = rule.cyclesMap and mapIsOpen() or false
 
 	applying = true
 	-- SetCVar returns `success:bool`, documented in the client's own generated
@@ -454,7 +497,7 @@ local function writeCVar(rule, value)
 			", still " .. tostring(now) .. "). Skipping " .. rule.label .. ".")
 		return false
 	end
-	refreshQuestUI(rule)
+	refreshQuestUI(rule, mapWasOpen)
 	return true
 end
 
@@ -580,10 +623,13 @@ local function makeModule(rule)
 		local target = rule.offValue or original
 		if readCVar(rule.cvar) == target then return end
 
+		-- Read before the write, for the same reason as in `writeCVar`.
+		local mapWasOpen = rule.cyclesMap and mapIsOpen() or false
+
 		applying = true
 		pcall(SetCVar, rule.cvar, target)
 		applying = false
-		refreshQuestUI(rule)
+		refreshQuestUI(rule, mapWasOpen)
 	end
 
 	function M:Status()

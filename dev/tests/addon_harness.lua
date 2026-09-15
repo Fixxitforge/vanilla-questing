@@ -307,6 +307,71 @@ _G.lockCVar = function(n) lockedCVars[n] = true end
 _G.rejectCVar = function(n) rejectedCVars[n] = true end
 _G.allowCVar = function(n) lockedCVars[n] = nil rejectedCVars[n] = nil end
 
+-- ---- Blizzard's half of the questPOI handshake ----
+--
+-- Until this existed, `SetCVar` raised CVAR_UPDATE and NOBODY listened but the
+-- AddOn. On the client, `QuestMapFrame` has been listening since before we
+-- loaded, and its questPOI branch **opens the world map**. So the suite could
+-- not ask what the map does in response to our own write, and 1047 checks
+-- passed on a build that left it open on every login where questPOI moved.
+-- Fifth time in this shape; the rule in dev/README.md is the same one:
+-- where the AddOn is a guest on someone else's frame, the stub has to include
+-- their half.
+--
+-- Read off Blizzard's source for 5.5.4.69585 rather than assumed:
+--
+--   Blizzard_UIPanels_Game/Wrath/QuestMapFrame.lua:253
+--     elseif ( event == "CVAR_UPDATE" ) then
+--         if ( arg1 == "questPOI" ) then
+--             WatchFrame_Update();
+--             QuestLog_UpdateMapButton();
+--             QuestMapFrame:GetParent():HandleUserActionToggleQuestLog();
+--             QuestMapFrame_CloseQuestDetails();
+--             QuestMapFrame_UpdateAll();
+--
+--   Blizzard_WorldMap/Wrath/QuestLogOwnerMixin.lua:37
+--     HandleUserActionToggleQuestLog has NO closed branch. Every path ends at
+--     SetDisplayState with one of the three OPEN states, and SetDisplayState
+--     (:91) calls ShowUIPanel for all of them. It toggles the quest-log SIDE
+--     PANEL; as far as the map goes it only ever opens it.
+--
+--   Blizzard_UIParentPanelManager/Shared/UIParentPanelManager.lua:811
+--     ShowUIPanel goes through CheckProtectedFunctionsAllowed, which is
+--     `InCombatLockdown() and not issecure()`. Our SetCVar makes Blizzard's
+--     handler run tainted, so in combat the open is BLOCKED and the client
+--     prints "Interface action failed because of an AddOn" (#11).
+--
+-- Registered before the AddOn loads, because that is the order the client
+-- dispatches in: Blizzard's frames exist first.
+--
+-- The open is recorded as `blizz-open` rather than pushed through the
+-- harness's own ShowUIPanel, so `__mapOps` stays a log of what the ADDON did
+-- and the sequence assertions keep measuring the AddOn.
+_G.__blizzMapOpens = 0
+_G.__blizzMapBlocked = 0
+local blizzMapMaximized = true
+local blizzQuestMapFrame = CreateFrame("Frame")
+blizzQuestMapFrame:RegisterEvent("CVAR_UPDATE")
+blizzQuestMapFrame:SetScript("OnEvent", function(_, event, arg1)
+	if event ~= "CVAR_UPDATE" or arg1 ~= "questPOI" then return end
+	-- Blocked in combat, and nothing happens to the map.
+	if _G.__inCombat then
+		_G.__blizzMapBlocked = _G.__blizzMapBlocked + 1
+		return
+	end
+	if not (WorldMapFrame.__shown and blizzMapMaximized) then
+		blizzMapMaximized = false          -- DISPLAY_STATE_OPEN_MINIMIZED
+	end
+	if not WorldMapFrame.__shown then
+		_G.__blizzMapOpens = _G.__blizzMapOpens + 1
+		_G.__mapOps[#_G.__mapOps + 1] = "blizz-open"
+		WorldMapFrame.__shown = true
+		if _G.__mapOnShow then _G.__mapOnShow() end
+	end
+end)
+-- The player maximizing the map again, for a test that needs that state.
+_G.__maximizeWorldMap = function() blizzMapMaximized = true end
+
 -- What the client does at VARIABLES_LOADED: the saved values become visible,
 -- the flag the AddOn reads goes up, and every value that actually moved raises
 -- CVAR_UPDATE -- which is the event that turned a wrong reading into a chat

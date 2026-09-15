@@ -106,6 +106,8 @@ dev/SPEC.md             the living record: work list, architecture, rules, versi
                         recon conclusions. Long. Structured as
                         core -> Version history -> Recon results.
 dev/STRINGS.md          every player-visible string, labelled. A RECORD of what ships.
+dev/LISTING.md          the CurseForge listing's text. The FILE is the source, the page is
+                        the copy -- see "The CurseForge page" below.
 dev/UnmarkedRecon/      the probe AddOn. Dev-only, never folded into Vanilla Questing.
                         Recon.lua + Templates.xml. Sections G1..G27; the ACTIVE
                         table switches them on and off.
@@ -116,9 +118,13 @@ dev/BLIP-TEXTURE-WORKFLOW.md   how the minimap blip atlas would be replaced
 dev/audits/             external reviews, kept verbatim. Each finding is verified
                         against the code before it becomes an issue -- an audit is
                         evidence, not a verdict.
-dev/tests/              the off-client suite. ./run.sh: static checks first
-                        (lint_forward_refs.py, luac on every Lua file including
-                        the probe, XML well-formedness), then twelve scenarios.
+dev/tests/              the off-client suite. ./run.sh runs, in this order:
+                        lint_forward_refs.py, luacheck, luac -p on every Lua file
+                        including the probe, XML well-formedness on every XML file,
+                        a probe smoke test -- and then every scenario in its
+                        SCENARIOS list. The count is whatever the run prints at the
+                        end; it is not written down here, because it has been wrong
+                        in three places at once.
 ```
 
 ---
@@ -133,8 +139,8 @@ Change one of these and the others are part of the same change, not a follow-up.
 | **Any player-visible string** | `dev/STRINGS.md`, in the same pass. Both panels if it appears in both. |
 | **An option's description or limitation** | `dev/STRINGS.md`, `README.md` if it is user-facing behaviour, the native tooltip *and* the canvas fallback tooltip — they have drifted apart twice. |
 | **A module** | Give it a unique `order`; add it to the panel and to `/vq status` (all three are guarded by tests). Update `dev/SPEC.md`'s work list. |
-| **Anything about what the AddOn can't do** | All **three** Known limitations sections: `README.md`, `dev/SPEC.md`, and the **CurseForge listing**. See below — they are written at different depths on purpose, but they must never disagree about the facts. |
-| **A feature, or a command** | The **CurseForge listing** too. It is a public promise and goes stale silently. |
+| **Anything about what the AddOn can't do** | All **three** Known limitations sections: `README.md`, `dev/SPEC.md`, and `dev/LISTING.md` (the CurseForge listing). See below — they are written at different depths on purpose, but they must never disagree about the facts. |
+| **A feature, or a command** | `dev/LISTING.md`, in the same pass — that is the CurseForge listing, and it is a public promise that goes stale silently. |
 | **A rule I learn the hard way** | This file. |
 
 ### Backlog and bugs do **not** live in a file
@@ -153,18 +159,23 @@ or whenever a new limitation is found.
 
 | Where | Register |
 | --- | --- |
-| **CurseForge** | The cleanest. What it means for the player, with the technical reasoning left out. |
+| **CurseForge** (`dev/LISTING.md`) | The cleanest. What it means for the player, with the technical reasoning left out. |
 | **`README.md`** | A little more detail, a little more technical. Names the CVar or the frame where that helps someone reading the code. |
 | **`dev/SPEC.md`** | Fully technical. The measurement, the probe section, what was tried and rejected. |
 
 Different depth, never different facts. If the listing says a thing is impossible and the spec
 says it is merely unshipped, one of them is lying to somebody.
 
-**The CurseForge page is not in this repository.** It is written and edited by hand in the
-CurseForge dashboard; there is no API for page content, and CurseForge is egress-blocked from this
-session anyway. **Nothing here can check it**, which is the argument for a stronger rule, not a
-weaker one: when a change touches anything the listing claims, say so in the reply, with the
-wording to paste. That is the only mechanism there is.
+**The CurseForge page is edited by hand — but its text lives here, in `dev/LISTING.md`.**
+There is no API for page content, so nothing can push to it. That used to be the reason for keeping
+no copy in the repository, and it was backwards: with the words only on the page, the listing went a
+whole release advertising an option that no longer exists and a limitation that had been withdrawn,
+and nothing here could see it.
+
+**`dev/LISTING.md` is the source. The page is the copy.** Change the listing by changing that file,
+in the same pass as whatever made it wrong, and say in the reply that the page needs pasting. The
+file also records what the published page last said and when it was read, so the next drift is a
+diff rather than a memory.
 
 **I cannot create releases or push tags** — this session's GitHub token is refused for both.
 Milestones, issues and comments do work. What
@@ -244,6 +255,14 @@ the **Releases → Draft a new release** page on GitHub, which creates the tag i
 13. **A guard that cannot fail is not a guard.** Break the fix and watch the check go red before
    believing it. One tracker assertion passed whether or not the fix existed, because another
    code path was already calling the same function.
+14. **A stub that models only our half models nothing — including events we RAISE.** The rule used
+   to be about frames this AddOn hooks. It is wider: `SetCVar` raises `CVAR_UPDATE`, and on the
+   client Blizzard's own frames have been listening since before we loaded. The suite had nobody
+   listening, so it could not ask what the client does in response to our own write, and 1047
+   checks passed on a build that left the world map standing open. Where the AddOn pokes the
+   client, the stub has to include the client's answer.
+15. **A count written into prose goes stale.** "Ten scenarios" in this file, "twelve" in
+   `dev/README.md`, seventeen in `run.sh`. Let the run print the number; do not repeat it.
 
 ---
 
@@ -283,9 +302,27 @@ the **Releases → Draft a new release** page on GitHub, which creates the tag i
   discovery route, and it is how `instantQuestText` was found.
 - **A tooltip's height is set by the client *after* every hook in the frame.** The only correction
   that is not a frame late is inside `OnSizeChanged`.
-- **Nothing tells a frame that a CVar it reads has changed.** It keeps what it last drew. After
-  writing one, ask for the redraw: `WatchFrame_Update`, and `QuestMapFrame_UpdateAll` when the map
-  is on screen. Both confirmed present by the v0.9 probe.
+- **Nothing tells a frame that a CVar it reads has changed.** It keeps what it last drew — and the
+  answer is **not** to call the redraw yourself. `WatchFrame_Update` and `QuestMapFrame_UpdateAll`
+  exist, and calling either from AddOn Lua runs Blizzard's code in our context:
+  `WatchFrame_Update` writes the global **table** `WATCHFRAME_NUM_POPUPS`, which makes the taint
+  permanent for the session and spreads it to code this AddOn never touches. Three such calls were
+  removed in v1.1.0 and none may come back. Hooking with `hooksecurefunc` is fine; calling is not.
+- **Writing `questPOI` makes the CLIENT open the world map**, and nothing in the client closes it
+  again. `Blizzard_UIPanels_Game/Wrath/QuestMapFrame.lua:253` handles `CVAR_UPDATE` for it and ends
+  in `HandleUserActionToggleQuestLog`, which — despite the name —
+  (`Blizzard_WorldMap/Wrath/QuestLogOwnerMixin.lua:37`) has **no closed branch**: every path ends at
+  `SetDisplayState` with an OPEN state, and that calls `ShowUIPanel`. It toggles the quest-log side
+  panel, not the map. `refreshQuestUI` undoes an open that our own write caused; see SPEC.
+- **`CVAR_UPDATE` is dispatched inside `SetCVar`**, not queued for the next frame. The `applying`
+  re-entry guard depends on it, and so does reading the map's state before a write.
+- **`ShowUIPanel` and `HideUIPanel` refuse in combat when the caller is tainted**, and print
+  "Interface action failed because of an AddOn" —
+  `Blizzard_UIParentPanelManager/Shared/UIParentPanelManager.lua:811`,
+  `InCombatLockdown() and not issecure()`. Our `SetCVar` is enough to make Blizzard's own handler
+  insecure, so **that error can come from Blizzard's code on our behalf**, not only from ours (#11).
+- **`questPOI` and `showBosses` are stored per CHARACTER**, the other three CVars per account
+  ([G32]). A "clean install" question is usually a "first login of this character" question.
 
 ---
 
@@ -311,6 +348,11 @@ check, not an inconvenience.
 cd dev/tests && ./run.sh
 ```
 
-Ten scenarios, every one of which exists because something escaped. A new guard belongs with the
-bug that earned it, and it should be checked by breaking the fix and watching it go red — a guard
-that has never failed has never been shown to measure anything.
+Needs `lua5.1` and `luacheck` (`apt-get install lua-check`). The run prints the number of checks
+and the number of scenarios; **do not write either down anywhere**, here or in `dev/README.md` —
+both were stated as a number, both went stale, and at the last audit this file said ten,
+`dev/README.md` said twelve and `run.sh` ran seventeen.
+
+Every scenario exists because something escaped. A new guard belongs with the bug that earned it,
+and it should be checked by breaking the fix and watching it go red — a guard that has never
+failed has never been shown to measure anything.

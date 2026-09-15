@@ -333,8 +333,9 @@ client will not let an AddOn do cleanly, not things left undone.
    not one of them yet.
 
    The old behaviour is still available, because "a tracker that is entirely text" is a
-   reasonable thing to want: `trackerPlainTextAchievements`, off by default, the AddOn's first
-   sub-option.
+   reasonable thing to want: `trackerPlainTextAchievements`, the AddOn's first sub-option. It
+   ships **on**, with the rest of the plain-text tracker; unticking it is what keeps achievement
+   lines clickable.
 2. ~~**Quest objects show either an outline or loot sparkles — never neither.**~~ **Withdrawn.**
    `ShowQuestObjectHighlightEffect` removes the highlight outright, and the client documents it as
    doing exactly that. Found by probe v0.32's full CVar enumeration and confirmed in game.
@@ -638,8 +639,13 @@ to trace back to their cause.
 
 ## Release notes — CurseForge listing
 
-**Written and published.** The listing is maintained by hand in the CurseForge dashboard and is
-not kept in this repository — there is no API for page content, so a copy here would only drift.
+**Written and published, and the text now lives in [`dev/LISTING.md`](LISTING.md).** The page is
+edited by hand in the CurseForge dashboard — there is no API for page content — and that used to be
+the argument for keeping no copy here. It is the argument for the opposite: with the words only on
+the page, the listing went a whole release still advertising an option that no longer exists and a
+limitation that had been withdrawn, and nothing in the repository could see it. `dev/LISTING.md` is
+the **source**; the page is the copy. Edit the file, then paste it.
+
 CurseForge is marketing; `README.md` is "how do I use it"; where they overlap they must agree.
 
 Three of CurseForge's own rules shaped it: donation links go **at the bottom**, civil in size, and
@@ -1438,6 +1444,133 @@ without anyone having to remember. `noCompleteQuestPopup` is experimental and no
 the warning, and is the control in the test: without it, a change that stripped the note from every
 option would pass.
 
+### The client opens the map itself — [#36](https://github.com/Fixxitforge/vanilla-questing/issues/36) answered, and #11 reframed
+
+Written after the 2026-09-15 audit (`dev/audits/AUDIT-2026-09-15-v1.1.0.md`), and this one was
+settled out of Blizzard's own source rather than by argument.
+
+#### What the client does with a `questPOI` write
+
+`Blizzard_UIPanels_Game/Wrath/QuestMapFrame.lua:253`, already quoted further down, ends its
+`questPOI` branch with `QuestMapFrame:GetParent():HandleUserActionToggleQuestLog()`. The name says
+toggle. It is not one:
+
+```lua
+-- Blizzard_WorldMap/Wrath/QuestLogOwnerMixin.lua:37
+function QuestLogOwnerMixin:HandleUserActionToggleQuestLog()
+	local displayState;
+	if self:IsShown() and self:IsMaximized() then
+		if not self.QuestLog:IsShown() and self:ShouldShowQuestLogPanel() then
+			displayState = DISPLAY_STATE_OPEN_MAXIMIZED_WITH_LOG;
+		else
+			displayState = DISPLAY_STATE_OPEN_MAXIMIZED_NO_LOG;
+		end
+	else
+		displayState = DISPLAY_STATE_OPEN_MINIMIZED;
+	end
+	self:SetDisplayState(displayState);
+end
+```
+
+**There is no `DISPLAY_STATE_CLOSED` branch**, and `SetDisplayState` (:91) calls `ShowUIPanel(self)`
+for every state that is not `CLOSED`. It toggles the quest-log **side panel**; as far as the map
+itself goes it only ever opens it. So *writing `questPOI` opens the world map*, whoever writes it —
+and nothing in the client closes it again.
+
+Three more facts from the same source, each of which used to be an open question:
+
+- **The handler is live from login.** `Blizzard_UIPanels_Game_Classic.toc` carries `## LoadFirst: 1`
+  and no `## LoadOnDemand`, `Blizzard_WorldMap_Mists.toc` is not load-on-demand either, and
+  `QuestMapFrame_OnLoad` registers `CVAR_UPDATE` unconditionally. The audit asked for an in-game
+  test of whether the branch exists before the map is first opened; it does not need one.
+- **`CVAR_UPDATE` is dispatched inside `SetCVar`, not queued for the next frame.** Out of combat the
+  AddOn's cycle runs *after* Blizzard's open and the map ends closed; if the event were queued the
+  cycle would run first and the map would end open. It ends closed, in play. That is also the
+  evidence for the `applying` re-entry guard in `CVars.lua`, which assumes exactly this.
+- **`ShowUIPanel` refuses in combat when the caller is tainted.**
+  `Blizzard_UIParentPanelManager/Shared/UIParentPanelManager.lua:811` gates it on
+  `CheckProtectedFunctionsAllowed`, which is `InCombatLockdown() and not issecure()`, and calls
+  `DisplayInterfaceActionBlockedMessage()` when it fails.
+
+#### Which reframes [#11](https://github.com/Fixxitforge/vanilla-questing/issues/11)
+
+*"In combat, changing an option with the map closed throws Interface action failed"* has always been
+read as this AddOn's `cycleWorldMap` being blocked. It cannot be: `cycleWorldMap` returns at
+`inCombat()` before touching anything. The blocked call is **Blizzard's own `ShowUIPanel`**, inside
+Blizzard's `CVAR_UPDATE` handler, made insecure by the fact that our `SetCVar` is what raised the
+event — and it only happens with the map **closed**, because with the map open `ShowUIPanel` returns
+at its own `frame:IsShown()` check before reaching the combat gate. That is exactly the reported
+shape.
+
+It also explains why deferring the cycle to `PLAYER_REGEN_ENABLED` threw the same error: the error
+was never the cycle. **The only thing that would prevent it is not writing `questPOI` in combat at
+all**, which is a behaviour change with its own cost and is left to #11 rather than taken here.
+
+Third time the rule has earned itself: *reasoning about a mechanism is not evidence of which code
+triggers it.*
+
+#### Measured in game, 2026-09-15
+
+Reported from play, against `1.1.0`:
+
+| | |
+| --- | --- |
+| `/console questPOI 1` in play, map shut | the map **opens**, with no pins on it and pins still on the tracker |
+| `/reload` afterwards | nothing — `questPOI` is already `0`, so nothing is written |
+| a login where nothing is written | nothing |
+| `/vq on` and `/vq off` | the map ends **shut**, whether it started open or shut |
+
+The first row is the mechanism above, from a **secure** write: the player's console command opens
+the map in the client's own context. The AddOn then re-asserts `0` behind it, which is why the map
+that is left open has no pins on it. The tracker keeps its pins because `WatchFrame.showObjectives`
+is only recomputed in the `questHelper` branch and in the map's own dropdown — a `questPOI` write
+never updates it.
+
+**No login has yet been observed writing `questPOI`**, which is the one case the argument turns on:
+`questPOI` is `storedServerCharacter` ([G32]), so the value only reads back as `1` on a character
+that has never had it set. Deleting `VanillaQuestingDB` *while logged in* does not produce that
+state — the in-memory table is written back out at `/reload`. The test that does is: `/vq off
+hideMapQuestHelper`, log out, delete the SavedVariables file, log back in.
+
+#### What ships
+
+`refreshQuestUI` takes the map's state from *before* the write and, on the paths where nobody asked
+for a refresh, undoes an open that our own write caused:
+
+```lua
+if ns.byRequest then cycleWorldMap() return end
+if not mapWasOpen and mapIsOpen() then closeWorldMap() end
+```
+
+- **Open before, open after** — the player, or another AddOn's write, put it there. Not ours to
+  shut. That is the `CVAR_UPDATE` re-assert case, where the foreign write is what the client
+  answered with an open map; [#44](https://github.com/Fixxitforge/vanilla-questing/issues/44) is where
+  that gets revisited.
+- **Shut before, open after** — the client opened it because we wrote. Shut it.
+
+`closeWorldMap` is one `HideUIPanel`, combat-guarded, and not half a cycle: it is not a refresh and
+must never become one. Neither `HideUIPanel` nor `ShowUIPanel` appears anywhere in either taint log.
+
+If it turns out no login ever writes `questPOI` on a live account, this guard never fires and costs
+nothing. It is written so that the test tells us which, rather than the other way round.
+
+#### The harness was the reason this was invisible
+
+`SetCVar` raised `CVAR_UPDATE` and **nobody listened but the AddOn**. 1047 checks passed on a build
+that leaves the map open, because the frame we are a guest on did not exist in the model. Fifth
+time in that shape, and the rule in `dev/README.md` already covered it — it is now extended: where
+the AddOn raises an event the client handles, the stub has to include the client's handler too.
+
+`addon_harness.lua` now registers a Blizzard-owned `CVAR_UPDATE` frame before the AddOn loads,
+modelling `HandleUserActionToggleQuestLog` (opens, never closes) and the in-combat refusal. Its
+opens are logged as `blizz-open` so `__mapOps` stays a record of what the *AddOn* did. Three checks
+go red against the old code by name, and two more go red if the guard is widened to close the map
+unconditionally — both halves are measured.
+
+One consequence worth stating: the op sequence for a player-initiated map option is
+`blizz-open,hide,show,hide` rather than `show,hide`. The client's open was always there; the suite
+simply could not see it.
+
 ### The taint log, at last — and it was never the map
 
 `/console taintLog 1` produces no file on this client. **`taintLog 2` does.** That one line is why
@@ -1847,10 +1980,26 @@ setting the player has taken back would be false" — tidy, and answering a ques
 The player is not auditing the sentence; they are looking for the thing that explains what they are
 seeing.
 
-**Eleven versions unnoticed, because the state was unreachable.** Until `hideMinimapQuestHelper`
-became shared, ticking Track Quest POIs was overruled within the frame, so nobody ever hovered that
-button with the option off. Standing down properly is what made the state reachable, and this was
-the first thing standing down broke.
+**Eleven versions unnoticed — but NOT because the state was unreachable.** This page said that, and
+the commit that fixed the bug said it too, and it is wrong. What sharing changed is that
+**Blizzard's checkbox** can now put the option off; the player could always put it off themselves,
+with `/vq off hideMinimapQuestHelper`, the panel checkbox, or the **Modern** preset. v1.0.0's hook
+gates on the *setting*, not on who moved it:
+
+```lua
+if not ns.db or not ns.db.settings[M.key] then return end   -- v1.0.0, Minimap.lua:156
+```
+
+Checked rather than argued, on 2026-09-15: v1.0.0's own files (`git archive v1.0.0 VanillaQuesting`)
+driven against the current harness, which models Blizzard's half of the `OnEnter` — option on, the
+tooltip shows; option off, **the tooltip does not show at all**. So this shipped in 1.0.0, was
+reachable by any player who switched the option off, and nobody happened to report it. It stays in
+the changelog for that reason.
+
+Standing down through Blizzard's checkbox is what made the state *common* enough to be seen, which
+is the true half of the original claim. Recorded because the false half nearly removed a real
+changelog entry — and because this page warns, one section above, that a claim nobody re-checks
+becomes a fact about the AddOn rather than a fact about the client.
 
 Worth generalising: **when an AddOn hooks a frame it does not own, every early return is a promise
 that the frame is unchanged — and "unchanged" includes shown.** `Tooltip.lua` is clean by this
