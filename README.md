@@ -108,7 +108,7 @@ Built and tested against interface **50504**, client 5.5.4 build 69585.
 
 ## Bugs and requests
 
-**[Open an issue](https://github.com/Fixxitforge/vanilla-questing/issues)** — bug reports are genuinely
+**[Open an issue](https://github.com/Fixxitforge/vanilla-questing/issues/new)** — bug reports are genuinely
 welcome, and most of the fixes in v1.0.0 came from someone saying "that still looks wrong".
 
 ### Check these first
