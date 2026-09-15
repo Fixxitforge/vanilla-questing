@@ -683,14 +683,6 @@ local function build()
 				label:SetTextColor(1, 0.502, 0.098)
 			end
 
-			-- Issue #7: the live status readout is useful while developing
-			-- and meaningless to a player. It stays for now because this
-			-- panel only appears when the native registration fails, and
-			-- this readout is the only diagnostic on that path.
-			local status = fs(row, "GameFontDisableSmall", 0.45, 0.45, 0.45)
-			status:SetPoint("RIGHT", row, "RIGHT", -12, 0)
-			status:SetJustifyH("RIGHT")
-
 			-- Toggle from the saved value, not the checkbox: a row click never
 			-- moves the box, so reading the box would invert the wrong thing.
 			local function toggle()
@@ -720,7 +712,7 @@ local function build()
 			attachTooltip(row, function() return m.title or m.key end, body)
 			attachTooltip(cb, function() return m.title or m.key end, body)
 
-			rows[#rows + 1] = { module = m, check = cb, status = status }
+			rows[#rows + 1] = { module = m, check = cb }
 			y = y - 30
 		end
 	end
@@ -744,12 +736,6 @@ function ns.RefreshOptions()
 		local row = rows[i]
 		local on = ns.db.settings[row.module.key] and true or false
 		pcall(row.check.SetChecked, row.check, on)
-		local text = ""
-		if type(row.module.Status) == "function" then
-			local ok, s = pcall(row.module.Status, row.module)
-			if ok and s then text = s end
-		end
-		row.status:SetText(text)
 	end
 	if preset.text then
 		preset.text:SetText(PRESET_LABEL[displayPreset()] or "Custom")

@@ -1994,6 +1994,27 @@ if scenario == "native_halfway" then
 	check("the canvas panel is there instead", ns.OpenOptions ~= nil)
 	ok, err = pcall(ns.OpenOptions, ns)
 	check("options still open", ok, err)
+
+	-- #7: no live status readout on a row.
+	--
+	-- Every row carried one, in grey on the right: the tracking index, what
+	-- the CVar read, whether a write had been refused. Useful while building
+	-- the thing and meaningless to a player -- and this is the panel a player
+	-- only ever sees when the native registration has failed, which is the
+	-- worst moment to show them diagnostics.
+	--
+	-- Asserted through what the readout SAID rather than by counting frames:
+	-- the minimap module's Status() is the one with words of its own, so its
+	-- text appearing anywhere in the panel means the readout is back.
+	pcall(ns.RefreshOptions)
+	local readout
+	for _, fs in ipairs(_G.fontstrings) do
+		local t = fs.GetText and fs:GetText()
+		if type(t) == "string" and t:find("tracking entry", 1, true) then
+			readout = t
+		end
+	end
+	check("no row carries a live status readout", readout == nil, readout)
 end
 
 if scenario == "normal" or scenario == "no_button_type" then

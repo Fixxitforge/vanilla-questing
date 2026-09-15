@@ -7,6 +7,7 @@
 - **Hide Minimap Quest Helper says what it does not remove.** The `!` over a questgiver and the
   `?` over a turn-in stay on the minimap — the game draws those itself, and no setting reaches
   them. The option now says so.
+- The fallback options panel no longer shows a grey developer readout beside each option.
 
 ## 1.1.0
 

@@ -126,8 +126,14 @@ end)
 ---------------------------------------------------------------------
 
 -- A module is a table with Enable(), Disable(), and a `setting` key naming
--- the saved variable that drives it. Optional Status() returns one line for
--- the slash command and, later, the options panel.
+-- the saved variable that drives it.
+--
+-- Optional Status() returns one diagnostic line -- which tracking index was
+-- found, what the CVar reads, whether a write was refused. **It has no caller
+-- today.** The canvas panel drew it on every row until #7, and `/vq status`
+-- deliberately never has: it reports what the option is doing, and a live CVar
+-- readout is for developer eyes. The methods are kept for #15, the report path
+-- that wants exactly this and has nowhere to get it from otherwise.
 ns.modules = {}
 
 -- One ordering, used by the options panel and by /vq status alike, so the two
