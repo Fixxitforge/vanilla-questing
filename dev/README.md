@@ -93,7 +93,7 @@ illegal `--` inside an XML comment fails the suite rather than reaching the clie
 | `lint_forward_refs.py` | a call to a `local function` declared further down, which resolves as a nil global. Written here because nothing off the shelf does it, and this project has hit it four times |
 | `luac -p` | syntax, including in the probe, which no scenario loads |
 | `luacheck` | unused and shadowed locals, undefined globals, assignments nobody reads |
-| `lint_hygiene.py` | a link to a repository this project has no business citing, a coding-session link, a model identifier, or a commit author nobody recognises. Each check is a list of what is allowed, so anything new has to be added on purpose |
+| `lint_hygiene.py` | a link to a repository this project has no business citing, a coding-session link, a model identifier, a commit author nobody recognises, or a closing keyword in a commit message. Each check is a list of what is allowed, so anything new has to be added on purpose |
 
 `luacheck` reads one file at a time and knows nothing about the forward-reference trap, so it
 replaces neither of the others. Its WoW globals are an explicit **allowlist** in `.luacheckrc`

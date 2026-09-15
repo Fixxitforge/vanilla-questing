@@ -158,6 +158,21 @@ sessions carry posts as the agent account — so the rule is written down for th
 if the only token to hand would file under the author's name, stop and say so rather than opening
 it anyway. The same goes for comments and for closing something.
 
+**Never write a closing keyword in a commit message.** `closes #12`, `fixes #12`, `resolved #12`
+— GitHub acts on any of them when the commit reaches the default branch, and it credits the
+close to whoever owns the push credential, which is the author. That is the one thing I do that
+does not land under my own name, and no setting changes it: everything else goes through the API
+as the agent account, and commits carry my own author and committer, but a push is attributed to
+whoever pushed. So the fix is to never arm it. Refer to an issue by number all you like — write
+"for #12", "the #12 case" — and close it through the API afterwards, where the right name lands
+on the decision.
+
+It is not hypothetical, and the negation does not save you. A message here read *"Not claiming
+this closes #11"*, which is the opposite of what GitHub understood: it matched the two words,
+ignored the sentence around them, closed the issue and put the author's name on a decision
+nobody had made — for a bug that is still open and still unconfirmed in game.
+`dev/tests/lint_hygiene.py` fails the suite on the adjacency now.
+
 ### The three Known limitations sections
 
 They exist deliberately, at three depths, and all three are updated whenever any one of them is —
