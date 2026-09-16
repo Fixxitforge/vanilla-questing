@@ -303,23 +303,98 @@ end
 -- Derived, never stored. "Custom" is what the panel shows when the settings
 -- match neither preset, which is exactly the "selects itself automatically"
 -- behaviour without a stored flag that could drift out of step with reality.
+-- The client's own name for itself, for the "everything off" preset (#55).
+--
+-- "Disabled" said what the preset does to the AddOn; the name of the client
+-- says what the player gets, which is the game as it ships. "Modern" was
+-- considered and rejected: MoP is not the newest client, so "Modern" reads as
+-- a promise to restore things this AddOn never touched.
+--
+-- Read, never hardcoded: `_G["EXPANSION_NAME" .. n]` is how Blizzard's own
+-- code does it (`Blizzard_Collections/Blizzard_ToyBox.lua:138`, indexed from
+-- 0), and `GetClientDisplayExpansionLevel` is in the client's own API
+-- documentation. Existence-checked at every step, because this is the one
+-- string in the panel that comes from outside the AddOn -- and it falls back
+-- to the old label rather than to an empty dropdown entry.
+local function clientName()
+	if type(GetClientDisplayExpansionLevel) ~= "function" then return "Disabled" end
+	local ok, level = pcall(GetClientDisplayExpansionLevel)
+	if not ok or type(level) ~= "number" then return "Disabled" end
+	local name = _G["EXPANSION_NAME" .. level]
+	if type(name) ~= "string" or name == "" then return "Disabled" end
+	return name
+end
+
+-- Base labels. What the control actually shows adds the experimental count;
+-- see `presetLabel`.
+--
+-- "(Default)" is gone from the vanilla one: the dropdown already opens on it,
+-- and the word was doing nothing the panel did not already say.
 local PRESET_LABEL = {
-	disabled = "Disabled",
-	classic  = "Vanilla (Default)",
+	disabled = clientName(),
+	classic  = "Vanilla",
 	custom   = "Custom",
 }
+
+-- How many experimental options are switched on right now.
+local function experimentsOn()
+	if not ns.db then return 0 end
+	local n = 0
+	for i = 1, #ns.modules do
+		local m = ns.modules[i]
+		if m.experimental then
+			local on
+			if ns.EffectiveSetting then on = ns.EffectiveSetting(m.key)
+			else on = ns.db.settings[m.key] and true or false end
+			if on then n = n + 1 end
+		end
+	end
+	return n
+end
+
+-- The label the control shows, which is the base name plus what the presets
+-- deliberately do not cover (#43).
+--
+-- **This is the answer to "should an experiment drop the preset to Custom".**
+-- No: it says so instead. "Vanilla (1 experimental)" is honest about both
+-- halves at once -- the vanilla options are all where the preset puts them,
+-- AND something outside it is on -- where dropping to Custom would have
+-- thrown away the first half to report the second.
+--
+-- It also keeps deriving and applying in agreement, which none of the three
+-- options originally on that issue managed: picking Vanilla with an
+-- experiment on gives "Vanilla (1 experimental)" and the dropdown shows the
+-- thing that was picked, rather than immediately reading Custom as though the
+-- click had failed.
+--
+-- Not on `disabled`: that one counts experiments already, so the number is
+-- always zero when it is showing.
+-- `presetDisplay`, not `presetLabel`: the canvas builder already has a local
+-- of that name for the FontString it draws into, and the collision made this
+-- one unreachable from there. luacheck does not flag it -- the two are in
+-- different scopes and both are used -- so the name carries the reason.
+local function presetDisplay(id)
+	local base = PRESET_LABEL[id] or "Custom"
+	if id == "disabled" then return base end
+	local n = experimentsOn()
+	if n < 1 then return base end
+	return base .. " (" .. n .. " experimental)"
+end
 
 -- Order as shown in the canvas fallback's two-state toggle. "custom" is not
 -- offered there: it is what the control REPORTS when the settings match
 -- neither preset, never something to pick.
 local PRESET_ORDER = { "classic", "disabled" }
 
--- The native dropdown must list "custom" even though it is never a choice --
--- a dropdown cannot display a value that is not among its entries, and
--- "custom" is exactly what it displays most of the time. Reordered on request
--- to Vanilla (Default), Custom, Disabled: reading "Vanilla" in that
--- instruction as the Custom entry, since those are the three that exist.
-local PRESET_DROPDOWN_ORDER = { "classic", "custom", "disabled" }
+-- **"custom" is no longer offered** (#55): it is what the control REPORTS
+-- when the settings match neither preset, and it was never something to pick.
+--
+-- An earlier note here claimed a dropdown cannot display a value that is not
+-- among its entries. That was reasoning, not a measurement, and it is the
+-- thing to watch on the first build carrying this: if the control goes blank
+-- instead of reading "Custom", the entry comes back. The tooltip still
+-- explains all three, because the player still SEES all three.
+local PRESET_DROPDOWN_ORDER = { "classic", "disabled" }
 
 -- What the settings actually look like right now.
 --
@@ -595,7 +670,7 @@ local function build()
 		hl:SetColorTexture(1, 0.82, 0, 0.2)
 		local t = item:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		t:SetPoint("LEFT", 6, 0)
-		t:SetText(PRESET_LABEL[id])
+		t:SetText(presetDisplay(id))
 		item:SetScript("OnClick", function()
 			menu:Hide()
 			applyPreset(id)
@@ -630,11 +705,11 @@ local function build()
 		-- Same text as the native panel's version, which is the one most
 		-- players see. It drifted once; both now read from the same wording.
 		return "\n" .. WHITE .. PRESET_LABEL.classic .. ":" .. C.close
-			.. " Enable all vanilla options.\n\n"
-			.. WHITE .. PRESET_LABEL.custom .. ":" .. C.close
-			.. " Automatically selected when you change any option below.\n\n"
+			.. " Enables all vanilla options.\n\n"
 			.. WHITE .. PRESET_LABEL.disabled .. ":" .. C.close
-			.. " Disable all options."
+			.. " Disables all options.\n\n"
+			.. WHITE .. PRESET_LABEL.custom .. ":" .. C.close
+			.. " Automatically selected when you change any option below."
 	end
 	attachTooltip(value, function() return "Preset" end, presetBody)
 	if left then attachTooltip(left, function() return "Preset" end, presetBody) end
@@ -761,7 +836,7 @@ function ns.RefreshOptions()
 		pcall(row.check.SetChecked, row.check, on)
 	end
 	if preset.text then
-		preset.text:SetText(PRESET_LABEL[displayPreset()] or "Custom")
+		preset.text:SetText(presetDisplay(displayPreset()))
 	end
 end
 
@@ -852,10 +927,16 @@ local function presetTooltip()
 	local function row(headingKey, body)
 		return WHITE .. PRESET_LABEL[headingKey] .. ":|r " .. YELLOW .. body .. "|r"
 	end
+	-- Vanilla, then the client, then Custom (#55). Custom last because it is
+	-- the only one that cannot be chosen -- it describes a state rather than
+	-- an action, and it is not in the dropdown at all.
+	--
+	-- "Enables" and "Disables", not "Enable" and "Disable": the row describes
+	-- what the preset does, rather than instructing the reader to do it.
 	return "|n"
-		.. row("classic", "Enable all vanilla options.") .. "|n|n"
-		.. row("custom", "Automatically selected when you change any option below.") .. "|n|n"
-		.. row("disabled", "Disable all options.")
+		.. row("classic", "Enables all vanilla options.") .. "|n|n"
+		.. row("disabled", "Disables all options.") .. "|n|n"
+		.. row("custom", "Automatically selected when you change any option below.")
 end
 
 -- What happens when a control's value moves. Shared by every checkbox.
@@ -1171,7 +1252,10 @@ local function registerNative()
 	local okd = pcall(function()
 		Settings.CreateDropdown(category, presetSetting, function()
 			local c = Settings.CreateControlTextContainer()
-			for _, id in ipairs(PRESET_DROPDOWN_ORDER) do c:Add(id, PRESET_LABEL[id]) end
+			-- The entry text carries the count too, so the closed dropdown
+			-- and the open list agree about what the current preset is
+			-- called.
+			for _, id in ipairs(PRESET_DROPDOWN_ORDER) do c:Add(id, presetDisplay(id)) end
 			return c:GetData()
 		end,
 		presetTooltip())

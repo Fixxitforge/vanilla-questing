@@ -163,8 +163,8 @@ if scenario == "normal" then
 	check("/vq on runs", ok, err)
 	check("questPOI back to 0", cvars.questPOI == "0", cvars.questPOI)
 
-	ok, err = pcall(SlashCmdList["VANILLAQUESTING"], "reset")
-	check("/vq reset runs", ok, err)
+	ok, err = pcall(ns.ResetDefaults, ns, true)
+	check("a reset runs", ok, err)
 	ok, err = pcall(SlashCmdList["VANILLAQUESTING"], "")
 	check("/vq status runs", ok, err)
 	ok, err = pcall(SlashCmdList["VANILLAQUESTING"], "off hideMinimapQuestHelper")
@@ -175,7 +175,7 @@ if scenario == "normal" then
 	check("unknown setting handled", ok, err)
 
 	-- opt-in CVars must NOT be applied by default
-	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+	ns:ResetDefaults(true)   -- /vq reset is retired; this is what Defaults calls
 	-- Shipped defaults are now the Full Classic experience, so these apply.
 	check("autoQuestWatch applied by default", cvars.autoQuestWatch == "0", cvars.autoQuestWatch)
 	check("showBosses applied by default", cvars.showBosses == "0", cvars.showBosses)
@@ -197,7 +197,7 @@ if scenario == "normal" then
 	check("showBosses restored on opt-out", cvars.showBosses == "1", cvars.showBosses)
 
 	-- tooltip: the hook must add lines only while the setting is on
-	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+	ns:ResetDefaults(true)   -- /vq reset is retired; this is what Defaults calls
 	for i = #tooltipLines, 1, -1 do tooltipLines[i] = nil end
 	ok, err = pcall(hoverTrackingButton)
 	check("tooltip hook runs", ok, err)
@@ -230,7 +230,7 @@ if scenario == "normal" then
 		pcall(fire, "PLAYER_ENTERING_WORLD")
 		check("v1 state key migrated", VanillaQuestingDB.state.minimapMarkersTracking == true)
 		check("v1 state key removed", VanillaQuestingDB.state.minimapQuestPOITracking == nil)
-		pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+		ns:ResetDefaults(true)   -- /vq reset is retired; this is what Defaults calls
 	end
 
 	-- #51: the migration blocks run in ascending order.
@@ -314,6 +314,20 @@ if scenario == "normal" then
 		check("and does not pretend anything changed",
 			tostring(chatlog[#chatlog]):find("Nothing to change", 1, true) ~= nil,
 			tostring(chatlog[#chatlog]))
+		-- In the error colour, not grey: it is the AddOn declining to do
+		-- something, which is the same class as every other refusal.
+		check("in the same colour as every other refusal",
+			tostring(chatlog[#chatlog]):find(ns.color.error, 1, true) ~= nil,
+			tostring(chatlog[#chatlog]))
+
+		-- /vq reset is retired. The panel's Defaults button still resets.
+		b = #chatlog
+		pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+		check("/vq reset is retired",
+			table.concat(chatlog, "\n", b + 1):find("Unknown command", 1, true) ~= nil,
+			table.concat(chatlog, "\n", b + 1))
+		check("but ResetDefaults is still there for the Defaults button",
+			type(ns.ResetDefaults) == "function")
 
 		-- The trial commands are gone with the decision.
 		b = #chatlog
@@ -321,7 +335,7 @@ if scenario == "normal" then
 		check("the /vq offstatus trial command is retired",
 			table.concat(chatlog, "\n", b + 1):find("Unknown command", 1, true) ~= nil,
 			table.concat(chatlog, "\n", b + 1))
-		pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+		ns:ResetDefaults(true)   -- /vq reset is retired; this is what Defaults calls
 	end
 
 	-- old names still resolve as handles
@@ -335,7 +349,7 @@ if scenario == "normal" then
 	-- mirror: it has no default at all, and on this harness's client Outline
 	-- reads 2, so after a reset it is legitimately ON. Using it as the stand-in
 	-- for "experimental" would test the mirror instead of the rule.
-	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+	ns:ResetDefaults(true)   -- /vq reset is retired; this is what Defaults calls
 	check("experimental off by default",
 		VanillaQuestingDB.settings.noCompleteQuestPopup == false)
 	pcall(SlashCmdList["VANILLAQUESTING"], "on")
@@ -355,13 +369,13 @@ if scenario == "normal" then
 	-- Note the polarity flip. The old option was on when outlines showed; this
 	-- one is on when they are removed, like every other option here.
 	cvars.Outline = "3"
-	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+	ns:ResetDefaults(true)   -- /vq reset is retired; this is what Defaults calls
 	check("No Outline Mode ships on", VanillaQuestingDB.settings.noOutlineMode == true,
 		tostring(VanillaQuestingDB.settings.noOutlineMode))
-	check("and reset drives the variable to 0", cvars.Outline == "0", cvars.Outline)
+	check("and a reset drives the variable to 0", cvars.Outline == "0", cvars.Outline)
 
 	cvars.Outline = "2"
-	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+	ns:ResetDefaults(true)   -- /vq reset is retired; this is what Defaults calls
 	check("/vq on still enables the normal ones", VanillaQuestingDB.settings.hideBossPortraits == true)
 
 	-- On by name, off by name, and the off value is Blizzard's own default of
@@ -385,7 +399,7 @@ if scenario == "normal" then
 		check("Outline " .. v .. " is removed when the option goes on",
 			cvars.Outline == "0", cvars.Outline)
 	end
-	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+	ns:ResetDefaults(true)   -- /vq reset is retired; this is what Defaults calls
 
 	-- The sparkles themselves, which is why the outline option could change
 	-- shape at all. Probe v0.33 [G34] found the variable by reading the
@@ -398,7 +412,7 @@ if scenario == "normal" then
 	check("switching it off hands back the client's default of 1",
 		cvars.ShowQuestObjectHighlightEffect == "1",
 		tostring(cvars.ShowQuestObjectHighlightEffect))
-	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+	ns:ResetDefaults(true)   -- /vq reset is retired; this is what Defaults calls
 
 	-- The case that worried us: a player who has NEVER switched Outline Mode
 	-- on must never have their Outline touched, including by a bulk /vq off.
@@ -409,7 +423,7 @@ if scenario == "normal" then
 	pcall(SlashCmdList["VANILLAQUESTING"], "off")
 	check("an option never switched on does not touch its variable",
 		cvars.Outline == "3", cvars.Outline)
-	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+	ns:ResetDefaults(true)   -- /vq reset is retired; this is what Defaults calls
 
 	-- And the general rule, on an ordinary option. questPOI has two values, so
 	-- "what the player had" and "not on" are the same thing -- which is why
@@ -474,7 +488,7 @@ if scenario == "normal" then
 		check("but switching " .. t.key .. " off still means off",
 			cvars[t.cvar] == "1", cvars[t.cvar])
 	end
-	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+	ns:ResetDefaults(true)   -- /vq reset is retired; this is what Defaults calls
 
 	-- The remembered value has to be forgotten when the option is handed back,
 	-- or it is never replaced. Reported in play against the minimap; the CVar
@@ -494,7 +508,7 @@ if scenario == "normal" then
 	check("a value set between cycles is left alone while the option is on",
 		cvars.Outline == "3", cvars.Outline)
 
-	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+	ns:ResetDefaults(true)   -- /vq reset is retired; this is what Defaults calls
 	-- ---- the tracking button's tooltip ----
 	--
 	-- Two bugs here, and the second was a too-narrow reading of the first.
@@ -605,7 +619,7 @@ if scenario == "normal" then
 	check("and the old enforcement line is gone for good",
 		enforcementLines() == 0, enforcementLines())
 
-	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+	ns:ResetDefaults(true)   -- /vq reset is retired; this is what Defaults calls
 
 	-- #27: switching the option off restores what the player had, including
 	-- OFF. Until v1.0.1 this turned Track Quest POIs back ON regardless, which
@@ -650,7 +664,7 @@ if scenario == "normal" then
 	pcall(SlashCmdList["VANILLAQUESTING"], "off")
 	check("an entry this AddOn never held is left alone",
 		tracking[4].active == false, tostring(tracking[4].active))
-	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+	ns:ResetDefaults(true)   -- /vq reset is retired; this is what Defaults calls
 	advanceTime(20)
 
 elseif scenario == "cvar_refused" then
@@ -828,7 +842,7 @@ end
 
 -- ---- options panel ----
 if scenario == "normal" or scenario == "no_settings" or scenario == "settings_refuses" then
-	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+	ns:ResetDefaults(true)   -- /vq reset is retired; this is what Defaults calls
 	local panel = _G.VanillaQuestingOptions
 	check("panel frame built at login", panel ~= nil)
 
@@ -895,14 +909,14 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 		local expected = before and remembered or "0"
 		check("world map CVar followed the click", cvars.questPOI == expected,
 			cvars.questPOI .. " expected " .. tostring(expected))
-		pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+		ns:ResetDefaults(true)   -- /vq reset is retired; this is what Defaults calls
 	end
 
 	ok, err = pcall(SlashCmdList["VANILLAQUESTING"], "status")
 	check("/vq status still works", ok, err)
 
 	-- ---- preset selector ----
-	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+	ns:ResetDefaults(true)   -- /vq reset is retired; this is what Defaults calls
 	local presetText
 	for i = 1, #frames do
 		local f = frames[i]
@@ -975,7 +989,7 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 	end
 
 	-- ---- Defaults asks once, not twice ----
-	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+	ns:ResetDefaults(true)   -- /vq reset is retired; this is what Defaults calls
 	local defBtn
 	for i = 1, #frames do
 		if rawget(frames[i], "__text") == "Defaults" then defBtn = frames[i] end
@@ -1006,7 +1020,7 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 	end
 
 	-- with nothing to reload, the question must not mention one
-	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+	ns:ResetDefaults(true)   -- /vq reset is retired; this is what Defaults calls
 	if defBtn then
 		pcall(rawget(defBtn, "script_OnClick"), defBtn)
 		local d = _G.StaticPopupDialogs["VANILLAQUESTING_DEFAULTS"]
@@ -1345,7 +1359,7 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 		pcall(SlashCmdList["VANILLAQUESTING"], "on")
 		check("as is /vq on", ops() == "blizz-open,hide", ops())
 		check("and it ends closed as well", not WorldMapFrame:IsShown())
-		pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+		ns:ResetDefaults(true)   -- /vq reset is retired; this is what Defaults calls
 		_G.closeWorldMap()
 
 		ns:ResetDefaults(true)
@@ -1395,7 +1409,7 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 	-- Regression guard. A slash toggle used to print "needs a UI reload".
 	-- Tested in game: it does not -- the map is correct the next time it
 	-- opens -- so the line was advice for a problem the player never has.
-	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+	ns:ResetDefaults(true)   -- /vq reset is retired; this is what Defaults calls
 	local b4 = #chatlog
 	pcall(SlashCmdList["VANILLAQUESTING"], "off hideMapQuestHelper")
 	local told = false
@@ -1410,7 +1424,7 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 		if tostring(chatlog[i]):find("needs a UI reload", 1, true) then told = true end
 	end
 	check("a non-map slash toggle stays quiet", told == false)
-	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+	ns:ResetDefaults(true)   -- /vq reset is retired; this is what Defaults calls
 
 	before3 = #chatlog
 	pcall(SlashCmdList["VANILLAQUESTING"], "help")
@@ -1418,7 +1432,7 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 	check("help is titled", helpText:find("- List of commands", 1, true) ~= nil, helpText)
 
 	-- ---- defaults button must not print to chat ----
-	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+	ns:ResetDefaults(true)   -- /vq reset is retired; this is what Defaults calls
 	local before = #chatlog
 	ok, err = pcall(ns.ResetDefaults, ns, true)
 	check("silent reset runs", ok, err)
@@ -1428,7 +1442,7 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 	check("loud reset still prints for /vq reset", #chatlog > before)
 
 	-- ---- reload confirmation at the moment of change ----
-	pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+	ns:ResetDefaults(true)   -- /vq reset is retired; this is what Defaults calls
 	local noApplyButton = true
 	for i = 1, #frames do
 		if rawget(frames[i], "__text") == "Apply" then noApplyButton = false end
@@ -1460,7 +1474,7 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 		ok, err = pcall(_G.popupAccept)
 		check("Reload runs", ok, err)
 		check("Reload reloads the UI", _G.__reloads > r0, _G.__reloads - r0)
-		pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+		ns:ResetDefaults(true)   -- /vq reset is retired; this is what Defaults calls
 
 		-- #24, second pass: the panel keeps working in combat.
 		--
@@ -1517,7 +1531,7 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 			saidOpen)
 
 		_G.__inCombat = false
-		pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+		ns:ResetDefaults(true)   -- /vq reset is retired; this is what Defaults calls
 	end
 
 	-- a non-map option must NOT ask
@@ -1529,7 +1543,7 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 		_G.__popup = nil
 		pcall(rawget(expRow, "script_OnClick"), expRow)
 		check("a non-map option does not ask", _G.__popup == nil, tostring(_G.__popup))
-		pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+		ns:ResetDefaults(true)   -- /vq reset is retired; this is what Defaults calls
 	end
 
 	-- ---- unknown commands ----
@@ -1748,6 +1762,9 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 	end
 	for _, gone in ipairs({ "/vq on <option>", "/vq off <option>",
 		"Turn one option on", "Turn one option off",
+		-- Retired: it did what /vq on does, and the word invited the reading
+		-- that it was a second way to switch the AddOn off.
+		"/vq reset", "Restore default options",
 		"List every option and its current state" }) do
 		check("help no longer says " .. gone, helpText:find(gone, 1, true) == nil)
 	end
@@ -1758,13 +1775,12 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 	ok, err = pcall(SlashCmdList["VANILLAQUESTING"], "status hideBossPortraits")
 	check("/vq status <option> runs", ok, err)
 	local oneText = table.concat(chatlog, "\n", before3 + 1)
-	-- #34: one line, no header. A title, a version and a subtitle above a
-	-- single row was four times as much chat as the answer.
-	check("it is prefixed as a status rather than titled",
-		oneText:find("Status:", 1, true) ~= nil
-		and oneText:find("- Status of one option", 1, true) == nil, oneText)
-	check("the prefix is white, so it reads as a label not a value",
-		oneText:find(ns.color.title .. "Status:", 1, true) ~= nil, oneText)
+	-- #34: one line, no header and no label. A title, a version and a subtitle
+	-- above a single row was four times as much chat as the answer; a
+	-- "Status:" in front of it was tried in the same pass and dropped for the
+	-- same reason, once it was on screen. The row IS the answer.
+	check("it is a bare row, with no heading and no label",
+		oneText:find("Status", 1, true) == nil, oneText)
 	check("and prints the option asked for",
 		oneText:find("hideBossPortraits", 1, true) ~= nil, oneText)
 	-- ONE line now. A single-option lookup that prints the whole list is the
@@ -2059,13 +2075,33 @@ if scenario == "native" or scenario == "no_tooltipfunc" or scenario == "no_templ
 		check("preset tooltip opens with a line break", tip:sub(1, 2) == "|n", tip:sub(1, 6))
 		check("preset tooltip headings are white", tip:find("|cffffffff", 1, true) ~= nil)
 		check("preset tooltip bodies are yellow", tip:find("|cffffd100", 1, true) ~= nil)
+		-- "(Default)" is gone from the vanilla label (#55): the dropdown opens
+		-- on it anyway, and the word said nothing the panel did not.
 		check("preset tooltip puts the colon inside the white run",
-			tip:find("|cffffffffVanilla (Default):|r", 1, true) ~= nil, tip)
+			tip:find("|cffffffffVanilla:|r", 1, true) ~= nil, tip)
+		check("and the vanilla label no longer says Default",
+			tip:find("(Default)", 1, true) == nil, tip)
 		check("preset tooltip says Custom is set automatically",
 			tip:find("Automatically selected when you", 1, true) ~= nil, tip)
-		check("the dropdown lists Full, Custom, Disabled in that order",
-			table.concat({ drops[1].options[1].value, drops[1].options[2].value,
-				drops[1].options[3].value }, ",") == "classic,custom,disabled")
+		-- Enables/Disables, describing what the preset does rather than
+		-- instructing the reader to do it.
+		check("the tooltip describes rather than instructs",
+			tip:find("Enables all vanilla options", 1, true) ~= nil
+			and tip:find("Disables all options", 1, true) ~= nil, tip)
+		-- Vanilla, the client, then Custom -- which is last because it is the
+		-- one that cannot be chosen.
+		check("the tooltip orders them vanilla, client, custom",
+			tip:find("Vanilla", 1, true) < tip:find("Disables all", 1, true)
+			and tip:find("Disables all", 1, true) < tip:find("Custom", 1, true), tip)
+
+		-- #55: "custom" is no longer offered, because it was never a choice.
+		check("the dropdown offers two presets, not three",
+			#drops[1].options == 2, #drops[1].options)
+		check("and they are vanilla then the client",
+			table.concat({ drops[1].options[1].value,
+				drops[1].options[2].value }, ",") == "classic,disabled",
+			table.concat({ drops[1].options[1].value,
+				drops[1].options[2].value }, ","))
 	end
 
 	-- Apply. A map option carries the Apply and Revertable flags, so ticking
@@ -2123,7 +2159,7 @@ if scenario == "native" or scenario == "no_tooltipfunc" or scenario == "no_templ
 		check("and rebuilds, like it does out of combat",
 			_G.__reloads == rc + 1, _G.__reloads - rc)
 		_G.__inCombat = false
-		pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+		ns:ResetDefaults(true)   -- /vq reset is retired; this is what Defaults calls
 	end
 
 	-- An option that needs no rebuild takes effect at once and never asks.
@@ -2269,7 +2305,7 @@ if scenario == "native" or scenario == "no_tooltipfunc" or scenario == "no_templ
 			ns.RefreshOptions()
 			pcall(SlashCmdList["VANILLAQUESTING"], "on")
 			pcall(SlashCmdList["VANILLAQUESTING"], "off")
-			pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+			ns:ResetDefaults(true)   -- /vq reset is retired; this is what Defaults calls
 		end
 	end)
 	check("repeated opening and slash use terminates", ok, err)

@@ -103,6 +103,12 @@ read_globals = {
 	-- it on the first run, which is what it is for -- on this client a name
 	-- that looks right and is not is exactly the mistake worth catching.
 	"YELLOW_FONT_COLOR_CODE",
+	-- The client's own name for itself, for the preset that turns everything
+	-- off (#55). Documented in the client's own generated API
+	-- (ExpansionDocumentation.lua), and Blizzard indexes EXPANSION_NAME<n>
+	-- the same way in Blizzard_Collections/Blizzard_ToyBox.lua:138.
+	-- EXPANSION_NAME<n> itself is reached through _G, so it needs no entry.
+	"GetClientDisplayExpansionLevel",
 	"YES", "NO", "CANCEL", "ChatFontNormal",
 
 	-- Miscellaneous client globals

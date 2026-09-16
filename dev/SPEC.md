@@ -2238,6 +2238,56 @@ than acting on: **this option is more subtractive than Vanilla was.** Vanilla ha
 progress watch; switching `autoQuestWatch` off removes it. Whether that is right for an AddOn whose
 premise is restoring Vanilla is a decision, not a bug, and it is on #38.
 
+#### The preset says what it does not cover — [#43](https://github.com/Fixxitforge/vanilla-questing/issues/43) and [#55](https://github.com/Fixxitforge/vanilla-questing/issues/55)
+
+Three options were put up for #43 and the author proposed a fourth that none of them reached:
+**the label says the number.**
+
+```
+Vanilla                    every vanilla option on, no experiments
+Vanilla (1 experimental)   every vanilla option on, and one experiment
+Custom (1 experimental)    some vanilla options moved, and one experiment
+Mists of Pandaria          everything off, experiments included
+```
+
+**Why it beats all three.** The question was "should an experiment drop the preset to Custom", and
+every answer on the table threw away one true thing to report another: dropping to Custom denies
+that the vanilla options are exactly where the preset puts them, and ignoring the experiment denies
+that something outside it is on. The suffix says both at once. It also keeps deriving and applying
+in agreement — the thing option 1 could not do — so picking *Vanilla* with an experiment on shows
+*Vanilla (1 experimental)* rather than instantly reading *Custom* as though the click had failed.
+
+`/vq status` needs nothing: this is the options panel's problem, not the command line's.
+
+Three changes came in with it, from #55:
+
+- **"(Default)" is gone.** The dropdown opens on Vanilla anyway.
+- **"Disabled" is the client's own name for itself.** It says what the player gets — the game as it
+  ships — rather than what the preset does to the AddOn. *Modern* was considered and rejected: MoP
+  is not the newest client, so it reads as a promise to restore things this AddOn never touched.
+  Read rather than hardcoded: `_G["EXPANSION_NAME" .. GetClientDisplayExpansionLevel()]`, which is
+  how Blizzard's own `Blizzard_ToyBox.lua:138` does it, existence-checked at every step and falling
+  back to "Disabled".
+- **"Custom" is no longer in the dropdown**, because it was never a choice. **Watch this one in
+  play:** a comment in this code claimed a dropdown cannot display a value that is not among its
+  entries, and that was reasoning rather than a measurement. If the control goes blank instead of
+  reading *Custom*, the entry comes back. The tooltip still explains all three, because the player
+  still sees all three.
+
+The tooltip is reordered to match — Vanilla, the client, Custom — with Custom last because it is
+the one that cannot be picked, and it says *Enables* and *Disables* rather than instructing the
+reader.
+
+#### `/vq reset` is retired — [#34](https://github.com/Fixxitforge/vanilla-questing/issues/34)
+
+It did what `/vq on` does, because the defaults **are** the Vanilla preset. And the word invited
+the other reading — a second way to switch the AddOn off — which it never was. Two commands for one
+job, one of them ambiguous.
+
+`ns:ResetDefaults` stays: Blizzard's own **Defaults** button calls it, which is where a reset
+belongs. Thirty fixtures in the suite were typing `/vq reset` to get to a known state; they call
+the function now, which is both honest and immune to the command being retired.
+
 #### The rest of the cycle
 
 - **[#54](https://github.com/Fixxitforge/vanilla-questing/issues/54)** — the minimap option states

@@ -4,10 +4,17 @@
 
 ### Known limitations
 
+Three new entries, all of them things the game does not let an AddOn do rather than things left
+undone. Each is now on the option that carries it, in the readme and on the listing.
+
 - **Disabling or deleting the AddOn does not put the game's settings back.** The options drive the
   game's own settings, which live in the game rather than in the AddOn. `/vq off` hands them back
   and has to run while the AddOn is still loaded; unticking it in the AddOn list or deleting the
-  folder leaves them where they were. Now stated in the README and on the listing.
+  folder leaves them where they were.
+- **Hide Minimap Quest Helper does not remove the `!` and `?` from the minimap.** The game draws
+  those itself, and the only lever swaps the whole minimap icon sheet — vendors and herbs with it.
+- **No Automatic Quest Tracking also stops the few minutes of tracking** you get when you pick up a
+  quest object. The game controls both with one setting.
 
 ### Changed
 
@@ -19,8 +26,14 @@
   cannot run, a name the AddOn does not know, and the AddOn reporting a fault of its own.
 - **No Automatic Quest Tracking says what it actually does.** The game uses one setting for two
   things — tracking a quest when you accept it, and tracking one for a few minutes when you pick up
-  a quest object — and the option removes both. It only mentioned the first. The second is
-  behaviour the original game had, so it is now stated on the option as a known limitation.
+  a quest object — and the option removes both. It only mentioned the first.
+- **`/vq reset` is gone.** It did the same job as `/vq on`, and the word read as a second way to
+  switch the AddOn off, which it never was. The **Defaults** button in the options panel still
+  resets everything.
+- **The preset says when an experimental option is on**, rather than pretending the others are not
+  where you left them: **Vanilla (1 experimental)**. The **Disabled** preset is named after the
+  client now — *Mists of Pandaria* — because that is what you get when every option is off, and
+  **Custom** is no longer offered in the dropdown, since it was never something you could pick.
 - **Hide Minimap Quest Helper says what it does not remove.** The `!` over a questgiver and the
   `?` over a turn-in stay on the minimap — the game draws those itself, and no setting reaches
   them. The option now says so.

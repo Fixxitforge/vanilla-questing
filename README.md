@@ -118,11 +118,16 @@ mining veins. The game renders both from the same variable, so there is no way t
 without the other. Neither had loot sparkles in the original game, so this is the accepted
 behaviour for Vanilla Questing.
 
-**Automatic Quest Tracking takes one original-game behaviour with it.** Switching it off stops a
-quest being tracked when you accept it, which is what the original game did — and also stops the
-few minutes of tracking you got when you picked up a quest object, which the original game *also*
-did. The game controls both with one setting (`autoQuestWatch`), so they cannot be separated
-without the AddOn reaching into the quest log, which it does not do.
+**Automatic Quest Tracking takes one original-game behaviour with it.** The game uses one setting,
+`autoQuestWatch`, for two things:
+
+- **tracking a quest the moment you accept it** — which the original game did **not** do, and which
+  is the behaviour this option is for;
+- **tracking a quest for a few minutes when you pick up a quest object** — which the original game
+  **did** do.
+
+Switching the option off removes both, because there is one switch. Separating them would mean the
+AddOn reaching into the quest log to undo tracking the game had just applied, which it does not do.
 
 ## Bugs and requests
 

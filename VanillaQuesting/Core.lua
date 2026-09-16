@@ -691,10 +691,11 @@ end
 -- what "on" means would be worse than no single-option lookup at all.
 local function status(only)
 	if only then
-		-- One line, no header. A title, a version and a subtitle above a
-		-- single row is four times as much chat as the answer, and the player
-		-- asked about one option (#34). The row says what it is instead.
-		statusLine(ns.modules[only], false, C.title .. "Status:" .. C.close .. "  ")
+		-- One line, no header and no label. A title, a version and a subtitle
+		-- above a single row was four times as much chat as the answer (#34);
+		-- a "Status:" in front of it was tried in the same pass and dropped
+		-- for the same reason, once it was on screen. The row IS the answer.
+		statusLine(ns.modules[only])
 		return
 	end
 	ns:Print(ns.title .. " v" .. tostring(ns.version) .. " - Status and list of options")
@@ -736,24 +737,25 @@ SlashCmdList["VANILLAQUESTING"] = function(msg)
 
 	-- Bulk commands are refused outright in combat (#24).
 	--
-	-- `/vq on`, `/vq off` and `/vq reset` all move Hide World Map Quest
-	-- Helper, which cannot take effect without the UI being rebuilt -- and
-	-- writing its variable is what makes the client try to open the world map,
-	-- which it may not do mid-fight. Unconditionally, rather than only when
-	-- that option would actually move: a command that sometimes works in
-	-- combat and sometimes does not is worse to explain than one that never
-	-- does, and this is a rule the player has to hold in their head while
-	-- something is hitting them.
-	if ns:InCombat() and (cmd == "reset"
-		or ((cmd == "on" or cmd == "off") and arg == "")) then
+	-- `/vq on` and `/vq off` both move Hide World Map Quest Helper, which
+	-- cannot take effect without the UI being rebuilt -- and writing its
+	-- variable is what makes the client try to open the world map, which it
+	-- may not do mid-fight. Unconditionally, rather than only when that option
+	-- would actually move: a command that sometimes works in combat and
+	-- sometimes does not is worse to explain than one that never does, and
+	-- this is a rule the player has to hold in their head while something is
+	-- hitting them.
+	if ns:InCombat() and (cmd == "on" or cmd == "off") and arg == "" then
 		ns:RefuseInCombat(nil)
 		return
 	end
 
-	if cmd == "reset" then
-		ns:ResetDefaults()
-
-	elseif cmd == "on" or cmd == "off" then
+	-- **`/vq reset` is retired.** It did what `/vq on` does -- the defaults
+	-- ARE the Vanilla preset -- and the word invited the other reading, that
+	-- it was a second way to switch the AddOn off. Two commands for one job,
+	-- one of them ambiguous. `ns:ResetDefaults` stays: Blizzard's own Defaults
+	-- button in the panel still calls it, which is where a reset belongs.
+	if cmd == "on" or cmd == "off" then
 		local want = (cmd == "on")
 		if arg == "" then
 			-- Read every option's EFFECT before the pass, so the lines below
@@ -819,7 +821,7 @@ SlashCmdList["VANILLAQUESTING"] = function(msg)
 			if moved == 0 then
 				-- Silence would read as a command that failed. It did not:
 				-- everything was already where it was asked to go.
-				ns:Print(C.muted .. "Nothing to change." .. C.close)
+				ns:Print(C.error .. "Nothing to change." .. C.close)
 			end
 		else
 			local key = resolveSetting(arg)
@@ -860,7 +862,6 @@ SlashCmdList["VANILLAQUESTING"] = function(msg)
 		line("/vq on [option]", "Enable all vanilla options, or one [option]")
 		line("/vq off [option]", "Disable all options, or one [option]")
 		line("/vq status [option]", "List status of all options, or one [option]")
-		line("/vq reset", "Restore default options")
 
 	elseif cmd == "status" then
 		if arg == "" then

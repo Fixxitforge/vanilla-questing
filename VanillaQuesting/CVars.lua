@@ -108,7 +108,7 @@ local RULES = {
 		-- variable (#38). Said on the option rather than quietly accepted:
 		-- everything else this AddOn removes was added after Vanilla, and
 		-- this is the one place it goes further than the era it restores.
-		limitation = "Known limitation: the original game also tracked a quest for a few minutes when you picked up a quest object. That goes too, because the game controls both with one setting.",
+		limitation = "Known limitation: stops tracking quests for a few minutes when a quest object is picked up.",
 	},
 	{
 		-- The variable is not a guess. Probe v0.19 [G19] walked the settings
