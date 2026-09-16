@@ -302,7 +302,14 @@ the **Releases → Draft a new release** page on GitHub, which creates the tag i
 - **No pull requests.** The work is tracked in the issue it belongs to, not in a PR. Push to
   `main` as soon as the change is done and the suite is green, and say on the issue what shipped.
   A PR here would be a review of one person's work by the same person, with an extra click.
-- **"AddOn"**, not "addon", in every user-visible string and in comments.
+- **"AddOn" where the game would write it; "addon" is fine in prose** (#56). Blizzard's
+  capitalisation belongs in anything the player reads **inside the game** — chat lines, option
+  titles, descriptions, tooltips, the `.toc` — and in headings and titles anywhere. In the body
+  text of the README, the listing and these notes, "addon" is the commoner spelling and reads more
+  naturally, so it is allowed and is not something to go back and "fix".
+
+  This replaces a flat rule that applied everywhere. It was costing edits to the author's own
+  prose to satisfy a convention the player never sees.
 - **One name per feature.** The module key is the saved-settings key is the name the player
   types. The CVar name stays an implementation detail inside `CVars.lua`.
 - **Report the effect, not the switch.** `/vq on X` says what changed, never the CVar transition.
@@ -426,6 +433,11 @@ the **Releases → Draft a new release** page on GitHub, which creates the tag i
   panel, not the map. `refreshQuestUI` undoes an open that our own write caused; see SPEC.
 - **`CVAR_UPDATE` is dispatched inside `SetCVar`**, not queued for the next frame. The `applying`
   re-entry guard depends on it, and so does reading the map's state before a write.
+- **A blocked protected call is not a Lua error, so `pcall` reports success.** Blizzard prints
+  *"Interface action failed because of an AddOn"* and returns normally. `/vq` in combat did that
+  for a whole version: `Settings.OpenToCategory` "succeeded", `ns:OpenOptions` returned `true`,
+  and the player got an error and no panel. Where a call can be refused, check the condition
+  BEFORE calling; the return value will not tell you.
 - **`ShowUIPanel` and `HideUIPanel` refuse in combat when the caller is tainted**, and print
   "Interface action failed because of an AddOn" —
   `Blizzard_UIParentPanelManager/Shared/UIParentPanelManager.lua:811`,

@@ -2,13 +2,20 @@
 
 # Vanilla Questing
 
-*Turn off the quest helper and experience questing as in the original game. Read the quest, explore, and immerse yourself in the World of Warcraft. You have full control, disable as much or as little as you like: no map/minimap markers, no progress in tooltips, instant quest text, vanilla quest tracker, and much more.*
+*Turn off the quest helper and immerse yourself in the World of Warcraft.*
 
-A World of Warcraft AddOn that turns off the quest helper, so questing feels like the original
-game again: you read the quest text and go exploring, instead of following a marker.
+Nowadays, the in-game quest helper almost plays the game for you. Markers on the map, progress in
+hover tooltips, and QoL improvements so you can rush through the game without hustle.
 
-Built and tested against **Mists of Pandaria Classic** (5.5.4). Support for other client versions
-is in the pipeline.
+**Vanilla Questing reverses that.** We restore the original game experience: you read the quest
+text, work out where to go, and explore the World of Warcraft. The world stops being a checklist
+and goes back to being… well… a world.
+
+Nothing is added: the addon only takes away things that the original game never had. Every option
+is on by default, and you have the power to customise your own flavor of vanilla.
+
+Built and tested against **Mists of Pandaria Classic**, 5.5.4 (build 69585), interface `50504`.
+Support for other client versions is in the research pipeline.
 
 ## Install
 
@@ -46,65 +53,65 @@ or `/reload`, then type `/vq` to open the options.
 
 ## What it removes
 
-You have full control, disable as much or as little as you like.
+Each of these is its own option, on by default, and each can be switched off on its own. The name
+in brackets is what you type after `/vq on` or `/vq off`.
 
-**Map and minimap**
+### 🗺️ Map and minimap
 
-- Removed the quest markers, blue objective areas, the Track Quest checkbox and the quest list
-  inside the full-screen map
-- Removed the quest markers on the minimap
-- Hides the boss markers on zone maps
+- **Map quest markers** (`hideMapQuestHelper`): also removes the blue objective areas, the Track
+  Quest checkbox and the quest list inside the full-screen map. Driven by the `questPOI` console
+  variable, which is why it is the one option that asks for a UI reload
+- **Minimap quest objective markers**\* (`hideMinimapQuestHelper`): also removes the blue objective
+  areas. This is the *Track Quest POIs* entry in the minimap's own tracking dropdown, so the two
+  follow each other in both directions
+- **Boss portraits** (`hideBossPortraits`): removed across the world map
 
-**Quests**
+### 📜 Quests
 
-- No Instant Quest Text, quest text types out a word at a time
-- Removed the framed questgiver portrait beside quest text, in the offer window and the quest log
+- **Instant Quest Text** (`noInstantQuestText`): quest text appears slowly, with the quill
+- **Quest log character frames** (`hideCharacterFrame`): quests no longer reveal who you're looking
+  for, in the offer window and in the quest log
 
-**Quest tracker**
+### 🎯 Quest Tracker
 
-- No automatic tracking of newly accepted quests
-- No clickable quest titles — no click-to-open-map, no right-click menu. Classic's tracker was text
-  you read. Tracked achievements go plain text too; untick **Plain Text Achievements**
-  under it to keep those clickable
-- No quest item use buttons beside tracked quests.
+- **Automatic Quest Tracking** (`noAutoQuestTracking`): no longer tracks quests when accepted
+- **Clickable titles** (`trackerPlainText`): no click-to-open-map, no right-click menu, just plain
+  text. Tracked achievements go plain text with it — untick **Plain Text Achievements**
+  (`trackerPlainTextAchievements`) underneath to keep those clickable
+- **Quest item buttons** (`hideTrackerItemButtons`): you instead can find the items in your bag
 
-**UI & Graphics**
+### 🔍 UI & Graphics
 
-- Quest progress appended to tooltips — mousing a creature no longer tells you which quest it
-  belongs to or how many you still need
-- The yellow highlight on quest items in your bags, and the `!` on items that start a
-  quest — one option, since Blizzard draws both with the same texture
-- The loot sparkles on quest objects. This also removes them from gathering nodes such as herbs and
-  mining veins — see Known limitations
-- The outline around quest objects, where a client draws one
+- **Tooltip quest progress** (`hideTooltipsQuestProgress`): hovering a mob no longer tells you which
+  quest it belongs to or how many you still need
+- **Quest item highlights in your bags** (`noBagItemHighlight`): no more yellow frames on quest
+  items or `!` on items that start a quest. One option, because the game draws both with the same
+  texture
+- **Loot sparkles on quest objects**\* (`noQuestSparkles`): loot sparkles reserved only on lootable
+  corpses
+- **Outline Mode** (`noOutlineMode`): removes the yellow outline on quest objects
 
-**Experimental**
+### 🧪 Experimental
 
-These are never switched on by the **Vanilla (Default)** preset. Turn them on yourself.
+Never switched on by the **Vanilla (Default)** preset. Turn them on yourself.
 
-- Removes the Complete Quest popups
+- **"Complete Quest" popups** (`noCompleteQuestPopup`): removes the popups that allow you to
+  complete quests faster *(untested feature)*
+
+\* See [Known limitations](#known-limitations).
 
 ## Known limitations
 
-### The minimap keeps the `!` and `?` questgiver marks
+**\* Quest objective markers on the minimap:** does not remove the `!` and `?` from the minimap.
+The game draws those itself — there is no frame to hide and no setting to switch, and the one
+lever the client offers swaps the whole minimap icon sheet, vendors and herbs with it. Removing
+them means shipping edited artwork, which is
+[being looked at](https://github.com/Fixxitforge/vanilla-questing/issues/3).
 
-**Hide Minimap Quest Helper** takes the quest markers and the blue objective areas off the
-minimap. It does not take off the `!` over a questgiver or the `?` over someone waiting for a
-turn-in. Those are drawn by the engine rather than by the interface: there is no frame to hide
-and no setting to switch, and the only lever the client offers replaces the whole minimap icon
-sheet — herbs, vendors and trainers included. Removing them means shipping edited artwork, which
-is [being looked at](https://github.com/Fixxitforge/vanilla-questing/issues/3).
-
-### Removing the loot sparkles on quest objects also removes them from gathering nodes
-
-Removing the loot sparkles on quest objects also removes them from gathering nodes such as herbs
-and mining veins. The game draws both from one switch, so there is no way to take the loot sparkle
-off a quest object and leave it on a mining vein. Neither quest objects or nodes had loot sparkles
-in the original game, so this is the accepted behaviour for Vanilla Questing.
-
-## Compatibility
-
-Built and tested against interface **50504**, client 5.5.4 build 69585.
+**\* Loot sparkles on quest objects**: are also removed from gathering nodes, such as herbs and
+mining veins. The game renders both from the same variable, so there is no way to remove one
+without the other. Neither had loot sparkles in the original game, so this is the accepted
+behaviour for Vanilla Questing.
 
 ## Bugs and requests
 
@@ -134,8 +141,11 @@ A screenshot settles most things.
 
 ## Uninstall
 
-1. Run **`/vq off`** to restore the game's settings.
+1. Run **`/vq off`** to restore the modern settings.
 2. Delete the `VanillaQuesting` folder from `World of Warcraft\_classic_\Interface\AddOns\`.
+
+Run `/vq off` first and while the AddOn is still loaded: it is what hands the game's own settings
+back. Deleting the folder on its own leaves them where the AddOn had them.
 
 ## Licence
 

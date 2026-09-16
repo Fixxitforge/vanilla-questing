@@ -611,8 +611,9 @@ asked for by name has nothing to sit under. Like `/vq on|off <option>`, the name
 through `resolveSetting`, so a display key, a saved-setting name and an old v1 name all work,
 case-insensitively.
 
-**"AddOn", not "addon".** Blizzard's own capitalisation, in every user-visible string and in
-the comments.
+**"AddOn" where the game would write it.** Blizzard's capitalisation in every string the player
+reads in game, and in titles and headings. In body prose — the README, the listing, these notes —
+"addon" is allowed and is what the author writes (#56).
 
 ## Driving Blizzard's options: registry or CVar?
 
@@ -2004,28 +2005,71 @@ answer taken is **refusal, not deferral**.
 - Deferring to `PLAYER_REGEN_ENABLED` is not free: the map cycle was deferred that way and threw
   the same error it was avoiding.
 
-So, in combat:
+**Build 1 refused everywhere, and half of that was wrong.** Tested in play 2026-09-16, and the
+correction is the more interesting half of this entry.
 
 | | |
 | --- | --- |
 | `/vq on`, `/vq off`, `/vq reset` | refused whole — *"Command blocked: some settings cannot be changed during combat."* |
-| `/vq on\|off hideMapQuestHelper` | refused by name, saying the UI has to reload for it |
-| the same option in either panel | the change is put back and chat says why; the prompt is never raised |
-| every other option, by name or by checkbox | **allowed** — they take effect the moment they are written |
+| `/vq on\|off hideMapQuestHelper` | refused by name, in the same sentence: *"…cannot be changed during combat, it requires a UI reload."* |
+| `/vq` opening the panel | **refused** — see below; this one was throwing a client error |
+| every other option by name | **allowed** — they take effect the moment they are written |
+| **anything inside an options panel that is already open** | **allowed, Apply included** |
 
 **Bulk commands are refused unconditionally**, not only when the reload-needing option would
 actually move. A command that sometimes works in a fight and sometimes does not is worse to
 explain than one that never does, and this is a rule the player holds in their head while
 something is hitting them.
 
-`ns:InCombat`, `ns:RefuseInCombat` and `ns:BlockedByCombat` live in `Core.lua` so the wording has
-one home — the same reason `statusLine` renders both readings of `/vq status`. `doRebuild` keeps
-its own guard as a backstop: reaching it in combat means something found a way round the other
-two, and the right answer there is still not to reload.
+#### The line is who initiated it, not what it costs
 
-**It does not close #11.** The `CVAR_UPDATE` re-assert can still write `questPOI` in combat — a
-foreign write mid-fight is put back, and the client's blocked open follows. The suite drives the
-client's half through that path now, because the command no longer reaches it.
+Build 1 put a ticked map option back and refused Apply, reasoning that a reload mid-fight is not
+something to offer. Rejected by the author in play, and the reasoning that replaces it is better:
+
+- **A slash command is typed blind.** Often in a hurry, with nothing on screen showing what it
+  did. Refusing it costs the player nothing they can see.
+- **A panel button is a deliberate click on a frame they are reading.** They ticked a box, they
+  pressed Blizzard's own Apply, and the panel has to do what it says.
+
+So the three `ReloadUI` call sites are **unguarded again, on purpose**, and `#24`'s literal ask —
+*guard all three* — is answered by guarding the way in instead. Whether the client permits a
+reload from Blizzard's Apply during combat is a question only the game answers, and it is on the
+checklist.
+
+#### `/vq` could not open the panel, and said nothing useful
+
+Reported from play: `/vq` in combat printed *"Interface action failed because of an AddOn"* and
+opened nothing.
+
+`Settings.OpenToCategory` ends in `ShowUIPanel`, which refuses when
+`InCombatLockdown() and not issecure()` — and a call from AddOn Lua always is. **`pcall` does not
+catch it**: Blizzard prints the message and returns normally, so the call "succeeded" and
+`ns:OpenOptions` reported `true` while the player looked at an error and no panel.
+
+It now refuses before calling, says so, and returns `false`. That is a second instance of a rule
+already in this file — *`pcall` hides a missing method as easily as a failing one* — in its
+nastiest form yet: nothing failed, and nothing worked.
+
+#### One colour, end to end
+
+Every refusal is a single `C.warning` span. Half a line in warning orange beside half a line in
+the ordinary yellow reads as a note with an error in it rather than a refusal, and the option's
+name goes inside the same sentence.
+
+`ns:InCombat`, `ns:RefuseInCombat` and `ns:BlockedByCombat` live in `Core.lua` so the wording has
+one home — the same reason `statusLine` renders both readings of `/vq status`.
+
+#### What it does for #11, which is more than expected and less than a fix
+
+The `CVAR_UPDATE` re-assert can still write `questPOI` in combat. But the reproduction designed
+for it **cannot happen as written**, and play showed why: `/console questPOI 1` in combat is the
+player's own **secure** write, and the client opens the map on it. By the time the AddOn's
+re-assert runs, the map is already open — and `ShowUIPanel` returns at its own `frame:IsShown()`
+check *before* the combat gate. No error, either direction, in or out of combat.
+
+So the remaining path needs a foreign write that does **not** open the map first: another AddOn,
+or a macro. Left open on #11 with that written down, because "I could not reproduce it" and "it
+cannot happen" are different claims.
 
 #### A sub-option follows its parent — [#45](https://github.com/Fixxitforge/vanilla-questing/issues/45)
 
@@ -2048,31 +2092,46 @@ It now greys an unticked box rather than one holding a stale choice, and it is w
 ticking an option that cannot do anything yet — which would put the panel and `/vq status` in
 open disagreement.
 
-#### The map cycle is on a switch — [#46](https://github.com/Fixxitforge/vanilla-questing/issues/46)
+#### The map cycle was half unnecessary — [#46](https://github.com/Fixxitforge/vanilla-questing/issues/46) answered in game
 
-The question is whether `cycleWorldMap` is needed at all. Blizzard's own `CVAR_UPDATE` handler
-ends in `HandleUserActionToggleQuestLog`, which toggles the quest-log pane on the same event —
-so the AddOn may have spent four versions re-implementing, and fighting, something the game does
-itself.
+The question was whether `cycleWorldMap` is needed at all: Blizzard's own `CVAR_UPDATE` handler
+ends in `HandleUserActionToggleQuestLog`, which toggles the quest-log pane on the same event, so
+the AddOn may have been re-implementing it. **No stub could answer it** — the harness knows
+whether we called `HideUIPanel`; it cannot know whether a frame redrew. So the build shipped
+carrying both paths behind `/vq mapcycle`, and one round trip settled it.
 
-**No stub can answer it.** The harness knows whether the AddOn called `HideUIPanel`; it cannot
-know whether the on-screen quest helper redrew. So the build carries both paths:
+**Measured, 2026-09-16, with the cycle switched off:**
 
+| map | on-screen quest helper |
+| --- | --- |
+| **shut** | updates correctly, **both directions**, and the map does not appear |
+| **open** | stays **stale**; nothing but closing and reopening the map by hand moves it |
+
+So the answer is neither "it was always needed" nor "it was never needed":
+
+```lua
+if ns.byRequest and mapWasOpen and ns:MapCycleWanted() then cycleWorldMap(mapWasOpen) return end
+if not mapWasOpen and mapIsOpen() then closeWorldMap() end
 ```
-/vq mapcycle           what it is set to
-/vq mapcycle off       the AddOn stops cycling
-/vq mapcycle on        back to v1.1.0's behaviour (the default)
-```
 
-With it off, a by-request change falls through to the path that undoes an open our own write
-caused — so the map still ends where it was found, and the client's open followed by our close is
-itself an open and a close. That is the experiment: if the helper refreshes anyway, the cycle goes,
-and #46, [#44](https://github.com/Fixxitforge/vanilla-questing/issues/44) and half of #11 go with it.
+**With the map shut, the client was doing the work all along** — and the AddOn could not see it,
+because its own close-open-close ran on top of the client's open and hid it. Four versions of
+`#11`, `#19` and `#44` were spent tuning a round trip that the shut case never needed. The op
+sequence goes from `blizz-open,hide,show,hide` to `blizz-open,hide`, and the close that is left
+is not half a cycle — it is the second half of the **client's** open.
 
-**It is not an option.** Not in either panel, not in `/vq help`, not in `README.md` and **not on
-the CurseForge listing** — deliberately, and written down here because the doc-sync rule would
-otherwise send the next reader to add it. It is outside `settings` so that a preset, a reset or a
-bulk command cannot move it in the middle of a test. **It goes when #46 is answered, either way.**
+**With the map open the cycle stays**, and ends open, which is `#44`.
+
+`/vq mapcycle` stays one more round, now governing only the open case, so the two can be compared
+in one session. **It is not an option**: not in either panel, not in `/vq help`, not in
+`README.md` and **not on the CurseForge listing** — deliberately, and written down here and in
+`AGENT.md` because the doc-sync rule would otherwise send the next reader to add it. It lives
+outside `settings` so a preset, a reset or a bulk command cannot move it mid-test, and it goes
+when #46 closes.
+
+**The rule this earned:** a question a stub cannot answer is worth shipping as a switch rather
+than as an argument. One build, one round trip, and the answer was a shape nobody had proposed —
+both sides of the argument were half right.
 
 #### The rest of the cycle
 
@@ -2092,9 +2151,11 @@ bulk command cannot move it in the middle of a test. **It goes when #46 is answe
   an option is *doing* rather than what a variable reads, so the methods are kept for
   [#15](https://github.com/Fixxitforge/vanilla-questing/issues/15).
 - **[#12](https://github.com/Fixxitforge/vanilla-questing/issues/12)** — the Experimental note is
-  `GameFontNormal`, the size of the option labels, instead of `GameFontHighlightSmall`. The row's
-  fixed 40px height is the other half and is untouched: one thing at a time when the only test is
-  a screenshot, and `[G27]` found the settings list deciding row heights on its own.
+  `GameFontNormal`, the size of the option labels, instead of `GameFontHighlightSmall`. Confirmed
+  in play; the row height went from 40px to **22** in the same round, because a one-line note was
+  leaving about a line and a half of dead space under it. The note **stays under the heading and
+  above the options** — moving it below the group was suggested while the padding looked
+  unfixable, and a sentence about a list belongs before the list.
 
 ### v0.33 probe
 
