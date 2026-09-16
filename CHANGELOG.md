@@ -4,6 +4,14 @@
 
 ### Changed
 
+- **Chat says much less.** `/vq on|off <option>` prints a status row — `on -> off  noOutlineMode` —
+  instead of a sentence about what changed, and prints it even when nothing moved. `/vq on` and
+  `/vq off` answer in one short line. `/vq status <option>` is one line with no heading above it.
+- **Errors are the game's own system yellow**, the whole line, rather than three colours in one
+  sentence.
+- **No Automatic Quest Tracking says what it actually does.** The game uses one setting for two
+  things — tracking a quest when you accept it, and tracking one for five minutes when you make
+  progress on it — and the option removes both. It only mentioned the first.
 - **Hide Minimap Quest Helper says what it does not remove.** The `!` over a questgiver and the
   `?` over a turn-in stay on the minimap — the game draws those itself, and no setting reaches
   them. The option now says so.

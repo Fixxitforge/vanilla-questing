@@ -70,7 +70,9 @@ in brackets is what you type after `/vq on` or `/vq off`.
 
 ### 🎯 Quest Tracker
 
-- **Automatic Quest Tracking** (`noAutoQuestTracking`): no longer tracks quests when accepted
+- **Automatic Quest Tracking** (`noAutoQuestTracking`): no longer tracks quests when accepted, and
+  no longer adds one to the tracker for five minutes when you make progress on it — the game does
+  both from the one `autoQuestWatch` setting
 - **Clickable titles** (`trackerPlainText`): no click-to-open-map, no right-click menu, just plain
   text. Tracked achievements go plain text with it — untick **Plain Text Achievements**
   (`trackerPlainTextAchievements`) underneath to keep those clickable

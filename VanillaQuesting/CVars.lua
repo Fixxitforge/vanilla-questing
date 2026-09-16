@@ -92,7 +92,17 @@ local RULES = {
 		group   = "Quest Tracker",
 		order   = 60,
 		title   = "No Automatic Quest Tracking",
-		desc    = "Stops quests from instantly appearing in the quest tracker when accepted.",
+		-- Two behaviours, not one (#38). `autoQuestWatch` gates both of these
+		-- in the client's own code, and the description named only the first:
+		--
+		--   QUEST_ACCEPTED     -> _QuestLog_ToggleQuestWatch(arg1)
+		--   QUEST_WATCH_UPDATE -> AddQuestWatch(questID, ...Automatic)
+		--
+		-- Blizzard_UIPanels_Game/Wrath/QuestLogFrame.lua:102 and :114, and
+		-- QuestMapFrame.lua:207, in the 5.5.4.69585 source drop. Blizzard's
+		-- own tooltip for the same variable names only the SECOND, so both
+		-- descriptions were half right in opposite directions.
+		desc    = "Stops quests from adding themselves to the tracker, both when accepted and when you make progress on one.",
 	},
 	{
 		-- The variable is not a guess. Probe v0.19 [G19] walked the settings

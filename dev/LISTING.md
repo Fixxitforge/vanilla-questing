@@ -45,7 +45,7 @@ Nothing is added: the addon only takes away things that the original game never 
 
 ### 🎯 Quest Tracker
 
-*   **Automatic Quest Tracking**: no longer tracks quests when accepted
+*   **Automatic Quest Tracking**: no longer tracks quests when accepted, or when you make progress on one
 *   **Clickable titles**: no click-to-open-map, no right-click menu, just plain text
 *   **Quest item buttons**: you instead can find the items in your bag
 

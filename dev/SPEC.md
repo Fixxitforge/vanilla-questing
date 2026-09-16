@@ -2156,6 +2156,40 @@ cycle switched off the open case goes stale, which is the control.
 than as an argument. One build, one round trip, and the answer was a shape nobody had proposed —
 both sides of the argument were half right.
 
+#### What `autoQuestWatch` really does — [#38](https://github.com/Fixxitforge/vanilla-questing/issues/38)
+
+Settled out of Blizzard's source for this build rather than by argument. The variable gates **two**
+things, and every description of it in circulation named one:
+
+```lua
+-- Blizzard_UIPanels_Game/Wrath/QuestLogFrame.lua:114
+elseif ( event == "QUEST_ACCEPTED" ) then
+    if ( GetCVar("autoQuestWatch") == "1" ) then _QuestLog_ToggleQuestWatch(arg1); end
+-- :102, and QuestMapFrame.lua:207
+elseif ( event == "QUEST_WATCH_UPDATE" ) then
+    if ( GetCVar("autoQuestWatch") == "1" ) then ... AddQuestWatch(questID, Automatic) end
+```
+
+- **Ours said** *"…when accepted"* — the first only.
+- **Blizzard's own tooltip** (`OPTION_TOOLTIP_AUTO_QUEST_PROGRESS`, on the same checkbox) says
+  *"Quests are automatically watched for 5 minutes when you achieve a quest objective"* — the
+  second only.
+
+Both half right, in opposite directions. The five minutes is real and is in the source:
+`MAX_QUEST_WATCH_TIMER = 300`.
+
+**And the question the issue could not answer — what did Vanilla do? — the source answers too.**
+`Blizzard_UIPanels_Game/Vanilla/QuestLogFrame.lua` handles `QUEST_WATCH_UPDATE` behind
+`autoQuestWatch` and has **no `QUEST_ACCEPTED` branch at all**. So in the Vanilla UI accepting a
+quest did **not** track it, and objective progress watched it for five minutes and let it go.
+TBC is where the accept branch appears.
+
+That is Blizzard's modern re-implementation of the Vanilla UI, not the 2004 client, so it is
+strong evidence and not proof. It has one consequence worth putting in front of the author rather
+than acting on: **this option is more subtractive than Vanilla was.** Vanilla had the five-minute
+progress watch; switching `autoQuestWatch` off removes it. Whether that is right for an AddOn whose
+premise is restoring Vanilla is a decision, not a bug, and it is on #38.
+
 #### The rest of the cycle
 
 - **[#54](https://github.com/Fixxitforge/vanilla-questing/issues/54)** — the minimap option states

@@ -255,6 +255,60 @@ if scenario == "normal" then
 			tostring(seen))
 	end
 
+	-- #34: what one option prints when it moves.
+	--
+	-- "noOutlineMode off. Outlines on quest objects restored." was two
+	-- clauses and a sentence of effect text for a thing the player had just
+	-- typed. It is a status row now, in the shape /vq status uses.
+	do
+		ns:Set("hideBossPortraits", true)
+		local b = #chatlog
+		pcall(SlashCmdList["VANILLAQUESTING"], "off hideBossPortraits")
+		local line = tostring(chatlog[#chatlog])
+		check("one option prints one line", #chatlog - b == 1, #chatlog - b)
+		check("and it is a transition, not a sentence",
+			line:find("->", 1, true) ~= nil
+			and line:find("hideBossPortraits", 1, true) ~= nil, line)
+		check("with no effect text left in it",
+			line:find("Boss portraits", 1, true) == nil, line)
+		check("the states carry their own colours",
+			line:find(ns.color.on, 1, true) ~= nil
+			and line:find(ns.color.off, 1, true) ~= nil, line)
+
+		-- A command that changes nothing still answers. The player typed it;
+		-- silence reads as a failure, and "off -> off" is the real answer.
+		b = #chatlog
+		pcall(SlashCmdList["VANILLAQUESTING"], "off hideBossPortraits")
+		check("a command that moves nothing still prints", #chatlog - b == 1,
+			#chatlog - b)
+		check("and says so honestly",
+			tostring(chatlog[#chatlog]):find("off", 1, true) ~= nil
+			and select(2, tostring(chatlog[#chatlog]):gsub("off", "")) == 2,
+			tostring(chatlog[#chatlog]))
+		ns:Set("hideBossPortraits", true)
+	end
+
+	-- #34: and what a bulk command prints. One line, and the state in colour.
+	do
+		local b = #chatlog
+		pcall(SlashCmdList["VANILLAQUESTING"], "on")
+		check("a bulk command prints one line", #chatlog - b == 1, #chatlog - b)
+		check("and it is the short form",
+			tostring(chatlog[#chatlog]):find("All vanilla options", 1, true) ~= nil,
+			tostring(chatlog[#chatlog]))
+
+		-- The other candidate, on a temporary command so both can be read in
+		-- one session: the same move, then the whole list.
+		b = #chatlog
+		pcall(SlashCmdList["VANILLAQUESTING"], "offstatus")
+		check("/vq offstatus turns everything off", ns:IsActive("hideBossPortraits") == false)
+		check("and prints the list after it", #chatlog - b > 5, #chatlog - b)
+		local listed = table.concat(chatlog, "\n", b + 1)
+		check("which is the status list, not sentences",
+			listed:find("Status and list of options", 1, true) ~= nil, listed)
+		pcall(SlashCmdList["VANILLAQUESTING"], "reset")
+	end
+
 	-- old names still resolve as handles
 	pcall(SlashCmdList["VANILLAQUESTING"], "on showBosses")
 	check("old v1 name still accepted", VanillaQuestingDB.settings.hideBossPortraits == true)
@@ -1433,8 +1487,12 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 		-- It says `/vq` cannot open it, not that the panel cannot be opened:
 		-- Blizzard's own Esc menu opens it in combat, being a secure path, and
 		-- an AddOn that says otherwise is lying to be brief.
+		-- It says `/vq` cannot open it, NOT that the panel cannot be opened:
+		-- Blizzard's own Esc menu opens it in combat, being a secure path.
 		check("and does not claim the panel itself is unreachable",
-			saidOpen ~= nil and tostring(saidOpen):find("game menu", 1, true) ~= nil,
+			saidOpen ~= nil
+			and tostring(saidOpen):find("/vq cannot open", 1, true) ~= nil
+			and tostring(saidOpen):find("panel cannot be opened", 1, true) == nil,
 			saidOpen)
 		-- One colour across the whole message, not a warning that fades into
 		-- the ordinary yellow half way through. Two escapes in the line: the
@@ -1482,8 +1540,17 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 			local t = tostring(chatlog[i])
 			if t:find("Unknown command", 1, true) then unknownLine = t end
 		end
-		check("an unrecognised command keeps the AddOn's own warning colour",
-			unknownLine ~= nil and unknownLine:find(ns.color.warning, 1, true) ~= nil,
+		-- Decided 2026-09-16: an unrecognised command is the same kind of
+		-- message as a blocked one -- the AddOn declining to act -- so it
+		-- takes the same system yellow, for the WHOLE line. It was three
+		-- colours: salmon for the complaint, yellow for the command name,
+		-- white for the rest, which made a two-clause error read as a small
+		-- paragraph.
+		check("an unrecognised command is one colour end to end",
+			unknownLine ~= nil
+			and unknownLine:find(ns.color.blocked, 1, true) ~= nil
+			and unknownLine:find(ns.color.warning, 1, true) == nil
+			and select(2, unknownLine:gsub("|c", "")) == 2,
 			unknownLine)
 		-- Read off the LINES, not off the palette. Comparing `C.warning` with
 		-- `C.blocked` would pass whatever the printers actually used, which is
@@ -1497,7 +1564,7 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 			local t = tostring(chatlog[i])
 			if t:find("Command blocked", 1, true) then blockedLine = t end
 		end
-		check("a blocked command does not use it",
+		check("a blocked command does not use the salmon either",
 			blockedLine ~= nil and blockedLine:find(ns.color.warning, 1, true) == nil,
 			blockedLine)
 		check("it uses the game's own system-notice yellow instead",
@@ -1673,13 +1740,18 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 	ok, err = pcall(SlashCmdList["VANILLAQUESTING"], "status hideBossPortraits")
 	check("/vq status <option> runs", ok, err)
 	local oneText = table.concat(chatlog, "\n", before3 + 1)
-	check("it is titled as one option",
-		oneText:find("- Status of one option", 1, true) ~= nil, oneText)
+	-- #34: one line, no header. A title, a version and a subtitle above a
+	-- single row was four times as much chat as the answer.
+	check("it is prefixed as a status rather than titled",
+		oneText:find("Status:", 1, true) ~= nil
+		and oneText:find("- Status of one option", 1, true) == nil, oneText)
+	check("the prefix is white, so it reads as a label not a value",
+		oneText:find(ns.color.title .. "Status:", 1, true) ~= nil, oneText)
 	check("and prints the option asked for",
 		oneText:find("hideBossPortraits", 1, true) ~= nil, oneText)
-	-- Two lines, header and row. A single-option lookup that prints the whole
-	-- list is the bug this is here to catch.
-	check("and nothing else", #chatlog - before3 == 2, #chatlog - before3)
+	-- ONE line now. A single-option lookup that prints the whole list is the
+	-- bug this is here to catch, and the header going was the point of #34.
+	check("and nothing else", #chatlog - before3 == 1, #chatlog - before3)
 
 	-- The same handle as /vq on|off: display key, saved-setting name and the
 	-- old v1 names, case-insensitively.
@@ -1687,7 +1759,7 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 		before3 = #chatlog
 		pcall(SlashCmdList["VANILLAQUESTING"], "status " .. alias)
 		check("/vq status accepts " .. alias,
-			table.concat(chatlog, "\n", before3 + 1):find("- Status of one option", 1, true) ~= nil)
+			table.concat(chatlog, "\n", before3 + 1):find("hideBossPortraits", 1, true) ~= nil)
 	end
 
 	-- And it reports what the option is doing, not what it is set to.

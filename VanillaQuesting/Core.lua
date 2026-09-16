@@ -126,8 +126,7 @@ function ns:RefuseInCombat(what)
 		-- opened, which is a smaller sentence and a false one, and a player
 		-- who then opens it from the game menu has been told a lie by an
 		-- AddOn that was trying to be helpful.
-		msg = "/vq cannot open the options panel during combat. " ..
-			"Use the game menu instead."
+		msg = "/vq cannot open the options panel during combat."
 	elseif what then
 		-- No reason given. The reason offered first was "it requires a UI
 		-- reload", which is not true: what it requires is the world map
@@ -625,7 +624,36 @@ end)
 -- One option, as the status list prints it. `indent` is what makes a
 -- sub-option sit under its parent in the full list; asked for by name it is
 -- the only line on screen, so there is nothing to sit under.
-local function statusLine(m, indent)
+-- "on" and "off", in their colours, optionally padded so a column of them
+-- lines up. **One renderer**, so `/vq status`, `/vq status <option>` and
+-- `/vq on|off <option>` cannot come to disagree about what "on" looks like --
+-- the same reason `statusLine` prints both the whole list and a single row.
+local function stateWord(on, width)
+	local word = on and "on" or "off"
+	if width then word = word .. string.rep(" ", width - #word) end
+	return (on and C.on or C.off) .. word .. C.close
+end
+
+-- What one option DID, in the shape of a status row rather than a sentence.
+--
+-- It used to read "noOutlineMode off. Outlines on quest objects restored." --
+-- two clauses and a full sentence of effect text, for a thing the player had
+-- just typed and already knew. Twelve of those on a bulk command was most of
+-- the chat noise this AddOn made (#34).
+--
+-- Printed even when nothing moved, so "off -> off" is a real answer: the
+-- command was received and the option was already there, which is exactly
+-- what a player who typed it twice needs to see.
+--
+-- `IsActive`, not the saved value, both sides -- the same reading `/vq status`
+-- prints, so a sub-option under an off parent says "off -> off" and does not
+-- claim an effect the player can watch not happening.
+local function transitionLine(key, was, now)
+	ns:Print("  " .. stateWord(was, 3) .. " -> " .. stateWord(now, 3) ..
+		"  " .. C.highlight .. tostring(key) .. C.close)
+end
+
+local function statusLine(m, indent, prefix)
 	-- What it is doing, not what it is set to. A sub-option under a parent
 	-- that is off is doing nothing, and saying "on" next to a tracker that
 	-- is plainly still clickable is the readout arguing with the game.
@@ -636,7 +664,7 @@ local function statusLine(m, indent)
 	-- "(experimental)" note after it carries the mark on its own, and the
 	-- panel cannot colour its names at all (see [G23b]) -- so colouring
 	-- them here made the two disagree about what an option looks like.
-	ns:Print("  " .. (on and (C.on .. "on " .. C.close) or (C.off .. "off " .. C.close)) ..
+	ns:Print((prefix or "") .. "  " .. stateWord(on, 3) ..
 		"  " .. (indent and m.parent and "   " or "") ..
 		C.highlight .. tostring(m.key) .. C.close ..
 		(m.experimental and (" " .. C.experimental .. "(experimental)" .. C.close) or ""))
@@ -647,8 +675,10 @@ end
 -- what "on" means would be worse than no single-option lookup at all.
 local function status(only)
 	if only then
-		ns:Print(ns.title .. " v" .. tostring(ns.version) .. " - Status of one option")
-		statusLine(ns.modules[only])
+		-- One line, no header. A title, a version and a subtitle above a
+		-- single row is four times as much chat as the answer, and the player
+		-- asked about one option (#34). The row says what it is instead.
+		statusLine(ns.modules[only], false, C.title .. "Status:" .. C.close)
 		return
 	end
 	ns:Print(ns.title .. " v" .. tostring(ns.version) .. " - Status and list of options")
@@ -707,8 +737,16 @@ SlashCmdList["VANILLAQUESTING"] = function(msg)
 	if cmd == "reset" then
 		ns:ResetDefaults()
 
-	elseif cmd == "on" or cmd == "off" then
-		local want = (cmd == "on")
+	elseif cmd == "on" or cmd == "off"
+		or cmd == "onstatus" or cmd == "offstatus" then
+		local want = (cmd == "on" or cmd == "onstatus")
+		-- `onstatus` / `offstatus` are #34's other candidate, shipped beside
+		-- the terse one so both can be read in the same session: they do
+		-- exactly what `on` and `off` do and then print the whole status list,
+		-- which is the "show me what the game looks like now" answer. Not in
+		-- `/vq help`, not in the README, not on the listing -- a temporary
+		-- command, the way `/vq mapcycle` was, and it goes when #34 is decided.
+		local withList = (cmd == "onstatus" or cmd == "offstatus")
 		if arg == "" then
 			-- "/vq on" means Vanilla (Default), not the experiments.
 			-- Experimental features are only ever turned on by name.
@@ -738,8 +776,12 @@ SlashCmdList["VANILLAQUESTING"] = function(msg)
 			end
 			-- By request: the player typed /vq on or /vq off.
 			ns:ApplyAll(true)
-			ns:Print(want and "Enabled all vanilla options."
-				or "Disabled all options.")
+			-- Minimal (#34). Twelve options moved and the player knows which
+			-- command they typed; what they want back is confirmation and the
+			-- state, not a sentence about either.
+			ns:Print(want and ("All vanilla options " .. stateWord(true))
+				or ("All options " .. stateWord(false)))
+			if withList then status() end
 		else
 			local key = resolveSetting(arg)
 			if key and ns:BlockedByCombat(key) then
@@ -748,24 +790,21 @@ SlashCmdList["VANILLAQUESTING"] = function(msg)
 				-- effect the moment it is written.
 				ns:RefuseInCombat(key)
 			elseif key then
+				-- Read before, read after, print the move. Both readings are
+				-- `IsActive`, which is what `/vq status` prints -- so setting
+				-- a sub-option while its parent is off says "off -> off" and
+				-- does not claim an effect the player can watch not happening.
+				local was = ns:IsActive(key)
 				ns:Set(key, want)
-				local m = ns.modules[key]
-				-- "showBosses turned on" read as though the portraits were
-				-- being shown. Say what actually happened instead.
-				-- Report what the AddOn is now doing. Setting a sub-option
-				-- while its parent is off changes the saved value and nothing
-				-- else, so "off" is the honest answer -- and it is the whole
-				-- answer. A second line explaining which parent it waits on
-				-- was tried and read as a lecture: the panel already shows the
-				-- child greyed under the parent it belongs to.
-				local live = ns:IsActive(key)
-				local effect = m and (live and m.onText or m.offText)
-				ns:Print(C.highlight .. key .. C.close .. " " ..
-					(live and (C.on .. "on" .. C.close) or (C.off .. "off" .. C.close)) ..
-					"." .. (effect and (" " .. effect) or ""))
+				transitionLine(key, was, ns:IsActive(key))
+				if withList then status() end
 			else
-				ns:Print(C.warning .. "Unknown option '" .. arg .. "'." .. C.close ..
-					" Try " .. C.highlight .. "/vq help" .. C.close .. " for list of commands.")
+				-- One colour for the whole line, the game's own system yellow.
+				-- It was three -- salmon for the complaint, yellow for the
+				-- command, white for the rest -- which made a two-clause error
+				-- look like a small paragraph.
+				ns:Print(C.blocked .. "Unknown option '" .. arg ..
+					"'. Try /vq help for list of commands." .. C.close)
 			end
 		end
 
@@ -796,8 +835,8 @@ SlashCmdList["VANILLAQUESTING"] = function(msg)
 			if key and ns.modules[key] then
 				status(key)
 			else
-				ns:Print(C.warning .. "Unknown option \'" .. arg .. "\'." .. C.close ..
-					" Try " .. C.highlight .. "/vq help" .. C.close .. " for list of commands.")
+				ns:Print(C.blocked .. "Unknown option '" .. arg ..
+					"'. Try /vq help for list of commands." .. C.close)
 			end
 		end
 
@@ -813,7 +852,7 @@ SlashCmdList["VANILLAQUESTING"] = function(msg)
 		end
 
 	else
-		ns:Print(C.warning .. "Unknown command '" .. cmd .. "'." .. C.close ..
-			" Try " .. C.highlight .. "/vq help" .. C.close .. " for list of commands.")
+		ns:Print(C.blocked .. "Unknown command '" .. cmd ..
+			"'. Try /vq help for list of commands." .. C.close)
 	end
 end
