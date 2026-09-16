@@ -13,9 +13,199 @@ point of the file.
 Nothing here is a claim about WoW. It is a claim about **this build**, on the machine this AddOn
 was tested on.
 
+**Where two logs disagree, the newer one wins and the disagreement is written down.** It has
+happened once already, over whether `/reload` restores a swapped blip texture (§6), and the
+earlier answer was the comfortable one.
+
+The raw logs stay exactly as they are in `../logs/`. A later probe run switches settled sections
+off, so an earlier log is often the only remaining record of an answer — this file is an index
+into them, not a replacement for them.
+
 ---
 
-## 1. Protection and taint
+## 1. What exists here, and what does not
+
+Straight out of `../logs/recon-log-*.txt`. Every line is a name the probe asked the live client
+about; `--` means the global or method is **not on this client**, whatever any documentation says.
+
+This is the half that reads like a list, and it is the half that stops a session inventing an API.
+Four CVar names and three frame names were invented from memory before the probe existed, and each
+one cost a round trip.
+
+### The objective tracker is `WatchFrame`, and the retail names are all absent
+
+```
+OK   WatchFrame  [Frame]          --   ObjectiveTrackerFrame
+OK   WatchFrame_Update            --   ObjectiveTracker_Update
+OK   WatchFrame_Collapse          --   QuestWatchFrame
+                                  --   AutoQuestPopUpTracker
+                                  --   ObjectiveTrackerBlocksFrame
+```
+
+### The world map is the modern canvas, with the old frames gone
+
+```
+OK   WorldMapFrame  [Frame]       --   WorldMapBlobFrame
+OK   QuestMapFrame  [Frame]       --   WorldMapPOIFrame
+OK   QuestScrollFrame             --   WorldMapQuestShowObjectives
+OK   QuestMapFrame_UpdateAll      --   WorldMapShowDropDown
+OK   QuestMapFrame_ShowQuestDetails
+OK   WorldMapTooltip  [GameTooltip]
+```
+
+`WorldMapFrame:RemoveDataProvider` exists, so it is the canvas. **352 methods** on the frame,
+**44** global `*DataProvider*` tables, and **15** providers actually registered:
+
+```
+AreaLabel      AreaPOI        BattlefieldFlag   BonusObjective   DeathMap
+DigSite        EncounterJournal   Gossip        GroupMembers     MapExploration
+MapHighlight   QuestBlob      Quest             Scenario         Vehicle
+```
+
+Two of them carry a `cvar` field, which is how the CVar behind a pin was found rather than guessed:
+
+```
+provider  7  EncounterJournalDataProviderMixin   cvar=showBosses
+provider  6  DigSiteDataProviderMixin            cvar=digSites
+provider 13  QuestDataProviderMixin              GetPinTemplate=QuestPinTemplate
+```
+
+**`WorldMapFrame:RefreshAllDataProviders()` exists and must not be called.** It re-runs
+`MapExplorationDataProvider`, which wipes fog-of-war: the map opens fully revealed until you leave
+the zone and come back. Tried, shipped, reverted.
+
+### Quest POI and supertracking
+
+```
+OK   QuestPOIGetIconInfo          --   QuestPOI_DisplayButton
+OK   QuestPOI_GetButton           --   GetQuestPOILeaderboardInfo
+OK   QuestPOIUpdateIcons          --   C_SuperTrack
+OK   SetSuperTrackedQuestID
+OK   GetSuperTrackedQuestID
+```
+
+Supertracking exists and is deliberately not used: with the map and minimap options on there is no
+marker, no shaded area and no arrow left for it to drive.
+
+### The minimap has no blob API at all
+
+**205 methods** on `Minimap`, and the six blob methods the original spec assumed are **all
+absent**:
+
+```
+--   Minimap:SetQuestBlobRingAlpha       --   Minimap:SetArchBlobRingAlpha
+--   Minimap:SetQuestBlobInsideAlpha     --   Minimap:SetArchBlobInsideAlpha
+--   Minimap:SetQuestBlobRingScalar
+--   Minimap:SetQuestBlobInsideTexture
+```
+
+It is **not** data-provider driven the way the world map is — no `dataProviders`, no
+`AddDataProvider`, no `RemoveDataProvider` — and **0 globals contain "blip"**. Three children
+(`MiniMapMailFrame`, `MiniMapBattlefieldFrame`, `MinimapBackdrop`) and **0 regions**, so there is
+nothing on the frame itself to hide.
+
+`C_Minimap` has exactly five members, and none of them is a global:
+
+```
+C_Minimap.ClearAllTracking   C_Minimap.GetNumTrackingTypes   C_Minimap.GetPOITextureCoords
+C_Minimap.GetTrackingInfo    C_Minimap.SetTracking
+```
+
+### The tracking list is indexed by nothing stable
+
+18 entries on the character the probe ran on, and **index 1 was "Find Herbs"** — a *spell*, with a
+`spellID`, present only because that character is a herbalist:
+
+```
+ 1  name=Find Herbs        type=spell  spellID=2383  active=true
+13  name=Low Level Quests  type=other  active=true
+17  name=Track Quest POIs  type=other  texture=535616  active=false
+18  name=Track Digsites    type=other  texture=535615  active=false
+```
+
+**So the index shifts with class and profession**, and resolving *Track Quest POIs* by name rather
+than by number is not caution, it is the only thing that works. `subType` is `-1` for every entry
+this AddOn cares about and `2` for the vendor rows, so it is no use as a key either ([G30]).
+
+### Quest CVars: four of nine exist
+
+```
+OK   questPOI            OK   questHelper          --   autoQuestProgress
+OK   autoQuestWatch      OK   trackQuestSorting    --   mapQuestDifficulty
+                                                   --   showQuestTrackingTooltips
+                                                   --   minimapTrackingShowAll
+                                                   --   worldMapFilterAccountCompletedQuests
+```
+
+`showQuestTrackingTooltips` is the one that matters: it is the documented way to do what
+`Tooltip.lua` does by hand, it is in another AddOn's catalogue, and **it is not on this client**.
+That is why the tooltip module exists at all, and why it cost six attempts.
+
+### The Settings API, and which names are real
+
+`Settings` has **76** keys, `SettingsPanel` **263** methods and **91** keys. The old world is gone:
+
+```
+OK   Settings.RegisterVerticalLayoutCategory    --   InterfaceOptions_AddCategory
+OK   Settings.RegisterCanvasLayoutCategory      --   InterfaceOptionsFramePanelContainer
+OK   Settings.RegisterAddOnSetting              --   InterfaceOptionsFrame
+OK   Settings.RegisterAddOnCategory             --   Settings.CreateCheckBox   (capital B)
+OK   Settings.CreateCheckbox                    --   SettingsDropdownTemplate
+OK   Settings.CreateElementInitializer          --   DropdownButtonTemplate
+OK   Settings.IsCommitInProgress                --   SettingsSelectionDropdownTemplate
+OK   SettingsPanel.categoryLayouts (17)         --   OptionsDropDownMenuTemplate
+OK   SettingsPanel.settings (295)               --   InterfaceOptionsDropDownTemplate
+OK   WowStyle1DropdownTemplate
+OK   SettingsDropDownControlTemplate
+```
+
+`Settings.CreateCheckbox` versus `Settings.CreateCheckBox` is the whole reason this file exists.
+
+Nine initializer-shaped globals, which `[G23]` enumerated and which turn out not to include a
+paragraph:
+
+```
+CreateSettingsAddOnDisabledLabelInitializer   CreateSettingsCheckboxWithColorSwatchInitializer
+CreateSettingsButtonInitializer               CreateSettingsExpandableSectionInitializer
+CreateSettingsCheckboxDropdownInitializer     CreateSettingsListSearchCategoryInitializer
+CreateSettingsCheckboxSliderInitializer       CreateSettingsListSectionHeaderInitializer
+CreateSettingsCheckboxWithButtonInitializer
+```
+
+And the template census — every `frameTemplate` Blizzard's own registered layouts use, with counts
+([G25], 625 initializers walked):
+
+```
+KeyBindingFrameBindingTemplate  299   SettingsCheckboxSliderControlTemplate     5
+SettingsCheckboxControlTemplate 139   SettingButtonControlTemplate              2
+SettingsDropdownControlTemplate  81   SettingsCheckboxDropdownControlTemplate   2
+SettingsSliderControlTemplate    48   SettingsCheckboxWithButtonControlTemplate 2
+SettingsListSectionHeaderTemplate 18  ...and eleven purpose-built widgets, one each
+SettingsKeybindingSectionTemplate 17
+```
+
+**Not one generic text or description template in the list.** Every entry is a control, a heading,
+or a widget built for one job — which is what sent the search to shipping our own template.
+
+### The tooltip, and how a quest line is recognised
+
+```
+OK   GameTooltip  [GameTooltip]       OK   GetNumQuestLogEntries
+OK   GameTooltipTextLeft1..8          OK   GetQuestLogTitle
+OK   GameTooltip:NumLines             OK   GetQuestLogLeaderBoard
+OK   GameTooltip:GetUnit              OK   C_QuestLog  [table]
+OK   GameTooltip:ClearLines           --   GetQuestObjectiveInfo
+OK   GameTooltip:HookScript
+```
+
+Observed live: **the quest name is its own line**, followed by one line per objective, e.g.
+` - Riverpaw Gnoll Clue: 0/1`. **The line number varies**, so a matcher has to key off the text and
+the colour rather than an index. Eight `GameTooltipTextLeft<N>` font strings existed at the moment
+of the dump, and more are created on demand.
+
+---
+
+## 2. Protection and taint
 
 ### `taintLog 1` produces no file. `taintLog 2` does.
 
@@ -121,7 +311,7 @@ done about it.
 
 ---
 
-## 2. What renders
+## 3. What renders
 
 The question was "can a line of description text be drawn in Blizzard's settings list", and it
 took four probe sections because three perfectly true findings were not answers.
@@ -167,7 +357,7 @@ Two details worth not re-deriving:
 
 ---
 
-## 3. What refuses, and what a successful write proves
+## 4. What refuses, and what a successful write proves
 
 ### `questHelper` returns success and does not move
 
@@ -225,13 +415,33 @@ and the console are discovery tools the source cannot replace.
 `showQuestTrackingTooltips` and `minimapShowQuestBlobs` (`[G29]`), both of which are in Advanced
 Interface Options' catalogue. An AddOn's catalogue is a claim about some client, not this one.
 
-### `Outline` is not a boolean
+### `Outline` is not a boolean, and nothing renders at any value
 
 `1`, `2` and `3` all mean on; only `0` is off, and `2` is Blizzard's default.
 
+The finding underneath it is worth more, because four versions of an option rested on it
+([G11], tested live):
+
+> **`Outline` exists and writes correctly. Values 0/1/2/3 all take. Nothing renders at any value —
+> and Blizzard's OWN options window does not change anything either.**
+
+So the outline is a **client rendering fault on this build**, not a dead CVar and not something an
+AddOn can reach. `graphicsOutlineMode` (added in 7.0.3, long after 5.4) and
+`highlightOutlineQuality` are both absent here, so there is no second lever.
+
+Two nearby variables were tested live and rejected as fixes for the sparkle:
+
+- **`particleDensity 0`** does remove the glimmer — and also removes the particles on lootable
+  bodies, which Classic had. Not a fix.
+- **`ffxGlow 0`** changes things elsewhere and does not touch the particle glow at all.
+
+All of which was correct, and none of it was the answer: `ShowQuestObjectHighlightEffect` removes
+the highlight outright and was found by enumerating the console rather than by testing names
+somebody had suggested. **"Every lever I know about fails" is not "no lever exists."**
+
 ---
 
-## 4. Order, and when things happen
+## 5. Order, and when things happen
 
 ### `GetCVar` answers with the **default** until `VARIABLES_LOADED`
 
@@ -278,7 +488,61 @@ never reaches the screen.
 
 ---
 
-## 5. Where the harness was modelling the client backwards
+## 6. The minimap blips, and the one experiment that cannot be undone
+
+The questgiver `!` and the turn-in `?` are engine-drawn: no frame, no global, no CVar (§1). The
+only lever is `Minimap:SetBlipTexture(path)`, which swaps the whole icon sheet. Four things were
+established in play, and three of them are traps.
+
+### The lever does reach them — confirmed
+
+`/unrecon blip 136458` (an unrelated texture) turned **every** minimap POI icon into a grey
+square, **questgiver `!` and `?` included**. So the marks are on that sheet, and edited artwork
+would remove them.
+
+### Blanking the sheet works, and **survives `/reload`**
+
+`SetBlipTexture(nil)` and `SetBlipTexture("")` removed every blip rather than restoring the
+default — and the change **outlived a `/reload`**. Only a **full client restart** brought the real
+icons back.
+
+That is the correction worth having. An earlier log states the opposite —
+
+> NOTE: there is a setter but NO getter for the blip texture, so a change cannot be read back or
+> restored from Lua. **`/reload` restores it.**
+
+— and it was wrong. The later run found `/reload` does nothing for it. **Two logs, one answer, and
+the newer one wins**: an experiment on this is not free, and a tester who tries it is restarting
+the client.
+
+### `Minimap:SetToDefaults()` removes the entire minimap
+
+Not the blips. The **frame**. It is gone until the client is restarted. **Never call it.** The
+probe no longer contains it.
+
+### Setter, no getter
+
+`Minimap:SetBlipTexture` exists; `Minimap:GetBlipTexture` does not. So the default path —
+`Interface\MINIMAP\ObjectIconsAtlas` — is the only way back, and it has to be hard-coded. It is
+taken from an AddOn that restores it on logout, not from documentation.
+
+### The documented grid is the wrong grid
+
+`C_Minimap.GetPOITextureCoords` steps **0.0703125** across and **0.03515625** down. The widely
+documented 8x2 / 256x64 `ObjectIcons` layout is the **old** sheet and does not describe this one —
+replacement art must match the measured steps, not the documentation.
+
+And the probe's own atlas viewer draws boxes that **do not line up with the art** at 256x256 or
+512x512, so the coordinates and the texture disagree about the grid. Treat `GetPOITextureCoords`
+as arithmetic, not as a map; `/unrecon cell <index>` renders one index large to settle what it
+actually points at.
+
+**What was deliberately stopped:** hunting for the index the engine uses for a questgiver. Nothing
+exposes the mapping from blip to index, so no amount of probing answers it — the image does.
+
+---
+
+## 7. Where the harness was modelling the client backwards
 
 Kept here rather than in `../tests/`, because each one is a fact about the client that a stub got
 wrong — and the same shape will be got wrong again.
@@ -300,7 +564,7 @@ wrong — and the same shape will be got wrong again.
 
 ---
 
-## 6. Still unprobed
+## 8. Still unprobed
 
 Written down so nobody takes silence for an answer.
 
@@ -310,7 +574,13 @@ Written down so nobody takes silence for an answer.
   in this AddOn reaches it during a fight.
 - **Which blip index the engine uses for a questgiver.** `C_Minimap.GetPOITextureCoords(i)` maps an
   index to a rectangle and nothing exposes the mapping the other way, so no amount of probing
-  answers it. The image settles it — see `../BLIP-TEXTURE-WORKFLOW.md`.
+  answers it. The image settles it — see §6 and `../BLIP-TEXTURE-WORKFLOW.md`.
+- **Whether `SettingsPanel.categoryLayouts` reaches canvas categories.** `[G25]` walked 625
+  initializers in the vertical layouts and found none of Blizzard's own description paragraphs.
+  Two readings survive: the text is baked into a purpose-built template (the census in §1 makes
+  this the likely one), or those panels are canvas layouts the walk never saw. It stopped
+  mattering once the AddOn shipped its own template, and it is the question to re-open if the
+  panel ever needs to read a Blizzard setting that lives in a canvas category.
 - **Whether the client's own quest-log toggle already refreshes the on-screen quest helper**, which
   would make this AddOn's map cycle four versions of re-implementing the game.
   [#46](https://github.com/Fixxitforge/vanilla-questing/issues/46), and v1.1.1 ships
