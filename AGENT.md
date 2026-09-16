@@ -155,7 +155,7 @@ Change one of these and the others are part of the same change, not a follow-up.
 | **An option's description or limitation** | `README.md` if it is user-facing behaviour, the native tooltip *and* the canvas fallback tooltip — they have drifted apart twice. |
 | **A module** | Give it a unique `order`; add it to the panel and to `/vq status` (all three are guarded by tests). Update `dev/SPEC.md`'s work list. |
 | **Anything about what the AddOn can't do** | All **three** Known limitations sections: `README.md`, `dev/SPEC.md`, and `dev/LISTING.md` (the CurseForge listing). See below — they are written at different depths on purpose, but they must never disagree about the facts. |
-| **A feature, or a command** | `dev/LISTING.md`, in the same pass — that is the CurseForge listing, and it is a public promise that goes stale silently. |
+| **A feature, or a command** | `dev/LISTING.md` **and `README.md`**, in the same pass — both list the commands, and both went a whole round advertising `/vq reset` after it was retired. A command that is REMOVED is the easy one to miss: nothing in the code refers to it any more, so nothing points at the pages that still do. Grep the command's name across the repository before calling it done. |
 
 **A temporary command is allowed, and it is not a feature.** `/vq mapcycle` existed for exactly
 one build: it let a single zip be asked both halves of a question no stub could answer (#46), and

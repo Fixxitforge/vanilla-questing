@@ -35,8 +35,10 @@ or `/reload`, then type `/vq` to open the options.
 | `/vq on [option]` | Enable all vanilla options, or one `[option]` |
 | `/vq off [option]` | Disable all options, or one `[option]` |
 | `/vq status [option]` | List status of all options, or one `[option]` |
-| `/vq reset` | Restore default options |
 | `/vq help` | List the commands |
+
+There is no `/vq reset`: `/vq on` restores the defaults, because the defaults **are** every vanilla
+option on. The **Defaults** button in the options panel does the same thing.
 
 `/vanillaquesting` works anywhere `/vq` does, if something else has claimed the short form.
 

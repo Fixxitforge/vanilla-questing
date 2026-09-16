@@ -31,24 +31,21 @@ undone. Each is now on the option that carries it, in the readme and on the list
   switch the AddOn off, which it never was. The **Defaults** button in the options panel still
   resets everything.
 - **The preset says when an experimental option is on**, rather than pretending the others are not
-  where you left them: **Vanilla (1 experimental on)**. The **Disabled** preset is named after the
-  client now — *Mists of Pandaria* — because that is what you get when every option is off, and
-  **Custom** is no longer offered in the dropdown, since it was never something you could pick.
-- **Hide Minimap Quest Helper says what it does not remove.** The `!` over a questgiver and the
-  `?` over a turn-in stay on the minimap — the game draws those itself, and no setting reaches
-  them. The option now says so.
+  where you left them: **Vanilla (1 experimental on)**. The preset that turns everything off is
+  named after the client now — *Mists of Pandaria* — because that is what you get, and **Custom**
+  is no longer offered as a choice, since it was never something you could pick. It still appears
+  while it is the one you are on.
 - The fallback options panel no longer shows a grey developer readout beside each option.
 - The note under the **Experimental** heading is the same size as the option names it sits above,
   in the ordinary text colour rather than the heading's orange, and sits closer to them.
 - **Plain Text Achievements now follows Plain Text Quest Tracker.** Switching the tracker option on
   switches achievements on with it, and switching it off takes them off. It can still be unticked
   on its own while the tracker option is on.
-- **Chat commands that need the UI to reload are refused during combat.** `/vq on`, `/vq off` and
-  `/vq reset` say so and do nothing while you are fighting, as does Hide World Map Quest Helper by
-  name. `/vq` will not open the options panel mid-fight either — the game does not allow an AddOn
-  to open it there, so the AddOn says so and points you at the game menu, which still works.
+- **Chat commands that need the UI to reload are refused during combat.** `/vq on` and `/vq off`
+  say so and do nothing while you are fighting, as does Hide World Map Quest Helper by name. `/vq`
+  will not open the options panel mid-fight either — the game does not let an AddOn open it there.
   Every other option can still be changed, and **an options panel that is already open keeps
-  working, Apply included.** A blocked command is printed in the game's own system-notice yellow.
+  working, Apply included** — so the game's own Options menu is the way in during a fight.
 - **Changing a map option no longer flashes the map open and shut.** With the map closed the game
   refreshes the on-screen quest helper by itself, so the AddOn stops taking the map through a
   close-and-open it never needed. With the map open it still does, because that is the only thing

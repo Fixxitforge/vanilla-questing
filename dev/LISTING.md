@@ -68,7 +68,6 @@ Type `/vq` for the options panel, or find **Vanilla Questing** in the game's own
 
 *   `/vq on` / `/vq off` — everything at once, or just one option: `/vq off hideMapQuestHelper`
 *   `/vq status` — what every option is set to, or just one
-*   `/vq reset` — back to defaults
 *   `/vq help` — the command list
 
 `/vanillaquesting` works as a substitute to `/vq`.
