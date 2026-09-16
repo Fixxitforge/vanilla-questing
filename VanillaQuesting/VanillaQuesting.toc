@@ -2,7 +2,7 @@
 ## Title: Vanilla Questing
 ## Notes: Turn off the quest helper and experience questing as in the original game.
 ## Author: Fixxit
-## Version: 1.1.1-10
+## Version: 1.1.1
 ## SavedVariables: VanillaQuestingDB
 
 Templates.xml
