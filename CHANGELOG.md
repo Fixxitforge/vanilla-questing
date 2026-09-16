@@ -4,52 +4,30 @@
 
 ### Known limitations
 
-Three new entries, all of them things the game does not let an AddOn do rather than things left
-undone. Each is now on the option that carries it, in the readme and on the listing.
-
-- **Disabling or deleting the AddOn does not put the game's settings back.** The options drive the
-  game's own settings, which live in the game rather than in the AddOn. `/vq off` hands them back
-  and has to run while the AddOn is still loaded; unticking it in the AddOn list or deleting the
-  folder leaves them where they were.
-- **Hide Minimap Quest Helper does not remove the `!` and `?` from the minimap.** The game draws
-  those itself, and the only lever swaps the whole minimap icon sheet — vendors and herbs with it.
+- **Disabling or deleting the addon does not reset the settings.** The addon changes the game's own settings, not add settings on top. Unticking Vanilla Questing in the AddOn list, or deleting the folder, leaves the settings where they are. **Run `/vq off` before you disable or delete it** to restore the settings.
 - **No Automatic Quest Tracking also stops the few minutes of tracking** you get when you pick up a
   quest object. The game controls both with one setting.
 
-### Changed
+### Fixed
 
-- **Chat says much less.** `/vq on|off <option>` prints a status row — `on -> off  noOutlineMode` —
-  instead of a sentence about what changed, and prints it even when nothing moved. `/vq on` and
-  `/vq off` print one of those rows per option they **actually** changed, and a short note when
-  they changed nothing. `/vq status <option>` is one line with no heading above it.
-- **Errors are the game's own system yellow**, the whole line. Every one of them: a command that
-  cannot run, a name the AddOn does not know, and the AddOn reporting a fault of its own.
+- **Chat commands that need the UI to reload or map to cycle open are refused during combat.**
 - **No Automatic Quest Tracking says what it actually does.** The game uses one setting for two
   things — tracking a quest when you accept it, and tracking one for a few minutes when you pick up
   a quest object — and the option removes both. It only mentioned the first.
+- **The preset says when an experimental option is on**, rather than pretending: **Vanilla (1 experimental on)**. The "Disabled" preset is
+  named after the client: *Mists of Pandaria* — because that is what you get, and **Custom**
+  is no longer offered as a choice. It still appears
+  while it is the one you are on.
+
+### Changed
+
+- **Plain Text Achievements now follows Plain Text Quest Tracker.**
+- **Chat says much less and colors reworked.**
 - **`/vq reset` is gone.** It did the same job as `/vq on`, and the word read as a second way to
   switch the AddOn off, which it never was. The **Defaults** button in the options panel still
   resets everything.
-- **The preset says when an experimental option is on**, rather than pretending the others are not
-  where you left them: **Vanilla (1 experimental on)**. The preset that turns everything off is
-  named after the client now — *Mists of Pandaria* — because that is what you get, and **Custom**
-  is no longer offered as a choice, since it was never something you could pick. It still appears
-  while it is the one you are on.
-- The fallback options panel no longer shows a grey developer readout beside each option.
 - The note under the **Experimental** heading is the same size as the option names it sits above,
   in the ordinary text colour rather than the heading's orange, and sits closer to them.
-- **Plain Text Achievements now follows Plain Text Quest Tracker.** Switching the tracker option on
-  switches achievements on with it, and switching it off takes them off. It can still be unticked
-  on its own while the tracker option is on.
-- **Chat commands that need the UI to reload are refused during combat.** `/vq on` and `/vq off`
-  say so and do nothing while you are fighting, as does Hide World Map Quest Helper by name. `/vq`
-  will not open the options panel mid-fight either — the game does not let an AddOn open it there.
-  Every other option can still be changed, and **an options panel that is already open keeps
-  working, Apply included** — so the game's own Options menu is the way in during a fight.
-- **Changing a map option no longer flashes the map open and shut.** With the map closed the game
-  refreshes the on-screen quest helper by itself, so the AddOn stops taking the map through a
-  close-and-open it never needed. With the map open it still does, because that is the only thing
-  that updates the helper there.
 
 ## 1.1.0
 
