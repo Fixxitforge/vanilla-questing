@@ -18,7 +18,7 @@ Turn off the quest helper and immerse yourself in the World of Warcraft.
 
 **Page body:**
 
-![Vanilla Questing banner image](https://media.forgecdn.net/attachments/1943/79/vanilla-questing-banner_smaller-png.png)
+![Vanilla Questing banner image](https://media.forgecdn.net/attachments/1951/201/vanilla-questing-banner_smaller-png.png)
 
 # Questing the way it used to be
 
@@ -28,7 +28,7 @@ Nowadays, the in-game quest helper almost plays the game for you. Markers on the
 
 Nothing is added: the addon only takes away things that the original game never had. Every option is on by default, and you have the power to customise your own flavor of vanilla.
 
-![before/after quest tracker](https://media.forgecdn.net/attachments/1940/187/vq-tracker-minimap-png.png)
+![before/after quest tracker](https://media.forgecdn.net/attachments/1951/203/vq-tracker-minimap-png.png)
 
 # What it removes
 
@@ -73,7 +73,7 @@ Type `/vq` for the options panel, or find **Vanilla Questing** in the game's own
 
 `/vanillaquesting` works as a substitute to `/vq`.
 
-![Options menu](https://media.forgecdn.net/attachments/1943/78/vq-options-jpg.jpg)
+![Options menu](https://media.forgecdn.net/attachments/1951/204/vq-options-jpg.jpg)
 
 # Install
 
