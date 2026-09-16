@@ -2081,8 +2081,11 @@ if scenario == "native" or scenario == "no_tooltipfunc" or scenario == "no_templ
 			tip:find("|cffffffffVanilla:|r", 1, true) ~= nil, tip)
 		check("and the vanilla label no longer says Default",
 			tip:find("(Default)", 1, true) == nil, tip)
-		check("preset tooltip says Custom is set automatically",
-			tip:find("Automatically selected when you", 1, true) ~= nil, tip)
+		-- "when neither preset matches your options", not "when you change any
+		-- option below": Custom is a description of a state, and the old
+		-- wording described one way of reaching it.
+		check("preset tooltip says Custom describes a state, not an action",
+			tip:find("neither preset matches your options", 1, true) ~= nil, tip)
 		-- Enables/Disables, describing what the preset does rather than
 		-- instructing the reader to do it.
 		check("the tooltip describes rather than instructs",
@@ -2095,8 +2098,8 @@ if scenario == "native" or scenario == "no_tooltipfunc" or scenario == "no_templ
 		-- Each preset says what it does about the experiments, because that
 		-- is the one thing the two differ on that the labels cannot show.
 		check("and each preset says where the experiments stand",
-			tip:find("except experimental ones", 1, true) ~= nil
-			and tip:find("including experimental ones", 1, true) ~= nil, tip)
+			tip:find("except experimental.", 1, true) ~= nil
+			and tip:find("including experimental.", 1, true) ~= nil, tip)
 		-- Vanilla, the client, then Custom -- which is last because it is the
 		-- one that cannot be chosen.
 		check("the tooltip orders them vanilla, client, custom",

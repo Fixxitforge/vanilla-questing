@@ -751,11 +751,11 @@ local function build()
 		-- Same text as the native panel's version, which is the one most
 		-- players see. It drifted once; both now read from the same wording.
 		return "\n" .. WHITE .. PRESET_LABEL.classic .. ":" .. C.close
-			.. " Enables all options, except experimental ones.\n\n"
+			.. " Enables all options, except experimental.\n\n"
 			.. WHITE .. PRESET_LABEL.disabled .. ":" .. C.close
-			.. " Disables all options, including experimental ones.\n\n"
+			.. " Disables all options, including experimental.\n\n"
 			.. WHITE .. PRESET_LABEL.custom .. ":" .. C.close
-			.. " Automatically selected when you change any option below.\n\n"
+			.. " Automatically selected when neither preset matches your options.\n\n"
 			.. ORANGE .. EXPERIMENTAL_COUNT_NOTE .. C.close
 	end
 	attachTooltip(value, function() return "Preset" end, presetBody)
@@ -981,9 +981,9 @@ local function presetTooltip()
 	-- "Enables" and "Disables", not "Enable" and "Disable": the row describes
 	-- what the preset does, rather than instructing the reader to do it.
 	return "|n"
-		.. row("classic", "Enables all options, except experimental ones.") .. "|n|n"
-		.. row("disabled", "Disables all options, including experimental ones.") .. "|n|n"
-		.. row("custom", "Automatically selected when you change any option below.")
+		.. row("classic", "Enables all options, except experimental.") .. "|n|n"
+		.. row("disabled", "Disables all options, including experimental.") .. "|n|n"
+		.. row("custom", "Automatically selected when neither preset matches your options.")
 		.. "|n|n" .. ORANGE .. EXPERIMENTAL_COUNT_NOTE .. "|r"
 end
 
