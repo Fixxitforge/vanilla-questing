@@ -18,6 +18,7 @@ Turn off the quest helper and immerse yourself in the World of Warcraft.
 
 ![Vanilla Questing banner image](https://media.forgecdn.net/attachments/1951/201/vanilla-questing-banner_smaller-png.png)
 
+**Latest release: v1.1.1**
 # Questing the way it used to be
 
 Nowadays, the in-game quest helper almost plays the game for you. Markers on the map, progress in hover tooltips, and QoL improvements so you can rush through the game without hustle.
