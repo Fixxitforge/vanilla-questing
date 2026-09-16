@@ -2086,16 +2086,54 @@ if scenario == "native" or scenario == "no_tooltipfunc" or scenario == "no_templ
 		-- Enables/Disables, describing what the preset does rather than
 		-- instructing the reader to do it.
 		check("the tooltip describes rather than instructs",
-			tip:find("Enables all vanilla options", 1, true) ~= nil
+			tip:find("Enables all options", 1, true) ~= nil
 			and tip:find("Disables all options", 1, true) ~= nil, tip)
+		-- The count only appears when an experiment is on, so the tooltip
+		-- says what it would mean to a player who has never switched one on.
+		check("and explains the experimental count, in orange",
+			tip:find("|cffff8019Number of experimental features", 1, true) ~= nil, tip)
 		-- Vanilla, the client, then Custom -- which is last because it is the
 		-- one that cannot be chosen.
 		check("the tooltip orders them vanilla, client, custom",
 			tip:find("Vanilla", 1, true) < tip:find("Disables all", 1, true)
 			and tip:find("Disables all", 1, true) < tip:find("Custom", 1, true), tip)
 
-		-- #55: "custom" is no longer offered, because it was never a choice.
-		check("the dropdown offers two presets, not three",
+		-- #55: "custom" is not a way to GET to Custom. It is listed only when
+		-- it is the value being shown, because a label the AddOn does not
+		-- supply is a label it cannot put the experimental count on (#43) --
+		-- which is exactly what happened on the build that removed it
+		-- outright.
+		-- #43, the half that reached play as a bug: the count was on Vanilla
+		-- and missing on Custom, because removing "custom" from the entries
+		-- meant the label was no longer the AddOn's to write.
+		do
+			local function labelFor(presetId)
+				local opts = _G.__rebuildPresetOptions and _G.__rebuildPresetOptions() or nil
+				if not opts then return nil end
+				for _, o in ipairs(opts) do
+					if o.value == presetId then return o.label or o.text end
+				end
+			end
+			-- Every vanilla option on, one experiment on -> Vanilla (1 ...)
+			ns:ResetDefaults(true)
+			ns:Set("noCompleteQuestPopup", true)
+			check("the vanilla preset carries the experimental count",
+				(labelFor("classic") or ""):find("1 experimental on", 1, true) ~= nil,
+				labelFor("classic"))
+			-- Now move a normal option, so the state is Custom.
+			ns:Set("hideBossPortraits", false)
+			check("and so does custom, which is the case that reached play",
+				(labelFor("custom") or ""):find("1 experimental on", 1, true) ~= nil,
+				labelFor("custom"))
+			check("custom is listed only while it is the value being shown",
+				labelFor("custom") ~= nil, "missing while in custom")
+			ns:Set("noCompleteQuestPopup", false)
+			ns:ResetDefaults(true)
+			check("and is gone again once a preset matches",
+				labelFor("custom") == nil, labelFor("custom"))
+		end
+
+		check("the dropdown offers two presets while a preset is matched",
 			#drops[1].options == 2, #drops[1].options)
 		check("and they are vanilla then the client",
 			table.concat({ drops[1].options[1].value,

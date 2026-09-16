@@ -2245,8 +2245,8 @@ Three options were put up for #43 and the author proposed a fourth that none of 
 
 ```
 Vanilla                    every vanilla option on, no experiments
-Vanilla (1 experimental)   every vanilla option on, and one experiment
-Custom (1 experimental)    some vanilla options moved, and one experiment
+Vanilla (1 experimental on)   every vanilla option on, and one experiment
+Custom (1 experimental on)    some vanilla options moved, and one experiment
 Mists of Pandaria          everything off, experiments included
 ```
 
@@ -2268,11 +2268,19 @@ Three changes came in with it, from #55:
   Read rather than hardcoded: `_G["EXPANSION_NAME" .. GetClientDisplayExpansionLevel()]`, which is
   how Blizzard's own `Blizzard_ToyBox.lua:138` does it, existence-checked at every step and falling
   back to "Disabled".
-- **"Custom" is no longer in the dropdown**, because it was never a choice. **Watch this one in
-  play:** a comment in this code claimed a dropdown cannot display a value that is not among its
-  entries, and that was reasoning rather than a measurement. If the control goes blank instead of
-  reading *Custom*, the entry comes back. The tooltip still explains all three, because the player
-  still sees all three.
+- **"Custom" is not offered as a choice**, because it was never one — and the first attempt at
+  that taught something. Removing it outright **worked for the label**: the control still reads
+  *Custom* in play, so the old comment claiming a dropdown cannot display a value outside its
+  entries was **wrong**. What it broke was the count: whatever draws that fallback string is not
+  this AddOn, so the suffix never reached it, and *Custom (1 experimental on)* came out as plain
+  *Custom*.
+
+  So "custom" is listed **exactly when it is the value being shown**. It is never a way to get
+  *to* Custom, which is what "not selectable" was asking for, and while the panel is in Custom the
+  label is ours again and can carry the count.
+
+  **The rule, and it is a new one:** a label the AddOn does not supply is a label it cannot add
+  anything to. Removing an entry removes the hook as well as the choice.
 
 The tooltip is reordered to match — Vanilla, the client, Custom — with Custom last because it is
 the one that cannot be picked, and it says *Enables* and *Disables* rather than instructing the

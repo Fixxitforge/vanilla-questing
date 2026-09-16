@@ -71,6 +71,14 @@ end
 local EXPERIMENTAL_HEADER_NOTE =
 	"These are not enabled by the Vanilla preset."
 
+-- Said at the foot of the preset tooltip, in the experimental orange, because
+-- it explains a mark that only appears when an experiment is on -- and a
+-- player who has never switched one on should not have to wonder what it
+-- would mean. Held here so both panels read from one string; the two tooltips
+-- have drifted apart before.
+local EXPERIMENTAL_COUNT_NOTE =
+	"Number of experimental features enabled are listed next to Vanilla and Custom presets."
+
 ---------------------------------------------------------------------
 -- The description row's frame script
 ---------------------------------------------------------------------
@@ -378,7 +386,7 @@ local function presetDisplay(id)
 	if id == "disabled" then return base end
 	local n = experimentsOn()
 	if n < 1 then return base end
-	return base .. " (" .. n .. " experimental)"
+	return base .. " (" .. n .. " experimental on)"
 end
 
 -- Order as shown in the canvas fallback's two-state toggle. "custom" is not
@@ -386,15 +394,21 @@ end
 -- neither preset, never something to pick.
 local PRESET_ORDER = { "classic", "disabled" }
 
--- **"custom" is no longer offered** (#55): it is what the control REPORTS
--- when the settings match neither preset, and it was never something to pick.
+-- **"custom" is not offered as a choice** (#55): it is what the control
+-- REPORTS when the settings match neither preset, never something to pick.
 --
--- An earlier note here claimed a dropdown cannot display a value that is not
--- among its entries. That was reasoning, not a measurement, and it is the
--- thing to watch on the first build carrying this: if the control goes blank
--- instead of reading "Custom", the entry comes back. The tooltip still
--- explains all three, because the player still SEES all three.
+-- Removing it outright worked for the label -- the control still reads
+-- "Custom" in play, so the old note here claiming a dropdown cannot display a
+-- value outside its entries was wrong -- but it took the experimental count
+-- with it: whatever draws that fallback string is not this AddOn, so the
+-- suffix never reached it (#43).
+--
+-- So "custom" is listed **exactly when it is the value being shown**. It is
+-- never a way to GET to Custom, which is what "not selectable" was asking
+-- for, and when the panel is in Custom the label is ours again and can carry
+-- the count.
 local PRESET_DROPDOWN_ORDER = { "classic", "disabled" }
+
 
 -- What the settings actually look like right now.
 --
@@ -448,6 +462,16 @@ end
 local function displayPreset()
 	if not ns.db then return "custom" end
 	return derivedPreset()
+end
+
+-- The dropdown's entries. Below `displayPreset` because it reads it: a local
+-- declared further down resolves as a nil global in everything above it, and
+-- this project has paid for that four times.
+local function presetEntries()
+	local list = {}
+	for i = 1, #PRESET_DROPDOWN_ORDER do list[i] = PRESET_DROPDOWN_ORDER[i] end
+	if displayPreset() == "custom" then list[#list + 1] = "custom" end
+	return list
 end
 
 local applyPreset  -- defined below, after the prompt helpers it uses
@@ -705,11 +729,12 @@ local function build()
 		-- Same text as the native panel's version, which is the one most
 		-- players see. It drifted once; both now read from the same wording.
 		return "\n" .. WHITE .. PRESET_LABEL.classic .. ":" .. C.close
-			.. " Enables all vanilla options.\n\n"
+			.. " Enables all options.\n\n"
 			.. WHITE .. PRESET_LABEL.disabled .. ":" .. C.close
 			.. " Disables all options.\n\n"
 			.. WHITE .. PRESET_LABEL.custom .. ":" .. C.close
-			.. " Automatically selected when you change any option below."
+			.. " Automatically selected when you change any option below.\n\n"
+			.. ORANGE .. EXPERIMENTAL_COUNT_NOTE .. C.close
 	end
 	attachTooltip(value, function() return "Preset" end, presetBody)
 	if left then attachTooltip(left, function() return "Preset" end, presetBody) end
@@ -934,9 +959,10 @@ local function presetTooltip()
 	-- "Enables" and "Disables", not "Enable" and "Disable": the row describes
 	-- what the preset does, rather than instructing the reader to do it.
 	return "|n"
-		.. row("classic", "Enables all vanilla options.") .. "|n|n"
+		.. row("classic", "Enables all options.") .. "|n|n"
 		.. row("disabled", "Disables all options.") .. "|n|n"
 		.. row("custom", "Automatically selected when you change any option below.")
+		.. "|n|n" .. ORANGE .. EXPERIMENTAL_COUNT_NOTE .. "|r"
 end
 
 -- What happens when a control's value moves. Shared by every checkbox.
@@ -1255,7 +1281,7 @@ local function registerNative()
 			-- The entry text carries the count too, so the closed dropdown
 			-- and the open list agree about what the current preset is
 			-- called.
-			for _, id in ipairs(PRESET_DROPDOWN_ORDER) do c:Add(id, presetDisplay(id)) end
+			for _, id in ipairs(presetEntries()) do c:Add(id, presetDisplay(id)) end
 			return c:GetData()
 		end,
 		presetTooltip())

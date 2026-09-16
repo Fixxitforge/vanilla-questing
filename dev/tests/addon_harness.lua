@@ -1023,8 +1023,16 @@ end
 			error("CreateDropdown needs a setting object")
 		end
 		if type(getOptions) ~= "function" then error("CreateDropdown needs an options function") end
+		-- The function is kept as well as its first result. Whether this
+		-- client re-evaluates the list when the dropdown is opened, or builds
+		-- it once at registration, is NOT known -- so the suite can ask both
+		-- questions: `options` is what a build-once client would show, and
+		-- `__rebuildPresetOptions` is what a re-evaluating one would.
 		created[#created + 1] = { kind = "dropdown", setting = setting,
-			options = getOptions(), tooltip = tooltip }
+			options = getOptions(), getOptions = getOptions, tooltip = tooltip }
+		if tostring(setting:GetVariable()):find("preset", 1, true) then
+			_G.__rebuildPresetOptions = getOptions
+		end
 		return created[#created]
 	end
 	if scenario == "native_halfway" then

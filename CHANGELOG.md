@@ -31,7 +31,7 @@ undone. Each is now on the option that carries it, in the readme and on the list
   switch the AddOn off, which it never was. The **Defaults** button in the options panel still
   resets everything.
 - **The preset says when an experimental option is on**, rather than pretending the others are not
-  where you left them: **Vanilla (1 experimental)**. The **Disabled** preset is named after the
+  where you left them: **Vanilla (1 experimental on)**. The **Disabled** preset is named after the
   client now — *Mists of Pandaria* — because that is what you get when every option is off, and
   **Custom** is no longer offered in the dropdown, since it was never something you could pick.
 - **Hide Minimap Quest Helper says what it does not remove.** The `!` over a questgiver and the
