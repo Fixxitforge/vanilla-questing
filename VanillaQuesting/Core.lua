@@ -85,11 +85,15 @@ function ns:InCombat()
 	return ok and yes and true or false
 end
 
--- What the player is told when a change is refused because of combat (#24).
+-- What the player is told when something is refused because of combat (#24).
 --
--- Both messages live here so the slash commands and both options panels
+-- Every wording lives here so the slash commands and both options panels
 -- cannot come to word it differently -- the same reason `statusLine` renders
 -- the whole list and a single option.
+--
+-- **The whole line is one colour.** It is an error, not a sentence with an
+-- error in it, and half a line in warning orange beside half a line in the
+-- ordinary yellow reads as a note rather than a refusal.
 --
 -- Refused, not deferred and not half-applied. Only one option needs the UI
 -- rebuilt -- Hide World Map Quest Helper -- and the rebuild is what makes the
@@ -97,18 +101,21 @@ end
 -- and show the player nothing. Worse, writing `questPOI` is what makes the
 -- CLIENT try to open the world map, which it may not do in combat: that is
 -- the "Interface action failed because of an AddOn" in #11, thrown by
--- Blizzard's own handler on our behalf. Not writing it in combat is the only
--- thing that prevents it.
-function ns:RefuseInCombat(key)
-	if key then
-		ns:Print(C.warning .. "Cannot change " .. tostring(key) ..
-			" during combat." .. C.close ..
-			" The UI has to reload for it to take effect.")
+-- Blizzard's own handler on our behalf.
+--
+-- This covers the SLASH commands and opening the panel. The options panel
+-- itself is deliberately not refused -- see `promptReload` in Options.lua.
+function ns:RefuseInCombat(what)
+	local msg
+	if what == "panel" then
+		msg = "the options panel cannot be opened during combat."
+	elseif what then
+		msg = tostring(what) .. " cannot be changed during combat, " ..
+			"it requires a UI reload."
 	else
-		ns:Print(C.warning ..
-			"Command blocked: some settings cannot be changed during combat." ..
-			C.close)
+		msg = "some settings cannot be changed during combat."
 	end
+	ns:Print(C.warning .. "Command blocked: " .. msg .. C.close)
 end
 
 -- True if this option cannot take effect without the UI being rebuilt, and so

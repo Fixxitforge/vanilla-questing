@@ -34,13 +34,25 @@
         already rendered, in the canvas panel and in the probe's own windows,
         rather than a name taken on trust.
 
-        The frame's fixed 40px height is the other half of #12 and is NOT
-        changed here: one thing at a time, and [G27] showed the settings list
-        decides row heights on its own. GetExtent() returned nil and the rows
-        still drew.
+        The 22px height is the other half of #12, reported from play: at 40 a
+        one-line note left about a line and a half of dead space between it
+        and the first checkbox. 22 is a little over half, which is the amount
+        asked for, and it stays a FIXED height rather than becoming automatic
+        because [G27] found the settings list deciding row heights on its own
+        (GetExtent() returned nil and the rows still drew), so what this
+        number does is not certain from here.
+
+        What must NOT change is where the note sits: under the heading, above
+        the first option it describes. Moving it below the group was suggested
+        when the padding looked unfixable and is explicitly not wanted,
+        because a sentence about a list belongs before the list.
+
+        If the gap is still wrong at 22, the next thing to try is the anchor
+        offset rather than another height: the FontString hangs at y=-4 from
+        the frame's top.
     -->
     <Frame name="VanillaQuestingDescriptionTemplate" virtual="true">
-        <Size x="600" y="40"/>
+        <Size x="600" y="22"/>
         <Layers>
             <Layer level="ARTWORK">
                 <FontString parentKey="Text" inherits="GameFontNormal"

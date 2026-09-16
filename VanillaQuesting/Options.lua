@@ -148,19 +148,23 @@ end
 
 -- Shown right after a change that cannot take effect until the UI is rebuilt.
 --
--- Except in combat, where the change is put back instead (#24). A reload
--- mid-fight is not something to offer: the client will not rebuild the UI
--- while a protected action is in flight, and the write that needs rebuilding
--- is the one that makes the CLIENT try to open the world map, which it may
--- not do in combat either. Refused, not deferred -- `restore` is Cancel's own
--- path, so the setting and its variable both go back to where the player had
--- them a moment ago, and chat says why.
+-- **In combat too, and that is a decision rather than an oversight (#24).**
+--
+-- v1.1.1 build 1 refused here, on the argument that a reload mid-fight is not
+-- something to offer. Tested in play and rejected by the author: a panel that
+-- is already open should keep working, Apply included, and the player looking
+-- at it has asked for exactly this.
+--
+-- The distinction that survives is about who initiated it, not about what it
+-- costs. A SLASH command in combat is refused -- it is typed blind, often in
+-- a hurry, and there is nothing on screen to say what it did. A panel button
+-- is a deliberate click on a frame the player is reading.
+--
+-- What IS still guarded is `ns:OpenOptions`: the panel cannot be opened in
+-- combat, because our own call to open it is tainted and the client refuses
+-- it with "Interface action failed because of an AddOn". So the panel that
+-- keeps working in a fight is one that was already open when it started.
 local function promptReload(before, many)
-	if ns:InCombat() then
-		restore(before)
-		ns:RefuseInCombat(nil)
-		return
-	end
 	if type(StaticPopupDialogs) ~= "table" or type(StaticPopup_Show) ~= "function" then
 		return
 	end
@@ -172,13 +176,6 @@ local function promptReload(before, many)
 		button2 = CANCEL or "Cancel",
 		OnAccept = function()
 			if dim then dim:Hide() end
-			-- Combat can start while the dialog is up. The guard above stops
-			-- it being raised; this one stops it being answered into a fight.
-			if ns:InCombat() then
-				restore(before)
-				ns:RefuseInCombat(nil)
-				return
-			end
 			if type(ReloadUI) == "function" then ReloadUI() end
 		end,
 		OnCancel = function()
@@ -484,16 +481,10 @@ local function build()
 			return false
 		end
 
-		-- Refused in combat, like `/vq reset`, and for the same reason: it
-		-- moves every option, the reload-needing one included. Unconditionally
-		-- rather than only when that option would actually move -- a button
-		-- that sometimes works in a fight and sometimes does not is worse to
-		-- explain than one that never does.
+		-- Not refused in combat, unlike `/vq reset`. It is a button in a panel
+		-- the player is looking at, which is the line #24 came to rest on:
+		-- typed blind is refused, deliberately clicked is not.
 		local function doReset(reload)
-			if ns:InCombat() then
-				ns:RefuseInCombat(nil)
-				return
-			end
 			ns:ResetDefaults(true)
 			ns.RefreshOptions()
 			if reload and type(ReloadUI) == "function" then ReloadUI() end
@@ -920,40 +911,15 @@ local function doRebuild()
 	-- resets, so without this every reload-needing option in the list would
 	-- ask for its own rebuild.
 	wipe(rebuildBaseline)
-	-- The last of the three ReloadUI sites, and the backstop for the other
-	-- two: nothing in this AddOn rebuilds the UI during a fight. The change
-	-- that would have needed it is refused in `onSettingChanged` before it
-	-- gets here, so reaching this in combat means something else found a way
-	-- and the right answer is still not to reload.
-	if ns:InCombat() then
-		ns:RefuseInCombat(nil)
-		return
-	end
+	-- No combat guard, deliberately: this is what Blizzard's Apply button ends
+	-- in, and Apply has to keep working in a fight (#24). Whether the client
+	-- permits the reload from here is a question only the game answers, and
+	-- the checklist asks it.
 	if type(ReloadUI) == "function" then ReloadUI() end
 end
 
 local function onSettingChanged(m)
 	if suppressed() then return end
-
-	-- #24: an option that needs the UI rebuilt cannot be changed in combat,
-	-- and this is the native panel's half of that rule.
-	--
-	-- Put back rather than applied-and-not-shown: the variable behind this
-	-- option only becomes visible when the UI is rebuilt, so writing it here
-	-- would change the player's settings and show them nothing -- and it is
-	-- the write that makes the client try to open the world map, which it may
-	-- not do mid-fight.
-	--
-	-- Through the ordinary refresh rather than by reaching into the setting
-	-- object: Blizzard has already written the new value into `ns.db.settings`
-	-- by the time this fires, so flipping it back and refreshing is the same
-	-- path every other correction takes, suppression and all.
-	if m.needsApply and ns:InCombat() then
-		ns.db.settings[m.key] = not (ns.db.settings[m.key] and true or false)
-		ns:RefuseInCombat(m.key)
-		ns.RefreshOptions()
-		return
-	end
 	-- One checkbox moved, so one option is applied. Mid-preset this fires per
 	-- setting and `applyPreset` still runs a full pass at the end, so the
 	-- everything-moved case is still covered by an everything pass.
@@ -1503,7 +1469,25 @@ local function makeStandalone()
 	end)
 end
 
+-- #24: not in combat.
+--
+-- `Settings.OpenToCategory` ends in `ShowUIPanel`, and `ShowUIPanel` refuses
+-- when `InCombatLockdown() and not issecure()` -- which our call always is,
+-- because it comes from AddOn Lua. Reported from play: `/vq` in combat put
+-- "Interface action failed because of an AddOn" on screen and opened nothing.
+--
+-- `pcall` does not catch it. Blizzard's code prints the message and returns
+-- normally, so the call "succeeded" and this function used to report true
+-- while the player looked at an error and no panel.
+--
+-- Everything inside the panel still works in a fight; it is getting to it
+-- from here that does not. See `promptReload`.
 function ns:OpenOptions()
+	if ns:InCombat() then
+		ns:RefuseInCombat("panel")
+		return false
+	end
+
 	if not ns.optionsNative then build() end
 
 	if ns.optionsCategory and type(Settings) == "table" and type(Settings.OpenToCategory) == "function" then

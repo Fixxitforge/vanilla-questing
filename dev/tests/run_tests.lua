@@ -1016,61 +1016,62 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 		check("and is left open, because that is how it was found",
 			WorldMapFrame:IsShown())
 
-		-- A shut map is opened for an instant and shut again: half a round
-		-- trip does not refresh the helper, so there is no shortcut here.
+		-- A shut map is opened by the CLIENT and shut again by us, and that is
+		-- the whole of it (#46, answered in game 2026-09-16).
 		--
-		-- `blizz-open` first, and it is not ours. Writing questPOI makes the
-		-- CLIENT open the map from its own CVAR_UPDATE handler, synchronously,
-		-- before this AddOn's cycle gets a turn -- so the cycle finds a map
-		-- that is already open and closes it before reopening. The sequence
-		-- the player sees ends CLOSED either way, which is the assertion that
-		-- matters and the one confirmed in game.
+		-- `blizz-open` first, and it is not ours: writing questPOI makes the
+		-- client open the map from its own CVAR_UPDATE handler, synchronously.
+		-- That open is what refreshes the on-screen helper -- measured in play
+		-- with the cycle switched off, both directions -- so the AddOn's own
+		-- close-open-close was re-implementing it, and hiding it at the same
+		-- time.
+		--
+		-- Two operations where there were four, and the map still ends CLOSED,
+		-- which is the assertion that matters.
 		SetCVar("questPOI", "1")
 		_G.closeWorldMap()
 		_G.__clearMapOps()
 		pcall(SlashCmdList["VANILLAQUESTING"], "on hideMapQuestHelper")
-		check("a shut map is opened by the client, then cycled and closed",
-			ops() == "blizz-open,hide,show,hide", ops())
+		check("a shut map is opened by the client and shut again by us",
+			ops() == "blizz-open,hide", ops())
 		check("and a map that was shut is left shut", not WorldMapFrame:IsShown())
 
-		-- #46's test switch, and both halves of it.
+		-- #46's test switch, and what is left of it.
 		--
-		-- The build carries the cycle and a way to switch it off, because the
-		-- question -- does Blizzard's own toggle already refresh the on-screen
-		-- helper, making the cycle four versions of re-implementing the game
-		-- -- cannot be answered without a client. What CAN be asserted here is
-		-- that the switch does what it says: with it off the AddOn stops
-		-- cycling, and the map still ends where it was found, because the
-		-- client's own open is still ours to undo.
-		-- Off first, so the "on" below is a real transition and really
-		-- writes. An option already where it is asked to go writes nothing,
-		-- raises no CVAR_UPDATE, and would prove nothing about the map.
+		-- It shipped covering every by-request change. The round trip in game
+		-- answered the question it was for -- with the map SHUT the client
+		-- refreshes the helper on its own, with the map OPEN it does not --
+		-- so the cycle now runs only for the open case, and the switch now
+		-- governs only that case too. It stays one more round so the two can
+		-- be compared in one session, and goes when #46 closes.
+		--
+		-- Open first: that is the only case there is still a cycle to switch
+		-- off. Off first as well, so the "on" below is a real transition -- an
+		-- option already where it is asked to go writes nothing, raises no
+		-- CVAR_UPDATE, and would prove nothing about the map.
 		pcall(SlashCmdList["VANILLAQUESTING"], "off hideMapQuestHelper")
 		SetCVar("questPOI", "1")
 		ns.db.state.questPOI = "1"
-		_G.closeWorldMap()
+		_G.openWorldMap()
 		pcall(SlashCmdList["VANILLAQUESTING"], "mapcycle off")
 		check("the switch reports itself off", ns:MapCycleWanted() == false)
 		_G.__clearMapOps()
 		pcall(SlashCmdList["VANILLAQUESTING"], "on hideMapQuestHelper")
-		check("with the cycle off the AddOn does not cycle",
-			ops():find("show", 1, true) == nil, ops())
-		check("but it still undoes the client's own open",
-			ops() == "blizz-open,hide", ops())
-		check("so a shut map is still left shut", not WorldMapFrame:IsShown())
+		check("with the switch off an open map is not cycled", ops() == "", ops())
+		check("and is left open", WorldMapFrame:IsShown())
 
-		-- Open before, and it stays open: the client's open changed nothing,
-		-- so there is nothing of ours to undo.
-		SetCVar("questPOI", "1")
-		ns.db.state.questPOI = "1"
-		_G.openWorldMap()
-		_G.__clearMapOps()
-		pcall(SlashCmdList["VANILLAQUESTING"], "off hideMapQuestHelper")
-		check("and an open map is left open with the cycle off",
-			WorldMapFrame:IsShown(), ops())
-
+		-- With it back on, the same change cycles and ends open (#44).
 		pcall(SlashCmdList["VANILLAQUESTING"], "mapcycle on")
 		check("and the switch goes back on", ns:MapCycleWanted() == true)
+		pcall(SlashCmdList["VANILLAQUESTING"], "off hideMapQuestHelper")
+		ns.db.state.questPOI = "1"
+		cvars.questPOI = "1"
+		_G.openWorldMap()
+		_G.__clearMapOps()
+		pcall(SlashCmdList["VANILLAQUESTING"], "on hideMapQuestHelper")
+		check("with it on an open map is closed and reopened",
+			ops() == "hide,show", ops())
+		check("and left open", WorldMapFrame:IsShown())
 		-- Nothing else may move it: it is not a setting, so a reset does not
 		-- reach it. A tester losing the switch halfway through a round trip is
 		-- the whole reason it lives outside `settings`.
@@ -1275,17 +1276,19 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 		check("and the AddOn adds no map operations of its own", ops() == "blizz-open", ops())
 		_G.closeWorldMap()
 
-		-- The same write, asked for by a person, still cycles. Otherwise this
-		-- is a mute rather than a gate, and the on-screen helper would stay
-		-- stale until the map was next opened by hand.
+		-- The same write, asked for by a person, with the map SHUT. No cycle
+		-- any more (#46, answered in game): the client opens the map from its
+		-- own handler and refreshes the helper while doing it, and all the
+		-- AddOn has to do is shut what our write opened. The close is not half
+		-- a cycle -- it is the second half of the CLIENT's open.
 		pcall(SlashCmdList["VANILLAQUESTING"], "off hideMapQuestHelper")
 		ns.db.state.questPOI = "1"
 		cvars.questPOI = "1"
 		_G.closeWorldMap()
 		_G.__clearMapOps()
 		pcall(SlashCmdList["VANILLAQUESTING"], "on hideMapQuestHelper")
-		check("but a slash command still cycles",
-			ops() == "blizz-open,hide,show,hide", ops())
+		check("a slash command with the map shut does not cycle",
+			ops() == "blizz-open,hide", ops())
 		check("and ends closed", not WorldMapFrame:IsShown())
 
 		-- And the bulk commands are the player too.
@@ -1295,7 +1298,7 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 		_G.closeWorldMap()
 		_G.__clearMapOps()
 		pcall(SlashCmdList["VANILLAQUESTING"], "on")
-		check("as is /vq on", ops() == "blizz-open,hide,show,hide", ops())
+		check("as is /vq on", ops() == "blizz-open,hide", ops())
 		check("and it ends closed as well", not WorldMapFrame:IsShown())
 		pcall(SlashCmdList["VANILLAQUESTING"], "reset")
 		_G.closeWorldMap()
@@ -1414,27 +1417,50 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 		check("Reload reloads the UI", _G.__reloads > r0, _G.__reloads - r0)
 		pcall(SlashCmdList["VANILLAQUESTING"], "reset")
 
-		-- #24: in combat the prompt is not raised at all, the change goes
-		-- back, and nothing reloads. A reload mid-fight is not something to
-		-- offer -- and the write that needs it is the one that makes the
-		-- client try to open the world map, which it may not do in combat.
+		-- #24, second pass: the panel keeps working in combat.
+		--
+		-- Build 1 refused here and the author rejected it in play. A panel that
+		-- is already open should keep working, and the line that survives is
+		-- about who initiated it: a slash command is typed blind and is
+		-- refused, a button is a deliberate click on a frame being read.
+		--
+		-- Getting TO the panel is the part that is guarded, below.
 		local wasCombat = VanillaQuestingDB.settings.hideMapQuestHelper
 		local r2 = _G.__reloads
 		_G.__popup = nil
 		_G.__inCombat = true
-		local beforeC = #chatlog
 		pcall(rawget(mapRow, "script_OnClick"), mapRow)
-		check("in combat the reload prompt is not raised",
-			_G.__popup == nil, tostring(_G.__popup))
-		check("and the setting is put back",
-			VanillaQuestingDB.settings.hideMapQuestHelper == wasCombat,
+		check("in combat the panel still asks about reloading",
+			_G.__popup == "VANILLAQUESTING_RELOAD", tostring(_G.__popup))
+		check("and the change is not taken away",
+			VanillaQuestingDB.settings.hideMapQuestHelper == (not wasCombat),
 			tostring(VanillaQuestingDB.settings.hideMapQuestHelper))
-		check("and nothing reloaded", _G.__reloads == r2, _G.__reloads - r2)
-		local saidC
-		for i = beforeC + 1, #chatlog do
-			if tostring(chatlog[i]):find("during combat", 1, true) then saidC = chatlog[i] end
+		pcall(_G.popupAccept)
+		check("and Reload still reloads", _G.__reloads > r2, _G.__reloads - r2)
+
+		-- But `/vq` cannot open it. Settings.OpenToCategory ends in
+		-- ShowUIPanel, which refuses a tainted caller in combat -- and pcall
+		-- does not catch that, because Blizzard prints the message and returns
+		-- normally. Reported from play: the error on screen, no panel.
+		local beforeOpen = #chatlog
+		local opened = ns:OpenOptions()
+		check("/vq does not try to open the panel in combat", opened == false,
+			tostring(opened))
+		local saidOpen
+		for i = beforeOpen + 1, #chatlog do
+			if tostring(chatlog[i]):find("panel cannot be opened", 1, true) then
+				saidOpen = chatlog[i]
+			end
 		end
-		check("and chat says why", saidC ~= nil, saidC)
+		check("and says so rather than letting the client throw",
+			saidOpen ~= nil, saidOpen)
+		-- One colour across the whole message, not a warning that fades into
+		-- the ordinary yellow half way through. Two escapes in the line: the
+		-- chat prefix has its own, and the message has one.
+		check("the whole refusal is one colour",
+			saidOpen ~= nil and select(2, tostring(saidOpen):gsub("|c", "")) == 2,
+			saidOpen)
+
 		_G.__inCombat = false
 		pcall(SlashCmdList["VANILLAQUESTING"], "reset")
 	end
@@ -1968,24 +1994,23 @@ if scenario == "native" or scenario == "no_tooltipfunc" or scenario == "no_templ
 		check("Apply never asks", _G.__popup == nil, tostring(_G.__popup))
 		check("Apply rebuilds straight away", _G.__reloads == r0 + 1, _G.__reloads - r0)
 
-		-- #24, the native panel's half: in combat the change is refused
-		-- rather than parked or applied, and the UI is not rebuilt.
+		-- #24, second pass: Apply keeps working in combat.
+		--
+		-- Build 1 put the value back and refused. Rejected in play: Apply is
+		-- Blizzard's own button on a panel the player is reading, and it has
+		-- to do what it says. Whether the client permits the reload from
+		-- there is a question only the game answers.
 		local wasC = ns.db.settings[mapKey]
 		local rc = _G.__reloads
 		_G.__inCombat = true
-		local beforeN = #chatlog
 		pcall(mapSetting.SetValue, mapSetting, not wasC)
 		pcall(_G.pressApply)
-		check("Apply in combat does not rebuild the UI",
-			_G.__reloads == rc, _G.__reloads - rc)
-		check("and the option is put back where it was",
-			ns.db.settings[mapKey] == wasC, tostring(ns.db.settings[mapKey]))
-		local saidN
-		for i = beforeN + 1, #chatlog do
-			if tostring(chatlog[i]):find("during combat", 1, true) then saidN = chatlog[i] end
-		end
-		check("and the panel says why, naming the option", saidN ~= nil, saidN)
+		check("Apply in combat writes the value through",
+			ns.db.settings[mapKey] == (not wasC), tostring(ns.db.settings[mapKey]))
+		check("and rebuilds, like it does out of combat",
+			_G.__reloads == rc + 1, _G.__reloads - rc)
 		_G.__inCombat = false
+		pcall(SlashCmdList["VANILLAQUESTING"], "reset")
 	end
 
 	-- An option that needs no rebuild takes effect at once and never asks.

@@ -419,26 +419,31 @@ local function refreshQuestUI(rule, mapWasOpen)
 	-- Only the rules the map and the tracker actually read.
 	if not (rule and rule.cyclesMap) then return end
 
-	-- A person just asked: take the map through a close and an open, which is
-	-- the only thing that makes the on-screen quest helper pick up a questPOI
-	-- change. It ends where it started (#44).
+	-- **Only when the map was already open.** [#46], answered in game on
+	-- 2026-09-16 with the `/vq mapcycle` switch, and it halves this:
+	--
+	--   map SHUT   the on-screen quest helper updates on its own, both
+	--              directions, with no cycle and without the map appearing.
+	--              Blizzard's own CVAR_UPDATE handler was always doing this
+	--              job -- writing questPOI makes the client open the map, and
+	--              the close below completes an open-and-close the AddOn was
+	--              separately re-implementing.
+	--   map OPEN   the helper stays stale. Nothing short of the map pane
+	--              closing and opening again moves it, so the cycle stays for
+	--              exactly this case, and leaves the map open (#44).
+	--
+	-- Four versions of cycling on every by-request change, and the half that
+	-- did the visible work was the half nobody could see -- because with the
+	-- map shut the cycle's own open/close hid the client's.
 	--
 	-- Every path that reaches this from an EVENT -- login, VARIABLES_LOADED,
 	-- PLAYER_ENTERING_WORLD, the CVAR_UPDATE re-assert -- leaves `byRequest`
 	-- down. Cycling on a loading screen is a visible jolt nobody asked for,
 	-- and the map is right the next time it is opened anyway.
 	--
-	-- **Unless the cycle is switched off** -- `/vq mapcycle off`, the test
-	-- switch for [#46]. The question that switch exists to answer is whether
-	-- the cycle is needed at all: Blizzard's own handler already toggles the
-	-- quest-log pane on this same event, so the AddOn may have spent four
-	-- versions re-implementing something the game does itself. With it off,
-	-- a by-request change falls through to the paragraph below and the map is
-	-- simply put back where it was, which is the experiment -- the client's
-	-- own open, undone by us, is itself an open and a close.
-	--
-	-- Temporary. It goes when #46 is answered, in either direction.
-	if ns.byRequest and ns:MapCycleWanted() then
+	-- `/vq mapcycle off` still switches off what is left, so the two can be
+	-- compared in one session. Temporary; it goes when #46 closes.
+	if ns.byRequest and mapWasOpen and ns:MapCycleWanted() then
 		cycleWorldMap(mapWasOpen)
 		return
 	end
