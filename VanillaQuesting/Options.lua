@@ -77,7 +77,7 @@ local EXPERIMENTAL_HEADER_NOTE =
 -- would mean. Held here so both panels read from one string; the two tooltips
 -- have drifted apart before.
 local EXPERIMENTAL_COUNT_NOTE =
-	"Number of experimental features enabled are listed next to Vanilla and Custom presets."
+	"Number of experimental options enabled are listed next to the selected preset."
 
 ---------------------------------------------------------------------
 -- The description row's frame script
@@ -361,7 +361,23 @@ local function experimentsOn()
 end
 
 -- The label the control shows, which is the base name plus what the presets
--- deliberately do not cover (#43).
+-- deliberately do not cover (#43) -- **on the selected one only.**
+--
+-- What was asked for is the open list reading plain "Vanilla" and
+-- "Mists of Pandaria" while the closed control reads "Vanilla (1 experimental
+-- on)". Blizzard's dropdown draws **both from the same option label**: the
+-- closed control shows the label of the entry whose value matches the
+-- setting, and there is no second string to set. `Settings.CreateDropdown`
+-- takes a category, a setting, an options function and a tooltip, and the
+-- options carry one text each.
+--
+-- So the suffix goes on the SELECTED entry only. That gets the closed control
+-- exactly right and leaves every other row plain; the one place it differs
+-- from the request is the selected row **while the list is open**, which
+-- carries the count too. Reaching past the label to the control's own
+-- FontString would mean poking a Blizzard frame this client has never been
+-- probed for, to remove a suffix the player has already read on the closed
+-- control -- a cosmetic win that is not worth a frame we do not understand.
 --
 -- **This is the answer to "should an experiment drop the preset to Custom".**
 -- No: it says so instead. "Vanilla (1 experimental)" is honest about both
@@ -381,9 +397,15 @@ end
 -- of that name for the FontString it draws into, and the collision made this
 -- one unreachable from there. luacheck does not flag it -- the two are in
 -- different scopes and both are used -- so the name carries the reason.
-local function presetDisplay(id)
+local function presetDisplay(id, selected)
 	local base = PRESET_LABEL[id] or "Custom"
+	-- Never on "disabled": that preset counts experiments already, so the
+	-- number is always zero while it is the one showing.
 	if id == "disabled" then return base end
+	-- Only on the entry being shown. `selected` is passed rather than worked
+	-- out here, because the canvas panel and the native dropdown ask this
+	-- question at different moments.
+	if not selected then return base end
 	local n = experimentsOn()
 	if n < 1 then return base end
 	return base .. " (" .. n .. " experimental on)"
@@ -694,7 +716,7 @@ local function build()
 		hl:SetColorTexture(1, 0.82, 0, 0.2)
 		local t = item:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 		t:SetPoint("LEFT", 6, 0)
-		t:SetText(presetDisplay(id))
+		t:SetText(presetDisplay(id, id == displayPreset()))
 		item:SetScript("OnClick", function()
 			menu:Hide()
 			applyPreset(id)
@@ -729,9 +751,9 @@ local function build()
 		-- Same text as the native panel's version, which is the one most
 		-- players see. It drifted once; both now read from the same wording.
 		return "\n" .. WHITE .. PRESET_LABEL.classic .. ":" .. C.close
-			.. " Enables all options.\n\n"
+			.. " Enables all options, except experimental ones.\n\n"
 			.. WHITE .. PRESET_LABEL.disabled .. ":" .. C.close
-			.. " Disables all options.\n\n"
+			.. " Disables all options, including experimental ones.\n\n"
 			.. WHITE .. PRESET_LABEL.custom .. ":" .. C.close
 			.. " Automatically selected when you change any option below.\n\n"
 			.. ORANGE .. EXPERIMENTAL_COUNT_NOTE .. C.close
@@ -861,7 +883,7 @@ function ns.RefreshOptions()
 		pcall(row.check.SetChecked, row.check, on)
 	end
 	if preset.text then
-		preset.text:SetText(presetDisplay(displayPreset()))
+		preset.text:SetText(presetDisplay(displayPreset(), true))
 	end
 end
 
@@ -959,8 +981,8 @@ local function presetTooltip()
 	-- "Enables" and "Disables", not "Enable" and "Disable": the row describes
 	-- what the preset does, rather than instructing the reader to do it.
 	return "|n"
-		.. row("classic", "Enables all options.") .. "|n|n"
-		.. row("disabled", "Disables all options.") .. "|n|n"
+		.. row("classic", "Enables all options, except experimental ones.") .. "|n|n"
+		.. row("disabled", "Disables all options, including experimental ones.") .. "|n|n"
 		.. row("custom", "Automatically selected when you change any option below.")
 		.. "|n|n" .. ORANGE .. EXPERIMENTAL_COUNT_NOTE .. "|r"
 end
@@ -1281,7 +1303,13 @@ local function registerNative()
 			-- The entry text carries the count too, so the closed dropdown
 			-- and the open list agree about what the current preset is
 			-- called.
-			for _, id in ipairs(presetEntries()) do c:Add(id, presetDisplay(id)) end
+			-- The selected entry carries the count, because the closed control
+			-- draws its text from that entry's label and there is no other
+			-- string to set. Every other row stays plain.
+			local showing = displayPreset()
+			for _, id in ipairs(presetEntries()) do
+				c:Add(id, presetDisplay(id, id == showing))
+			end
 			return c:GetData()
 		end,
 		presetTooltip())

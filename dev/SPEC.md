@@ -2281,6 +2281,18 @@ Three changes came in with it, from #55:
 
   **The rule, and it is a new one:** a label the AddOn does not supply is a label it cannot add
   anything to. Removing an entry removes the hook as well as the choice.
+- **The count is on the SELECTED entry only**, which is as close as this API reaches to what was
+  asked for. The request was a plain list — *Vanilla*, *Mists of Pandaria* — with the closed
+  control reading *Vanilla (1 experimental on)*. **Blizzard's dropdown draws both from the same
+  option label**: the closed control shows the label of the entry whose value matches the setting,
+  and `Settings.CreateDropdown(category, setting, options, tooltip)` offers no second string.
+
+  So the suffix goes on the selected entry. The closed control is exactly right and every other row
+  is plain; the one deviation is the selected row **while the list is open**, which carries the
+  count too. Reaching past the label to the control's own FontString would mean poking a Blizzard
+  frame this client has never been probed for, to remove a suffix the player has already read —
+  a cosmetic win against an unprobed frame, which is the trade this project keeps deciding the
+  same way.
 
 The tooltip is reordered to match — Vanilla, the client, Custom — with Custom last because it is
 the one that cannot be picked, and it says *Enables* and *Disables* rather than instructing the

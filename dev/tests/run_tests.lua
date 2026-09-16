@@ -2091,7 +2091,12 @@ if scenario == "native" or scenario == "no_tooltipfunc" or scenario == "no_templ
 		-- The count only appears when an experiment is on, so the tooltip
 		-- says what it would mean to a player who has never switched one on.
 		check("and explains the experimental count, in orange",
-			tip:find("|cffff8019Number of experimental features", 1, true) ~= nil, tip)
+			tip:find("|cffff8019Number of experimental options", 1, true) ~= nil, tip)
+		-- Each preset says what it does about the experiments, because that
+		-- is the one thing the two differ on that the labels cannot show.
+		check("and each preset says where the experiments stand",
+			tip:find("except experimental ones", 1, true) ~= nil
+			and tip:find("including experimental ones", 1, true) ~= nil, tip)
 		-- Vanilla, the client, then Custom -- which is last because it is the
 		-- one that cannot be chosen.
 		check("the tooltip orders them vanilla, client, custom",
@@ -2120,11 +2125,21 @@ if scenario == "native" or scenario == "no_tooltipfunc" or scenario == "no_templ
 			check("the vanilla preset carries the experimental count",
 				(labelFor("classic") or ""):find("1 experimental on", 1, true) ~= nil,
 				labelFor("classic"))
+			-- **Only the selected one.** Blizzard's dropdown draws the closed
+			-- control from the selected entry's label, so that is where the
+			-- count has to go -- and every other row stays plain, which is
+			-- what the list should read.
+			check("and no other row carries it",
+				(labelFor("disabled") or ""):find("experimental on", 1, true) == nil,
+				labelFor("disabled"))
 			-- Now move a normal option, so the state is Custom.
 			ns:Set("hideBossPortraits", false)
 			check("and so does custom, which is the case that reached play",
 				(labelFor("custom") or ""):find("1 experimental on", 1, true) ~= nil,
 				labelFor("custom"))
+			check("while vanilla, no longer selected, goes plain again",
+				(labelFor("classic") or ""):find("experimental on", 1, true) == nil,
+				labelFor("classic"))
 			check("custom is listed only while it is the value being shown",
 				labelFor("custom") ~= nil, "missing while in custom")
 			ns:Set("noCompleteQuestPopup", false)
