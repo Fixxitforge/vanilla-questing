@@ -100,6 +100,13 @@ Never switched on by the **Vanilla (Default)** preset. Turn them on yourself.
 
 ## Known limitations
 
+**Disabling or deleting the AddOn does not put the game's settings back.** The options here drive
+the game's **own** settings — they live in the game's configuration, not in this AddOn's, and they
+survive it. **`/vq off` hands them back**, and it has to run while the AddOn is still loaded to do
+it. Unticking Vanilla Questing in the AddOn list, or deleting the folder, leaves them exactly where
+the AddOn left them: there is no hook that runs when an AddOn is disabled or removed, so nothing of
+ours gets the chance. Run `/vq off` first — see [Uninstall](#uninstall).
+
 **\* Quest objective markers on the minimap:** does not remove the `!` and `?` from the minimap.
 The game draws those itself — there is no frame to hide and no setting to switch, and the one
 lever the client offers swaps the whole minimap icon sheet, vendors and herbs with it. Removing
@@ -110,6 +117,12 @@ them means shipping edited artwork, which is
 mining veins. The game renders both from the same variable, so there is no way to remove one
 without the other. Neither had loot sparkles in the original game, so this is the accepted
 behaviour for Vanilla Questing.
+
+**Automatic Quest Tracking takes one original-game behaviour with it.** Switching it off stops a
+quest being tracked when you accept it, which is what the original game did — and also stops the
+few minutes of tracking you got when you picked up a quest object, which the original game *also*
+did. The game controls both with one setting (`autoQuestWatch`), so they cannot be separated
+without the AddOn reaching into the quest log, which it does not do.
 
 ## Bugs and requests
 

@@ -103,6 +103,12 @@ local RULES = {
 		-- own tooltip for the same variable names only the SECOND, so both
 		-- descriptions were half right in opposite directions.
 		desc    = "Stops quests from adding themselves to the tracker, both when accepted and when you make progress on one.",
+		-- The second half of that is a VANILLA behaviour, not a MoP one, and
+		-- this option removes both because the client gates both on the one
+		-- variable (#38). Said on the option rather than quietly accepted:
+		-- everything else this AddOn removes was added after Vanilla, and
+		-- this is the one place it goes further than the era it restores.
+		limitation = "Known limitation: the original game also tracked a quest for a few minutes when you picked up a quest object. That goes too, because the game controls both with one setting.",
 	},
 	{
 		-- The variable is not a guess. Probe v0.19 [G19] walked the settings

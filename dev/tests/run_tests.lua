@@ -288,24 +288,39 @@ if scenario == "normal" then
 		ns:Set("hideBossPortraits", true)
 	end
 
-	-- #34: and what a bulk command prints. One line, and the state in colour.
+	-- #34, settled: a bulk command reports what ACTUALLY moved.
+	--
+	-- Both other shapes were tried in play and rejected -- one line saying
+	-- "All vanilla options on" says nothing about the game, and the whole
+	-- status list says everything, most of which did not change. The length
+	-- of the answer now matches the size of what happened.
 	do
-		local b = #chatlog
 		pcall(SlashCmdList["VANILLAQUESTING"], "on")
-		check("a bulk command prints one line", #chatlog - b == 1, #chatlog - b)
-		check("and it is the short form",
-			tostring(chatlog[#chatlog]):find("All vanilla options", 1, true) ~= nil,
+		local b = #chatlog
+		pcall(SlashCmdList["VANILLAQUESTING"], "off")
+		local lines = table.concat(chatlog, "\n", b + 1)
+		check("a bulk command prints a line per option it moved",
+			#chatlog - b > 5, #chatlog - b)
+		check("and every one of them is a transition",
+			select(2, lines:gsub("%-%>", "")) == #chatlog - b, lines)
+		check("not the status list", lines:find("Status", 1, true) == nil, lines)
+
+		-- Nothing moved: the command still answers, because silence reads as
+		-- a command that failed.
+		b = #chatlog
+		pcall(SlashCmdList["VANILLAQUESTING"], "off")
+		check("a bulk command that moves nothing says so in one line",
+			#chatlog - b == 1, #chatlog - b)
+		check("and does not pretend anything changed",
+			tostring(chatlog[#chatlog]):find("Nothing to change", 1, true) ~= nil,
 			tostring(chatlog[#chatlog]))
 
-		-- The other candidate, on a temporary command so both can be read in
-		-- one session: the same move, then the whole list.
+		-- The trial commands are gone with the decision.
 		b = #chatlog
 		pcall(SlashCmdList["VANILLAQUESTING"], "offstatus")
-		check("/vq offstatus turns everything off", ns:IsActive("hideBossPortraits") == false)
-		check("and prints the list after it", #chatlog - b > 5, #chatlog - b)
-		local listed = table.concat(chatlog, "\n", b + 1)
-		check("which is the status list, not sentences",
-			listed:find("Status and list of options", 1, true) ~= nil, listed)
+		check("the /vq offstatus trial command is retired",
+			table.concat(chatlog, "\n", b + 1):find("Unknown command", 1, true) ~= nil,
+			table.concat(chatlog, "\n", b + 1))
 		pcall(SlashCmdList["VANILLAQUESTING"], "reset")
 	end
 
@@ -1540,21 +1555,24 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 			local t = tostring(chatlog[i])
 			if t:find("Unknown command", 1, true) then unknownLine = t end
 		end
-		-- Decided 2026-09-16: an unrecognised command is the same kind of
-		-- message as a blocked one -- the AddOn declining to act -- so it
-		-- takes the same system yellow, for the WHOLE line. It was three
-		-- colours: salmon for the complaint, yellow for the command name,
-		-- white for the rest, which made a two-clause error read as a small
-		-- paragraph.
+		-- **One error colour, the game's own, on every line end to end.**
+		--
+		-- Two were shipped for a round and compared in play: the AddOn's
+		-- salmon for "you typed something wrong", the client's yellow for
+		-- "the AddOn will not do that". The salmon lost on evidence only the
+		-- game could give -- it sits close to the Experimental orange, and
+		-- **in-game emotes render orange**, so an error could vanish into the
+		-- chat around it.
+		--
+		-- Read off the LINES, not off the palette. Comparing two palette
+		-- entries passes whatever the printers actually used, which is the
+		-- shape of guard this project has been caught by before.
 		check("an unrecognised command is one colour end to end",
 			unknownLine ~= nil
-			and unknownLine:find(ns.color.blocked, 1, true) ~= nil
-			and unknownLine:find(ns.color.warning, 1, true) == nil
+			and unknownLine:find(ns.color.error, 1, true) ~= nil
 			and select(2, unknownLine:gsub("|c", "")) == 2,
 			unknownLine)
-		-- Read off the LINES, not off the palette. Comparing `C.warning` with
-		-- `C.blocked` would pass whatever the printers actually used, which is
-		-- the shape of guard this project has been caught by before.
+
 		_G.__inCombat = true
 		local b = #chatlog
 		pcall(SlashCmdList["VANILLAQUESTING"], "off")
@@ -1564,12 +1582,12 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 			local t = tostring(chatlog[i])
 			if t:find("Command blocked", 1, true) then blockedLine = t end
 		end
-		check("a blocked command does not use the salmon either",
-			blockedLine ~= nil and blockedLine:find(ns.color.warning, 1, true) == nil,
+		check("a blocked command uses the same one",
+			blockedLine ~= nil and blockedLine:find(ns.color.error, 1, true) ~= nil
+			and select(2, blockedLine:gsub("|c", "")) == 2,
 			blockedLine)
-		check("it uses the game's own system-notice yellow instead",
-			blockedLine ~= nil and blockedLine:find(ns.color.blocked, 1, true) ~= nil,
-			blockedLine)
+		check("and no line anywhere still uses the retired salmon",
+			table.concat(chatlog, "\n"):find("|cffff9955", 1, true) == nil)
 	end
 	check("unknown command did not open the panel",
 		_G.__openedCategory == nil or scenario ~= "normal" or true)

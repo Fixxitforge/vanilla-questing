@@ -45,7 +45,7 @@ Nothing is added: the addon only takes away things that the original game never 
 
 ### 🎯 Quest Tracker
 
-*   **Automatic Quest Tracking**: no longer tracks quests when accepted, or when you make progress on one
+*   **Automatic Quest Tracking**\*: no longer tracks quests when accepted, or when you make progress on one
 *   **Clickable titles**: no click-to-open-map, no right-click menu, just plain text
 *   **Quest item buttons**: you instead can find the items in your bag
 
@@ -91,9 +91,13 @@ Built and tested against **Mists of Pandaria Classic**, 5.5.4 (build 69585), int
 
 # Known limitations
 
+**Disabling or deleting the addon does not reset the settings.** The options change the game's own settings, which live in the game and not in the addon. **Run `/vq off` before you disable or delete it** — that is what hands them back. Unticking Vanilla Questing in the AddOn list, or deleting the folder, leaves them where the addon left them, because nothing runs when an addon is switched off.
+
 **\* Quest objective markers on the minimap:** does not remove the `!` and `?` from the minimap. _(Open issue: we are looking for a solution.)_
 
 **\* Loot sparkles on quest objects**: are also removed from gathering nodes, such as herbs and mining veins. The game renders both from the same variable, so there is no way to remove one without the other.
+
+**\* Automatic Quest Tracking**: also stops the few minutes of tracking you get when you pick up a quest object, which the original game did do. The game controls both with one setting.
 
 # Bugs and requests
 

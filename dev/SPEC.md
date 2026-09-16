@@ -386,6 +386,54 @@ client will not let an AddOn do cleanly, not things left undone.
    Stated on the option itself as well as here ([#54](https://github.com/Fixxitforge/vanilla-questing/issues/54)):
    a player reading "Hide Minimap Quest Helper" reasonably expects the marks to go with everything
    else, and the panel is where they are when they wonder.
+4. **Disabling or deleting the AddOn does not put the game's settings back.** Only `/vq off` does,
+   and it has to run while the AddOn is still loaded.
+
+   This is [#32](https://github.com/Fixxitforge/vanilla-questing/issues/32) and
+   [#57](https://github.com/Fixxitforge/vanilla-questing/issues/57), and it is a limitation of the
+   AddOn API rather than of this code: **there is no hook that runs when an AddOn is disabled or
+   removed.** The first thing that happens is the next login, where the folder may be gone and the
+   code is certainly not loaded. `ns.db.state` — the record of what the player had — lives in
+   SavedVariables, so deleting the folder destroys the evidence in the same action.
+
+   Reported from play as worse than expected: unticking Vanilla Questing in the in-game AddOn list
+   leaves every setting in force, which is the ordinary way a player expects to switch an AddOn's
+   effects off.
+
+   **The only mechanism that would close it** is a restore on `PLAYER_LOGOUT` with a re-apply at
+   login: the client's saved variables on disk would then hold the player's values whenever the
+   game is not running, which is exactly when a folder gets deleted. It is **unprobed**, and
+   reading Blizzard's source for this build did not help — `PLAYER_LOGOUT` is registered in two
+   places (`Blizzard_TimeManager`, `Blizzard_BattlefieldMap`) and both write **SavedVariables**,
+   not CVars. Whether a `SetCVar` that late reaches `Config.wtf` is a round trip nobody has spent,
+   and a half-persisted set would be worse than none.
+
+   A "whole-AddOn guard" does not help and is worth writing down so it is not proposed again: a
+   guard is code, code needs the AddOn loaded, and the case is precisely the one where it is not.
+
+   Documented rather than promised, in all three places. That is the honest position and it is the
+   one `AGENT.md` has argued for since #32 walked the path.
+5. **No Automatic Quest Tracking removes one behaviour the original game had.** `autoQuestWatch`
+   gates two branches — `QUEST_ACCEPTED` (MoP) and `QUEST_WATCH_UPDATE` (Vanilla had this, for
+   `MAX_QUEST_WATCH_TIMER = 300` seconds) — and switching the variable off removes both.
+
+   **It can be separated, and the cost is why it is not.** `AddQuestWatch`, `RemoveQuestWatch` and
+   `IsQuestWatched` all exist here (Era/TBC/Mists, gone from retail). So the shape would be: leave
+   `autoQuestWatch` at `1`, let the client track on accept, and take the watch off again.
+
+   Three things wrong with that, and the first two are not opinions:
+
+   - **Ordering.** Both Blizzard's handler and ours would listen to `QUEST_ACCEPTED`, and the order
+     frames receive an event in is not something an AddOn chooses. Ours running first would remove
+     a watch that does not exist yet, and the client would add it afterwards.
+   - **Taint.** Writing quest-watch state from AddOn Lua is the shape that cost this project a
+     permanent session taint through `WATCHFRAME_NUM_POPUPS` — Blizzard's tracker reads the same
+     globals, and the taint log is the record of what that costs.
+   - **It stops being subtractive.** Letting the client do a thing and then undoing it is not the
+     same as not asking for it, and the player would see the flicker.
+
+   So: stated on the option, in the README and on the listing, and left as a limitation until
+   somebody wants it enough to spend a probe on the ordering question (#38).
 
 ## Architecture
 

@@ -2,16 +2,25 @@
 
 ## 1.1.1
 
+### Known limitations
+
+- **Disabling or deleting the AddOn does not put the game's settings back.** The options drive the
+  game's own settings, which live in the game rather than in the AddOn. `/vq off` hands them back
+  and has to run while the AddOn is still loaded; unticking it in the AddOn list or deleting the
+  folder leaves them where they were. Now stated in the README and on the listing.
+
 ### Changed
 
 - **Chat says much less.** `/vq on|off <option>` prints a status row — `on -> off  noOutlineMode` —
   instead of a sentence about what changed, and prints it even when nothing moved. `/vq on` and
-  `/vq off` answer in one short line. `/vq status <option>` is one line with no heading above it.
-- **Errors are the game's own system yellow**, the whole line, rather than three colours in one
-  sentence.
+  `/vq off` print one of those rows per option they **actually** changed, and a short note when
+  they changed nothing. `/vq status <option>` is one line with no heading above it.
+- **Errors are the game's own system yellow**, the whole line. Every one of them: a command that
+  cannot run, a name the AddOn does not know, and the AddOn reporting a fault of its own.
 - **No Automatic Quest Tracking says what it actually does.** The game uses one setting for two
-  things — tracking a quest when you accept it, and tracking one for five minutes when you make
-  progress on it — and the option removes both. It only mentioned the first.
+  things — tracking a quest when you accept it, and tracking one for a few minutes when you pick up
+  a quest object — and the option removes both. It only mentioned the first. The second is
+  behaviour the original game had, so it is now stated on the option as a known limitation.
 - **Hide Minimap Quest Helper says what it does not remove.** The `!` over a questgiver and the
   `?` over a turn-in stay on the minimap — the game draws those itself, and no setting reaches
   them. The option now says so.

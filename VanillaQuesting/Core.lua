@@ -65,11 +65,19 @@ ns.color = {
 	-- A named alias rather than reusing `brand` at the call sites, so the two
 	-- can be pulled apart later without hunting for which blue meant what.
 	limitation   = "|cff66ccff",
-	warning      = "|cffff9955",
-	-- The game's own system-notice yellow, for a command the AddOn refuses
-	-- outright. Under trial: "Command blocked:" takes it, "Unknown option"
-	-- and "Unknown command" keep the salmon above, and the two are compared
-	-- in game before either becomes the rule.
+	-- **One error colour, and it is the game's own.** Every line this AddOn
+	-- prints to say it will not do something, or cannot: a blocked command,
+	-- an unrecognised one, an option name it does not know, and `ns:Warn`.
+	--
+	-- It was a salmon orange of this AddOn's own (`|cffff9955`) and that was
+	-- retired after seeing it in play, for two reasons that only the game
+	-- shows: it sits close to the orange on the Experimental heading, and
+	-- **in-game emotes are rendered in orange too**, so an error could
+	-- disappear into the chat around it.
+	--
+	-- The "these are the AddOn's own faults, not the player's" argument for
+	-- keeping `ns:Warn` separate was considered and dropped on the same
+	-- evidence. One error colour, and it is the one the client uses.
 	--
 	-- `YELLOW_FONT_COLOR_CODE` is a real global on this build -- Blizzard's
 	-- own `Blizzard_Communities/GuildRewards.lua:33` uses it, checked against
@@ -77,7 +85,7 @@ ns.color = {
 	-- is the value behind it: the colour globals are defined engine-side and
 	-- appear nowhere in the Lua, so the literal below is a guess that only
 	-- matters on a client where the global is missing, which this one is not.
-	blocked      = YELLOW_FONT_COLOR_CODE   or "|cffffff00",
+	error        = YELLOW_FONT_COLOR_CODE   or "|cffffff00",
 	on           = "|cff55ff55",
 	off          = "|cffff5555",
 }
@@ -136,7 +144,7 @@ function ns:RefuseInCombat(what)
 	else
 		msg = "some settings cannot be changed during combat."
 	end
-	ns:Print(C.blocked .. "Command blocked: " .. msg .. C.close)
+	ns:Print(C.error .. "Command blocked: " .. msg .. C.close)
 end
 
 -- True if this option cannot take effect without the UI being rebuilt, and so
@@ -159,7 +167,7 @@ function ns:Warn(key, msg)
 	if warned[key] then return end
 	warned[key] = true
 	if DEFAULT_CHAT_FRAME then
-		DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. C.warning .. tostring(msg) .. C.close)
+		DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. C.error .. tostring(msg) .. C.close)
 	end
 end
 
@@ -624,14 +632,22 @@ end)
 -- One option, as the status list prints it. `indent` is what makes a
 -- sub-option sit under its parent in the full list; asked for by name it is
 -- the only line on screen, so there is nothing to sit under.
--- "on" and "off", in their colours, optionally padded so a column of them
--- lines up. **One renderer**, so `/vq status`, `/vq status <option>` and
--- `/vq on|off <option>` cannot come to disagree about what "on" looks like --
--- the same reason `statusLine` prints both the whole list and a single row.
-local function stateWord(on, width)
-	local word = on and "on" or "off"
-	if width then word = word .. string.rep(" ", width - #word) end
-	return (on and C.on or C.off) .. word .. C.close
+-- "on" and "off", in their colours. **One renderer**, so `/vq status`,
+-- `/vq status <option>` and `/vq on|off <option>` cannot come to disagree
+-- about what "on" looks like -- the same reason `statusLine` prints both the
+-- whole list and a single row.
+--
+-- **No padding, and no leading indent anywhere.** Both were tried: "on " and
+-- "off" padded to a column, two spaces in front of every row. Neither lines
+-- anything up, because **the game's chat font is not monospaced** -- a rule
+-- already in this repository for the help text, re-learnt here by looking at
+-- it. What is left is one separator used everywhere:
+--
+--     on  hideMapQuestHelper            /vq status
+--     Status:  on  hideMapQuestHelper   /vq status <option>
+--     on -> off  hideMapQuestHelper     /vq on|off <option>
+local function stateWord(on)
+	return (on and C.on or C.off) .. (on and "on" or "off") .. C.close
 end
 
 -- What one option DID, in the shape of a status row rather than a sentence.
@@ -649,7 +665,7 @@ end
 -- prints, so a sub-option under an off parent says "off -> off" and does not
 -- claim an effect the player can watch not happening.
 local function transitionLine(key, was, now)
-	ns:Print("  " .. stateWord(was, 3) .. " -> " .. stateWord(now, 3) ..
+	ns:Print(stateWord(was) .. " -> " .. stateWord(now) ..
 		"  " .. C.highlight .. tostring(key) .. C.close)
 end
 
@@ -664,7 +680,7 @@ local function statusLine(m, indent, prefix)
 	-- "(experimental)" note after it carries the mark on its own, and the
 	-- panel cannot colour its names at all (see [G23b]) -- so colouring
 	-- them here made the two disagree about what an option looks like.
-	ns:Print((prefix or "") .. "  " .. stateWord(on, 3) ..
+	ns:Print((prefix or "") .. stateWord(on) ..
 		"  " .. (indent and m.parent and "   " or "") ..
 		C.highlight .. tostring(m.key) .. C.close ..
 		(m.experimental and (" " .. C.experimental .. "(experimental)" .. C.close) or ""))
@@ -678,7 +694,7 @@ local function status(only)
 		-- One line, no header. A title, a version and a subtitle above a
 		-- single row is four times as much chat as the answer, and the player
 		-- asked about one option (#34). The row says what it is instead.
-		statusLine(ns.modules[only], false, C.title .. "Status:" .. C.close)
+		statusLine(ns.modules[only], false, C.title .. "Status:" .. C.close .. "  ")
 		return
 	end
 	ns:Print(ns.title .. " v" .. tostring(ns.version) .. " - Status and list of options")
@@ -737,17 +753,18 @@ SlashCmdList["VANILLAQUESTING"] = function(msg)
 	if cmd == "reset" then
 		ns:ResetDefaults()
 
-	elseif cmd == "on" or cmd == "off"
-		or cmd == "onstatus" or cmd == "offstatus" then
-		local want = (cmd == "on" or cmd == "onstatus")
-		-- `onstatus` / `offstatus` are #34's other candidate, shipped beside
-		-- the terse one so both can be read in the same session: they do
-		-- exactly what `on` and `off` do and then print the whole status list,
-		-- which is the "show me what the game looks like now" answer. Not in
-		-- `/vq help`, not in the README, not on the listing -- a temporary
-		-- command, the way `/vq mapcycle` was, and it goes when #34 is decided.
-		local withList = (cmd == "onstatus" or cmd == "offstatus")
+	elseif cmd == "on" or cmd == "off" then
+		local want = (cmd == "on")
 		if arg == "" then
+			-- Read every option's EFFECT before the pass, so the lines below
+			-- report what moved rather than what was asked for. `IsActive`,
+			-- like every other readout: a sub-option that follows its parent
+			-- gets its own line, and one whose parent leaves it inert does
+			-- not claim to have changed.
+			local before = {}
+			for i = 1, #ns.modules do
+				before[ns.modules[i].key] = ns:IsActive(ns.modules[i].key)
+			end
 			-- "/vq on" means Vanilla (Default), not the experiments.
 			-- Experimental features are only ever turned on by name.
 			--
@@ -776,12 +793,34 @@ SlashCmdList["VANILLAQUESTING"] = function(msg)
 			end
 			-- By request: the player typed /vq on or /vq off.
 			ns:ApplyAll(true)
-			-- Minimal (#34). Twelve options moved and the player knows which
-			-- command they typed; what they want back is confirmation and the
-			-- state, not a sentence about either.
-			ns:Print(want and ("All vanilla options " .. stateWord(true))
-				or ("All options " .. stateWord(false)))
-			if withList then status() end
+
+			-- **What actually moved, and nothing else** (#34).
+			--
+			-- Two shapes were tried in play: one line saying "All vanilla
+			-- options on", and the whole status list. The first says the
+			-- command was received and nothing about the game; the second
+			-- says everything, most of which did not change. This is the
+			-- middle, and it is the only one whose length matches the size of
+			-- what happened -- a second `/vq off` prints nothing but a note,
+			-- because nothing happened.
+			--
+			-- Ordered like the panel and `/vq status`, so a player reading
+			-- three lines finds them where they expect.
+			local moved = 0
+			local ordered = ns:SortedModules()
+			for i = 1, #ordered do
+				local m = ordered[i]
+				local now = ns:IsActive(m.key)
+				if before[m.key] ~= now then
+					transitionLine(m.key, before[m.key], now)
+					moved = moved + 1
+				end
+			end
+			if moved == 0 then
+				-- Silence would read as a command that failed. It did not:
+				-- everything was already where it was asked to go.
+				ns:Print(C.muted .. "Nothing to change." .. C.close)
+			end
 		else
 			local key = resolveSetting(arg)
 			if key and ns:BlockedByCombat(key) then
@@ -797,13 +836,12 @@ SlashCmdList["VANILLAQUESTING"] = function(msg)
 				local was = ns:IsActive(key)
 				ns:Set(key, want)
 				transitionLine(key, was, ns:IsActive(key))
-				if withList then status() end
 			else
 				-- One colour for the whole line, the game's own system yellow.
 				-- It was three -- salmon for the complaint, yellow for the
 				-- command, white for the rest -- which made a two-clause error
 				-- look like a small paragraph.
-				ns:Print(C.blocked .. "Unknown option '" .. arg ..
+				ns:Print(C.error .. "Unknown option '" .. arg ..
 					"'. Try /vq help for list of commands." .. C.close)
 			end
 		end
@@ -835,7 +873,7 @@ SlashCmdList["VANILLAQUESTING"] = function(msg)
 			if key and ns.modules[key] then
 				status(key)
 			else
-				ns:Print(C.blocked .. "Unknown option '" .. arg ..
+				ns:Print(C.error .. "Unknown option '" .. arg ..
 					"'. Try /vq help for list of commands." .. C.close)
 			end
 		end
@@ -847,12 +885,13 @@ SlashCmdList["VANILLAQUESTING"] = function(msg)
 			ns:OpenOptions()
 		else
 			status()
-			ns:Print(C.warning .. "Options panel unavailable." .. C.close .. " Use " ..
-				C.highlight .. "/vq on|off <option>" .. C.close .. ".")
+			-- One colour for the whole line, like every other error.
+			ns:Print(C.error .. "Options panel unavailable. " ..
+				"Use /vq on|off <option>." .. C.close)
 		end
 
 	else
-		ns:Print(C.blocked .. "Unknown command '" .. cmd ..
+		ns:Print(C.error .. "Unknown command '" .. cmd ..
 			"'. Try /vq help for list of commands." .. C.close)
 	end
 end
