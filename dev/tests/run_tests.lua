@@ -1468,6 +1468,42 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 		if tostring(chatlog[i]):find("Unknown command", 1, true) then complained = true end
 	end
 	check("unknown command complains", complained)
+	-- Two refusal colours on purpose, and under trial (2026-09-16).
+	--
+	-- "Command blocked" is the game's own system-notice yellow; "Unknown
+	-- command" and "Unknown option" keep this AddOn's salmon. The first is the
+	-- client telling you it will not do a thing, the second is this AddOn
+	-- telling you it did not understand you, and whether those should look
+	-- alike is being decided by looking at them. Asserted so the two cannot
+	-- quietly converge while that is still open.
+	do
+		local unknownLine
+		for i = before2 + 1, #chatlog do
+			local t = tostring(chatlog[i])
+			if t:find("Unknown command", 1, true) then unknownLine = t end
+		end
+		check("an unrecognised command keeps the AddOn's own warning colour",
+			unknownLine ~= nil and unknownLine:find(ns.color.warning, 1, true) ~= nil,
+			unknownLine)
+		-- Read off the LINES, not off the palette. Comparing `C.warning` with
+		-- `C.blocked` would pass whatever the printers actually used, which is
+		-- the shape of guard this project has been caught by before.
+		_G.__inCombat = true
+		local b = #chatlog
+		pcall(SlashCmdList["VANILLAQUESTING"], "off")
+		_G.__inCombat = false
+		local blockedLine
+		for i = b + 1, #chatlog do
+			local t = tostring(chatlog[i])
+			if t:find("Command blocked", 1, true) then blockedLine = t end
+		end
+		check("a blocked command does not use it",
+			blockedLine ~= nil and blockedLine:find(ns.color.warning, 1, true) == nil,
+			blockedLine)
+		check("it uses the game's own system-notice yellow instead",
+			blockedLine ~= nil and blockedLine:find(ns.color.blocked, 1, true) ~= nil,
+			blockedLine)
+	end
 	check("unknown command did not open the panel",
 		_G.__openedCategory == nil or scenario ~= "normal" or true)
 

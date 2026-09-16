@@ -98,6 +98,11 @@ read_globals = {
 	"MINIMAP_TRACKING_QUEST_POIS",
 	"NORMAL_FONT_COLOR_CODE", "HIGHLIGHT_FONT_COLOR_CODE",
 	"GRAY_FONT_COLOR_CODE", "FONT_COLOR_CODE_CLOSE",
+	-- Added after checking Blizzard's own 5.5.4.69585 source drop, where
+	-- Blizzard_Communities/GuildRewards.lua:33 uses it. The allowlist caught
+	-- it on the first run, which is what it is for -- on this client a name
+	-- that looks right and is not is exactly the mistake worth catching.
+	"YELLOW_FONT_COLOR_CODE",
 	"YES", "NO", "CANCEL", "ChatFontNormal",
 
 	-- Miscellaneous client globals

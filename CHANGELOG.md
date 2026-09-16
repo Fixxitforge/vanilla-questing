@@ -18,7 +18,7 @@
   name. `/vq` will not open the options panel mid-fight either — the game does not allow an AddOn
   to open it there, so the AddOn says so and points you at the game menu, which still works.
   Every other option can still be changed, and **an options panel that is already open keeps
-  working, Apply included.**
+  working, Apply included.** A blocked command is printed in the game's own system-notice yellow.
 - **Changing a map option no longer flashes the map open and shut.** With the map closed the game
   refreshes the on-screen quest helper by itself, so the AddOn stops taking the map through a
   close-and-open it never needed. With the map open it still does, because that is the only thing

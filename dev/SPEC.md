@@ -2050,11 +2050,33 @@ It now refuses before calling, says so, and returns `false`. That is a second in
 already in this file — *`pcall` hides a missing method as easily as a failing one* — in its
 nastiest form yet: nothing failed, and nothing worked.
 
-#### One colour, end to end
+#### One colour, end to end — and two of them, on trial
 
-Every refusal is a single `C.warning` span. Half a line in warning orange beside half a line in
-the ordinary yellow reads as a note with an error in it rather than a refusal, and the option's
-name goes inside the same sentence.
+Every refusal is a **single** span. Half a line in warning orange beside half a line in the
+ordinary yellow reads as a note with an error in it rather than a refusal, and the option's name
+goes inside the same sentence.
+
+**Which colour is being decided by looking.** From 2026-09-16 there are two:
+
+| | |
+| --- | --- |
+| `C.blocked` — the game's own system-notice yellow | *"Command blocked: …"*, a thing the AddOn will not do |
+| `C.warning` — this AddOn's salmon | *"Unknown option"*, *"Unknown command"*, `ns:Warn` |
+
+The argument for splitting them: the first is the same *kind* of message as the client's own
+system notices, and the second is this AddOn saying it did not understand you. The argument
+against: two refusal colours is one more thing to learn, and the yellow sits close to the body
+gold. Neither settles on paper, so both ship and get compared in play.
+
+`YELLOW_FONT_COLOR_CODE` is a real global here — `Blizzard_Communities/GuildRewards.lua:33` uses
+it in the 5.5.4.69585 drop — and luacheck's allowlist caught it as undefined on the first run,
+which is exactly what that allowlist is for. **The value behind it is not verified**: the colour
+globals are engine-side and appear nowhere in the Lua, so the literal fallback in `Core.lua` is a
+guess that only matters on a client where the global is missing.
+
+Guarded by reading the printed LINE rather than comparing palette entries — comparing
+`C.warning` with `C.blocked` would pass whatever the printers actually used, which is the shape of
+guard this project has been caught by before.
 
 `ns:InCombat`, `ns:RefuseInCombat` and `ns:BlockedByCombat` live in `Core.lua` so the wording has
 one home — the same reason `statusLine` renders both readings of `/vq status`.

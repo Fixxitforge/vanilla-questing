@@ -66,6 +66,18 @@ ns.color = {
 	-- can be pulled apart later without hunting for which blue meant what.
 	limitation   = "|cff66ccff",
 	warning      = "|cffff9955",
+	-- The game's own system-notice yellow, for a command the AddOn refuses
+	-- outright. Under trial: "Command blocked:" takes it, "Unknown option"
+	-- and "Unknown command" keep the salmon above, and the two are compared
+	-- in game before either becomes the rule.
+	--
+	-- `YELLOW_FONT_COLOR_CODE` is a real global on this build -- Blizzard's
+	-- own `Blizzard_Communities/GuildRewards.lua:33` uses it, checked against
+	-- the 5.5.4.69585 source drop rather than remembered. What is NOT verified
+	-- is the value behind it: the colour globals are defined engine-side and
+	-- appear nowhere in the Lua, so the literal below is a guess that only
+	-- matters on a client where the global is missing, which this one is not.
+	blocked      = YELLOW_FONT_COLOR_CODE   or "|cffffff00",
 	on           = "|cff55ff55",
 	off          = "|cffff5555",
 }
@@ -125,7 +137,7 @@ function ns:RefuseInCombat(what)
 	else
 		msg = "some settings cannot be changed during combat."
 	end
-	ns:Print(C.warning .. "Command blocked: " .. msg .. C.close)
+	ns:Print(C.blocked .. "Command blocked: " .. msg .. C.close)
 end
 
 -- True if this option cannot take effect without the UI being rebuilt, and so
