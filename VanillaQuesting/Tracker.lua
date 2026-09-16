@@ -106,7 +106,7 @@ end
 do
 	local M = ns:RegisterModule("trackerPlainText", {})
 	M.title = "Plain Text Quest Tracker"
-	M.desc  = "Quest titles in the tracker stop being clickable."
+	M.desc  = "Titles in the tracker stop being clickable."
 	M.onText  = "Tracker quest titles are now plain text."
 	M.offText = "Tracker quest titles are clickable."
 	M.group = "Quest Tracker"

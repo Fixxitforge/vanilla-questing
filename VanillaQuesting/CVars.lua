@@ -59,7 +59,7 @@ local RULES = {
 		group   = "Map and minimap",
 		order   = 10,
 		title   = "Hide World Map Quest Helper",
-		desc    = "Removes the quest markers, the blue objective areas, the Track Quest checkbox and the quest list in the world map.",
+		desc    = "Removes the quest markers, the blue objective areas, the Track Quest checkbox and the quest list on the world map.",
 	},
 	{
 		-- Newly accepted quests stop auto-tracking.
@@ -108,7 +108,7 @@ local RULES = {
 		-- variable (#38). Said on the option rather than quietly accepted:
 		-- everything else this AddOn removes was added after Vanilla, and
 		-- this is the one place it goes further than the era it restores.
-		limitation = "Known limitation: stops automatically tracking quests for a few minutes when a quest object is picked up.",
+		limitation = "Known limitation: also stops the few minutes of tracking you get when you pick up a quest object.",
 	},
 	{
 		-- The variable is not a guess. Probe v0.19 [G19] walked the settings

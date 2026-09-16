@@ -133,6 +133,11 @@ dev/knowledge/          the notebook behind the spec: Blizzard's own interface s
 dev/audits/             external reviews, kept verbatim. Each finding is verified
                         against the code before it becomes an issue -- an audit is
                         evidence, not a verdict.
+dev/tests/strings.lua   every line the AddOn can put in front of a player, printed in one
+                        pass by driving the real code: `lua5.1 strings.lua`, from `dev/tests`.
+                        For reading the wording all at once, away from the eight files it is
+                        spread across -- which is how five wordings the stub could never
+                        judge got fixed in one round. Not part of `run.sh`.
 dev/tests/              the off-client suite. ./run.sh runs, in this order:
                         lint_forward_refs.py, lint_hygiene.py, luacheck,
                         luac -p on every Lua file
@@ -351,6 +356,16 @@ the **Releases → Draft a new release** page on GitHub, which creates the tag i
   release, and then the changelog is claiming something the tracker contradicts. The long form —
   what a change cost to find, and why it was made that way — is the version history in
   `dev/SPEC.md`.
+- **And it is SHORT.** An entry is a bold headline sentence, and stops there unless a player
+  cannot act on it without one more clause. **Several issues become one line** where they landed
+  as one change to use: *"Chat says much less and colors reworked."* was five entries and a
+  paragraph each before the owner cut it back. What an entry never carries is the reasoning — why
+  this shape, what was tried first, what the client turned out to do. That reads as an argument
+  being had in public, it is the longest part of every draft I write, and **it belongs in
+  `dev/SPEC.md`, which is where I keep reaching for it later anyway.** Group under `### New`,
+  `### Changed`, `### Fixed`, `### Known limitations` — fixes are what a player scans for first
+  and they do not go under Changed.
+  A draft I have written is long. Cut it before pushing, rather than waiting to be told.
 - **Commit messages** say what changed and what it cost to find. No model identifiers anywhere in
   the repository.
 
@@ -495,6 +510,23 @@ The tag is cut from `main`, so everything in the release has to BE on `main` fir
 branch rule above. "Prepare the repo for release" means: the suffix dropped from the `.toc`, the
 `CHANGELOG.md` section for that version finished, `dev/LISTING.md` current, the suite green, and
 all of it pushed to `main`. Then the tag is one command.
+
+**The milestone is part of it.** Every issue in that version's milestone closed — and closed
+means verified in game, per the rule above, not "I think that one is done" — and then the
+milestone itself closed, in the same pass that reports the repo ready to tag:
+
+```
+curl -X PATCH -H "Authorization: Bearer $GITHUB_TOKEN" \
+     -H "Accept: application/vnd.github+json" -H "Content-Type: application/json" \
+     https://api.github.com/repos/Fixxitforge/vanilla-questing/milestones/<number> \
+     -d '{"state":"closed"}'
+```
+
+The credential takes this, the same way it takes issues and milestones — it is tags and releases
+it is refused for, which is a different thing and is above. If it is ever refused, say so and put
+the milestone's URL in the reply for the owner to close by hand. **Never close a milestone with
+an open issue still in it**, and never close one before the repo is ready to tag: a closed
+milestone reads as "this version is done", and it is not done while something is still moving.
 
 ---
 

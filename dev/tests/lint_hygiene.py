@@ -51,6 +51,11 @@ IDENTITIES = {
 AUTHOR = "Fixxit"
 
 REPO_REF = re.compile(r"github\.com[/:]([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)")
+# The REST API names the same repository in a different shape --
+# api.github.com/repos/<owner>/<name> -- and the pattern above reads the
+# "repos/" as the owner. Matched first and removed, so what is left is the
+# ordinary browser link.
+API_REF = re.compile(r"api\.github\.com/repos/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)")
 # A coding-session link only opens for the account that ran the session, so in
 # a public repository it is a dead link with a session id sitting in it.
 SESSION = re.compile(r"claude\.ai/code/session", re.I)
@@ -86,7 +91,8 @@ msgs = git("log", "--all", "--format=%B")
 
 strays = set()
 for path, text in files:
-    for ref in REPO_REF.findall(text):
+    refs = API_REF.findall(text) + REPO_REF.findall(API_REF.sub("", text))
+    for ref in refs:
         slug = ref[:-4] if ref.endswith(".git") else ref
         if slug != THIS_REPO and slug not in THIRD_PARTY:
             strays.add(f"{path}: {slug}")

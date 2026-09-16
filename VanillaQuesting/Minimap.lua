@@ -18,7 +18,7 @@ M.offText = "Minimap quest helper restored."
 M.group = "Map and minimap"
 M.title = "Hide Minimap Quest Helper"
 M.order = 20
-M.desc = "Switches the " .. C.title .. "Track Quest POIs" .. C.close .. " tracking off, removing both the quest markers and the blue objective areas from the minimap."
+M.desc = "Removes the quest markers and the blue objective areas from the minimap."
 -- SHARED, not owned. The player has a control of their own for this -- the
 -- minimap tracking dropdown -- so the two agree with each other rather than
 -- one of them winning. Named here for the same reason a CVar rule names its

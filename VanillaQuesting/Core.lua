@@ -844,7 +844,7 @@ SlashCmdList["VANILLAQUESTING"] = function(msg)
 				-- command, white for the rest -- which made a two-clause error
 				-- look like a small paragraph.
 				ns:Print(C.error .. "Unknown option '" .. arg ..
-					"'. Try /vq help for list of commands." .. C.close)
+					"'. Try /vq status for list of options." .. C.close)
 			end
 		end
 
@@ -875,7 +875,7 @@ SlashCmdList["VANILLAQUESTING"] = function(msg)
 				status(key)
 			else
 				ns:Print(C.error .. "Unknown option '" .. arg ..
-					"'. Try /vq help for list of commands." .. C.close)
+					"'. Try /vq status for list of options." .. C.close)
 			end
 		end
 
