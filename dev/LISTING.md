@@ -91,7 +91,7 @@ Built and tested against **Mists of Pandaria Classic**, 5.5.4 (build 69585), int
 
 # Known limitations
 
-**Disabling or deleting the addon does not reset the settings.** The options change the game's own settings, which live in the game and not in the addon. **Run `/vq off` before you disable or delete it** — that is what hands them back. Unticking Vanilla Questing in the AddOn list, or deleting the folder, leaves them where the addon left them, because nothing runs when an addon is switched off.
+**Disabling or deleting the addon does not reset the settings.** The addon changes the game's own settings, not add settings on top. Unticking Vanilla Questing in the AddOn list, or deleting the folder, leaves the settings where they are. **Run `/vq off` before you disable or delete it** to restore the settings.
 
 **\* Quest objective markers on the minimap:** does not remove the `!` and `?` from the minimap. _(Open issue: we are looking for a solution.)_
 
