@@ -4,7 +4,7 @@
 
 ### Known limitations
 
-- **Disabling or deleting the addon does not reset the settings.** The addon changes the game's own settings, not add settings on top. Unticking Vanilla Questing in the AddOn list, or deleting the folder, leaves the settings where they are. **Run `/vq off` before you disable or delete it** to restore the settings.
+- **Disabling or deleting the addon does not reset the settings.** The addon changes the game's own settings, not adding settings on top. Unticking Vanilla Questing in the AddOn list, or deleting the folder, leaves the settings where they are. **Run `/vq off` before you disable or delete it** to restore the settings.
 - **No Automatic Quest Tracking also stops the few minutes of tracking** you get when you pick up a
   quest object. The game controls both with one setting.
 
