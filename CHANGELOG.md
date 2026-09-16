@@ -8,15 +8,17 @@
   `?` over a turn-in stay on the minimap — the game draws those itself, and no setting reaches
   them. The option now says so.
 - The fallback options panel no longer shows a grey developer readout beside each option.
-- The note under the **Experimental** heading is the same size as the option names it sits above.
+- The note under the **Experimental** heading is the same size as the option names it sits above,
+  in the ordinary text colour rather than the heading's orange, and sits closer to them.
 - **Plain Text Achievements now follows Plain Text Quest Tracker.** Switching the tracker option on
   switches achievements on with it, and switching it off takes them off. It can still be unticked
   on its own while the tracker option is on.
 - **Chat commands that need the UI to reload are refused during combat.** `/vq on`, `/vq off` and
   `/vq reset` say so and do nothing while you are fighting, as does Hide World Map Quest Helper by
-  name. `/vq` will not open the options panel mid-fight either — the game does not allow it, and
-  the AddOn now says so instead of letting an error appear. Every other option can still be
-  changed, and **an options panel that is already open keeps working, Apply included.**
+  name. `/vq` will not open the options panel mid-fight either — the game does not allow an AddOn
+  to open it there, so the AddOn says so and points you at the game menu, which still works.
+  Every other option can still be changed, and **an options panel that is already open keeps
+  working, Apply included.**
 - **Changing a map option no longer flashes the map open and shut.** With the map closed the game
   refreshes the on-screen quest helper by itself, so the AddOn stops taking the map through a
   close-and-open it never needed. With the map open it still does, because that is the only thing

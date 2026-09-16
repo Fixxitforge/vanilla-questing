@@ -663,10 +663,13 @@ local function build()
 			y = y - 26
 
 			-- A sentence between the heading and the first checkbox, in the
-			-- small font, in the group's own colour. Only the experimental
-			-- group has one.
+			-- small font. Only the experimental group has one.
+			--
+			-- Yellow, NOT the group colour the heading above it uses -- the
+			-- same call as in the native panel, and the two have to agree or
+			-- the note means one thing in one panel and another in the other.
 			if m.experimental then
-				local note = fs(panel, "GameFontNormalSmall", c[1], c[2], c[3])
+				local note = fs(panel, "GameFontNormalSmall", 1, 0.82, 0)
 				note:SetPoint("TOPLEFT", 16, y + 6)
 				note:SetWidth(560)
 				note:SetJustifyH("LEFT")
@@ -1309,8 +1312,19 @@ local function registerNative()
 			-- this client, no CreateElementInitializer -- the text falls back
 			-- to the heading's own tooltip, and a tooltip has to be passed at
 			-- the moment the heading is created.
+			-- The note is YELLOW, not the heading's orange.
+			--
+			-- Reported from play: orange under an orange heading read as a
+			-- second heading, or as a warning about the options rather than a
+			-- sentence describing them. It is neither -- it says which preset
+			-- does not touch these, which is ordinary description text, and
+			-- description text in this AddOn is the game's own yellow.
+			--
+			-- The heading stays orange. The mark belongs on the heading and on
+			-- the option names, where it means "experimental"; on a sentence
+			-- it means nothing and costs legibility.
 			local note = m.experimental
-				and buildDescription(EXPERIMENTAL_HEADER_NOTE, ORANGE) or nil
+				and buildDescription(EXPERIMENTAL_HEADER_NOTE, YELLOW) or nil
 
 			addSectionHeader(m.group, m.experimental and ORANGE or WHITE,
 				(m.experimental and not note) and EXPERIMENTAL_HEADER_NOTE or nil)

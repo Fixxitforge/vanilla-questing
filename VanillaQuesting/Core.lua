@@ -108,10 +108,20 @@ end
 function ns:RefuseInCombat(what)
 	local msg
 	if what == "panel" then
-		msg = "the options panel cannot be opened during combat."
+		-- "/vq cannot open", not "the panel cannot be opened". Blizzard's own
+		-- Esc menu opens it in combat perfectly well -- it is a secure path
+		-- and this one is not. The first wording said the panel could not be
+		-- opened, which is a smaller sentence and a false one, and a player
+		-- who then opens it from the game menu has been told a lie by an
+		-- AddOn that was trying to be helpful.
+		msg = "/vq cannot open the options panel during combat. " ..
+			"Use the game menu instead."
 	elseif what then
-		msg = tostring(what) .. " cannot be changed during combat, " ..
-			"it requires a UI reload."
+		-- No reason given. The reason offered first was "it requires a UI
+		-- reload", which is not true: what it requires is the world map
+		-- cycling, and the reload is how the panel gets there. A player does
+		-- not need either fact, and a wrong one is worse than none.
+		msg = tostring(what) .. " cannot be changed during combat."
 	else
 		msg = "some settings cannot be changed during combat."
 	end
@@ -244,10 +254,6 @@ local function initDB()
 
 	VanillaQuestingDB = VanillaQuestingDB or {}
 	local db = VanillaQuestingDB
-
-	-- #46's test switch. Outside `settings` on purpose -- see MapCycleWanted --
-	-- so a preset, a reset or a bulk command cannot move it mid-test.
-	if db.mapCycle == nil then db.mapCycle = true end
 
 	db.settings = db.settings or {}
 	-- Pre-AddOn values live here so Disable() can put the game back exactly
@@ -512,29 +518,6 @@ function ns:IsActive(key)
 	return true
 end
 
--- #46, and temporary: is the world-map cycle switched on?
---
--- Writing `questPOI` makes the CLIENT open the map -- Blizzard's own
--- CVAR_UPDATE handler ends in `HandleUserActionToggleQuestLog`, which has no
--- closed branch -- and the AddOn then takes the map through a close and an
--- open because that round trip is what makes the on-screen quest helper pick
--- the change up. The suspicion is that the client's own toggle was always
--- doing that job, and the cycle has been re-implementing and fighting it.
---
--- It cannot be settled here: there is no client in the test harness, and no
--- stub knows whether a frame redrew. So the build carries both paths and the
--- switch chooses, and one round in game answers it.
---
--- NOT in `settings`: it is not an option, it is not in either panel, it is
--- not in `/vq help`, and `/vq reset` must not move it in the middle of a
--- test. Default on, which is exactly v1.1.0's behaviour.
---
--- **This goes when #46 is answered, whichever way it lands.**
-function ns:MapCycleWanted()
-	if not ns.db then return true end
-	return ns.db.mapCycle ~= false
-end
-
 function ns:Set(key, value)
 	if not ns.db then return end
 	ns.db.settings[key] = value
@@ -773,19 +756,6 @@ SlashCmdList["VANILLAQUESTING"] = function(msg)
 					" Try " .. C.highlight .. "/vq help" .. C.close .. " for list of commands.")
 			end
 		end
-
-	elseif cmd == "mapcycle" then
-		-- #46's test switch, and deliberately not in `/vq help`, the README or
-		-- the listing. It is not a feature: it exists so one build can be
-		-- asked both halves of a question that needs a client to answer, and
-		-- it goes when the question is answered.
-		if arg == "on" or arg == "off" then
-			ns.db.mapCycle = (arg == "on")
-		end
-		ns:Print("World map cycle is " ..
-			(ns:MapCycleWanted() and (C.on .. "on" .. C.close)
-				or (C.off .. "off" .. C.close)) ..
-			". " .. C.muted .. "Test switch for issue #46." .. C.close)
 
 	elseif cmd == "help" then
 		ns:Print(ns.title .. " v" .. tostring(ns.version) .. " - List of commands")

@@ -1036,50 +1036,26 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 			ops() == "blizz-open,hide", ops())
 		check("and a map that was shut is left shut", not WorldMapFrame:IsShown())
 
-		-- #46's test switch, and what is left of it.
+		-- #46, settled in game and the switch removed with it.
 		--
-		-- It shipped covering every by-request change. The round trip in game
-		-- answered the question it was for -- with the map SHUT the client
-		-- refreshes the helper on its own, with the map OPEN it does not --
-		-- so the cycle now runs only for the open case, and the switch now
-		-- governs only that case too. It stays one more round so the two can
-		-- be compared in one session, and goes when #46 closes.
+		-- `/vq mapcycle` shipped for one round so both halves of the question
+		-- could be asked in one session. They were: with the map SHUT the
+		-- client refreshes the helper on its own, with the map OPEN only a
+		-- close and an open does. So the cycle runs for the open case and the
+		-- switch is gone -- a second way for the AddOn to behave, that nothing
+		-- exercises, is worse than no switch at all.
 		--
-		-- Open first: that is the only case there is still a cycle to switch
-		-- off. Off first as well, so the "on" below is a real transition -- an
-		-- option already where it is asked to go writes nothing, raises no
-		-- CVAR_UPDATE, and would prove nothing about the map.
-		pcall(SlashCmdList["VANILLAQUESTING"], "off hideMapQuestHelper")
-		SetCVar("questPOI", "1")
-		ns.db.state.questPOI = "1"
-		_G.openWorldMap()
-		pcall(SlashCmdList["VANILLAQUESTING"], "mapcycle off")
-		check("the switch reports itself off", ns:MapCycleWanted() == false)
-		_G.__clearMapOps()
-		pcall(SlashCmdList["VANILLAQUESTING"], "on hideMapQuestHelper")
-		check("with the switch off an open map is not cycled", ops() == "", ops())
-		check("and is left open", WorldMapFrame:IsShown())
-
-		-- With it back on, the same change cycles and ends open (#44).
-		pcall(SlashCmdList["VANILLAQUESTING"], "mapcycle on")
-		check("and the switch goes back on", ns:MapCycleWanted() == true)
+		-- Off first, so the "on" below is a real transition: an option already
+		-- where it is asked to go writes nothing, raises no CVAR_UPDATE, and
+		-- would prove nothing about the map.
 		pcall(SlashCmdList["VANILLAQUESTING"], "off hideMapQuestHelper")
 		ns.db.state.questPOI = "1"
 		cvars.questPOI = "1"
 		_G.openWorldMap()
 		_G.__clearMapOps()
 		pcall(SlashCmdList["VANILLAQUESTING"], "on hideMapQuestHelper")
-		check("with it on an open map is closed and reopened",
-			ops() == "hide,show", ops())
+		check("an open map is closed and reopened", ops() == "hide,show", ops())
 		check("and left open", WorldMapFrame:IsShown())
-		-- Nothing else may move it: it is not a setting, so a reset does not
-		-- reach it. A tester losing the switch halfway through a round trip is
-		-- the whole reason it lives outside `settings`.
-		ns.db.mapCycle = false
-		pcall(SlashCmdList["VANILLAQUESTING"], "reset")
-		check("a reset does not move the test switch", ns:MapCycleWanted() == false)
-		pcall(SlashCmdList["VANILLAQUESTING"], "mapcycle on")
-
 		-- An option the map does not read must not touch it at all.
 		ns.db.state.questPOI = "1"
 		_G.openWorldMap()
@@ -1448,12 +1424,18 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 			tostring(opened))
 		local saidOpen
 		for i = beforeOpen + 1, #chatlog do
-			if tostring(chatlog[i]):find("panel cannot be opened", 1, true) then
+			if tostring(chatlog[i]):find("cannot open the options panel", 1, true) then
 				saidOpen = chatlog[i]
 			end
 		end
 		check("and says so rather than letting the client throw",
 			saidOpen ~= nil, saidOpen)
+		-- It says `/vq` cannot open it, not that the panel cannot be opened:
+		-- Blizzard's own Esc menu opens it in combat, being a secure path, and
+		-- an AddOn that says otherwise is lying to be brief.
+		check("and does not claim the panel itself is unreachable",
+			saidOpen ~= nil and tostring(saidOpen):find("game menu", 1, true) ~= nil,
+			saidOpen)
 		-- One colour across the whole message, not a warning that fades into
 		-- the ordinary yellow half way through. Two escapes in the line: the
 		-- chat prefix has its own, and the message has one.
@@ -1779,8 +1761,13 @@ if scenario == "native" or scenario == "no_tooltipfunc" or scenario == "no_templ
 	else
 		check("the note is a description row under the heading",
 			rows:find(EXPERIMENTAL_NOTE_TEXT, 1, true) ~= nil, rows)
-		check("it is orange",
-			rows:find("|cffff8019", 1, true) ~= nil, rows)
+		-- Yellow, not the heading's orange. Reported from play: orange under
+		-- an orange heading reads as a second heading, or as a warning about
+		-- the options rather than a sentence describing them. The mark stays
+		-- on the heading and on the option names, where it means something.
+		check("it is the ordinary yellow, not the experimental orange",
+			rows:find("|cffffd100", 1, true) ~= nil
+			and rows:find("|cffff8019", 1, true) == nil, rows)
 		check("and the heading has no tooltip, so it is not said twice",
 			headTip == nil, tostring(headTip))
 	end

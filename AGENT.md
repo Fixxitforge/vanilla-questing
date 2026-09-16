@@ -157,11 +157,16 @@ Change one of these and the others are part of the same change, not a follow-up.
 | **Anything about what the AddOn can't do** | All **three** Known limitations sections: `README.md`, `dev/SPEC.md`, and `dev/LISTING.md` (the CurseForge listing). See below — they are written at different depths on purpose, but they must never disagree about the facts. |
 | **A feature, or a command** | `dev/LISTING.md`, in the same pass — that is the CurseForge listing, and it is a public promise that goes stale silently. |
 
-**One command is deliberately not on any of those pages: `/vq mapcycle`.** It is #46's test
-switch, not a feature — it exists so a single build can be asked both halves of a question that
-needs a client to answer, and it is removed when the question is answered. Not in `/vq help`, not
-in `README.md`, not on the listing. Written down here because the row above would otherwise read
-as an omission to be fixed.
+**A temporary command is allowed, and it is not a feature.** `/vq mapcycle` existed for exactly
+one build: it let a single zip be asked both halves of a question no stub could answer (#46), and
+it was deleted in the commit that recorded the answer. Such a command stays out of `/vq help`,
+`README.md` and the listing — it is not a promise to anyone — and it is written down here so the
+row above does not read as an omission to be fixed.
+
+**The pattern is worth keeping.** Where a question needs the game and the answer is one of two
+behaviours, ship both behind a switch rather than arguing for one. One round trip settled a
+question four versions of work had been resting on, and the answer was a shape neither side had
+proposed. The switch goes the moment the answer arrives.
 | **A rule I learn the hard way** | This file. |
 
 ### Backlog and bugs do **not** live in a file
@@ -180,13 +185,23 @@ sessions carry posts as the agent account — so the rule is written down for th
 if the only token to hand would file under the author's name, stop and say so rather than opening
 it anyway. The same goes for comments and for closing something.
 
-**What that actually looks like on the page, checked 2026-09-16, and it is not what the rule
-above assumes.** An issue or a comment posted through this session's credential renders as
-**"Fixxitforge — with Claude"**, not as an account of my own. The author's name is on it. The
-agent is named beside it, which is better than nothing and is the whole of what the platform
-offers; there is no arrangement of this token that posts as me alone.
+**What that actually looks like on the page, checked 2026-09-16 — and the reason is the token, not
+the platform.** There are two identities, both of which have written to this repository:
 
-So the rule stands where it can and is replaced where it cannot:
+| Author on the page | What it is | What produced it |
+| --- | --- | --- |
+| **`claude[bot]`** | the Claude GitHub App posting **as itself** | an app **installation** token (server-to-server) |
+| **"Fixxitforge — with Claude"** | the app posting **on behalf of the owner** | a **user-to-server** token for his account |
+
+Every issue in this tracker numbered below #50 was written by `claude[bot]`. Everything this
+session writes is authored by `Fixxitforge`, because `GITHUB_TOKEN` here resolves to his user
+account — `GET /user` returns `login: Fixxitforge`, and the comments come back with
+`author_association: OWNER`.
+
+**It is not selectable from inside a session.** The runtime hands the session one token or the
+other; nothing in the repository, and no call available here, switches it. So:
+
+
 
 - **Every issue, comment, reopen and close I write ends with the footer**, verbatim, without
   exception. It is not decoration — with "— with Claude" being the only other mark, the footer is
@@ -217,9 +232,15 @@ So, before closing:
 > **Can this issue's fix be wrong in a way only the game would show?**
 
 If yes — anything that touches a frame, a CVar write, a protected call, timing, layout, what the
-player sees or what chat says — **it is not mine to close.** I say what shipped on the issue, say
-plainly that it is unverified, hand over a build, and **the author closes it, or tells me to.**
-An issue stays open through as many rounds as that takes.
+player sees or what chat says — **it is not mine to close on my own reasoning.** I say what
+shipped on the issue, say plainly that it is unverified, and hand over a build. An issue stays
+open through as many rounds as that takes.
+
+**Once the answer comes back from the game, it is mine to close again.** A report that the thing
+works, or is fixed, or is right — in the checklist reply or on the issue — is the verification the
+rule is asking for, and waiting for a second instruction after that is just friction. Close it,
+and say in the comment that it was confirmed in play and on what date. What is not allowed is
+closing it on a green suite and an argument, which is the whole of the mistake.
 
 If no — a lint rule, a CI workflow, a migration order, a documentation file, a test guard, a
 comment — the suite is the whole of the verification and I close it as before.
@@ -230,10 +251,10 @@ person to read the tracker believes it.
 
 **Never write a closing keyword in a commit message.** `closes #12`, `fixes #12`, `resolved #12`
 — GitHub acts on any of them when the commit reaches the default branch, and it credits the
-close to whoever owns the push credential, which is the author. That is the one thing I do that
-does not land under my own name, and no setting changes it: everything else goes through the API
-as the agent account, and commits carry my own author and committer, but a push is attributed to
-whoever pushed. So the fix is to never arm it. Refer to an issue by number all you like — write
+close to whoever owns the push credential, which is the author. A commit carries my own author and
+committer, but the push is attributed to whoever pushed — and on a session holding a user-to-server
+token (above) the API calls land under his name too, so a keyword close is doubly his. So the fix
+is to never arm it. Refer to an issue by number all you like — write
 "for #12", "the #12 case" — and close it through the API afterwards, where the right name lands
 on the decision.
 
@@ -269,8 +290,16 @@ file also records what the published page last said and when it was read, so the
 diff rather than a memory.
 
 **I cannot create releases or push tags** — this session's GitHub token is refused for both.
-Milestones, issues and comments do work. What
-I can do is get everything ready and say precisely what is left to run. The author tags, or uses
+Issues, comments and milestones do work. What
+I can do is get everything ready and say precisely what is left to run.
+
+**`GITHUB_TOKEN` is in the environment, and the REST API takes it.** The MCP tool set does not
+cover everything — there is no milestone tool in it — and a session that stops at "no tool for
+that" is stopping too early. `curl` with `Authorization: Bearer $GITHUB_TOKEN`,
+`Accept: application/vnd.github+json` **and `Content-Type: application/json`** (POST bodies are
+refused without it) reaches the rest. Three milestones were created that way once the tool set had
+already been reported as lacking the ability, which is the lesson: **check the credential before
+reporting a limitation.** The author tags, or uses
 the **Releases → Draft a new release** page on GitHub, which creates the tag itself.
 
 ---

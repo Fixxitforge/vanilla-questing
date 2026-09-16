@@ -441,9 +441,10 @@ local function refreshQuestUI(rule, mapWasOpen)
 	-- down. Cycling on a loading screen is a visible jolt nobody asked for,
 	-- and the map is right the next time it is opened anyway.
 	--
-	-- `/vq mapcycle off` still switches off what is left, so the two can be
-	-- compared in one session. Temporary; it goes when #46 closes.
-	if ns.byRequest and mapWasOpen and ns:MapCycleWanted() then
+	-- The `/vq mapcycle` switch that answered this is gone with the question:
+	-- both halves were played, and a test switch nobody is testing with is a
+	-- second way for the AddOn to behave that nothing exercises.
+	if ns.byRequest and mapWasOpen then
 		cycleWorldMap(mapWasOpen)
 		return
 	end

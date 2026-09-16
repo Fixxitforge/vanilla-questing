@@ -2122,12 +2122,13 @@ is not half a cycle — it is the second half of the **client's** open.
 
 **With the map open the cycle stays**, and ends open, which is `#44`.
 
-`/vq mapcycle` stays one more round, now governing only the open case, so the two can be compared
-in one session. **It is not an option**: not in either panel, not in `/vq help`, not in
-`README.md` and **not on the CurseForge listing** — deliberately, and written down here and in
-`AGENT.md` because the doc-sync rule would otherwise send the next reader to add it. It lives
-outside `settings` so a preset, a reset or a bulk command cannot move it mid-test, and it goes
-when #46 closes.
+**`/vq mapcycle` is gone**, in the commit that recorded the answer. It existed for exactly one
+build, it was never in either panel, in `/vq help`, in `README.md` or on the listing, and a test
+switch nobody is testing with is a second way for the AddOn to behave that nothing exercises.
+
+Confirmed in play on the new shape, 2026-09-16: map shut, both directions, the helper updates and
+the map stays out of sight; map open, the helper updates and the map is left open; and with the
+cycle switched off the open case goes stale, which is the control.
 
 **The rule this earned:** a question a stub cannot answer is worth shipping as a switch rather
 than as an argument. One build, one round trip, and the answer was a shape nobody had proposed —

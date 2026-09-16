@@ -2,17 +2,13 @@
 
 # Vanilla Questing
 
-*Turn off the quest helper and immerse yourself in the World of Warcraft.*
+*Turn off the quest helper and experience questing as in the original game. Read the quest, explore, and immerse yourself in the World of Warcraft. You have full control, disable as much or as little as you like: no map/minimap markers, no progress in tooltips, instant quest text, vanilla quest tracker, and much more.*
 
-Nowadays, the in-game quest helper almost plays the game for you. Markers on the map, progress in
-hover tooltips, and QoL improvements so you can rush through the game without hustle.
+A World of Warcraft AddOn that turns off the quest helper, so questing feels like the original
+game again: you read the quest text and go exploring, instead of following a marker.
 
-**Vanilla Questing reverses that.** We restore the original game experience: you read the quest
-text, work out where to go, and explore the World of Warcraft. The world stops being a checklist
-and goes back to being… well… a world.
-
-Nothing is added: the addon only takes away things that the original game never had. Every option
-is on by default, and you have the power to customise your own flavor of vanilla.
+Nothing is added: it only takes away things the original game never had. Every option is on by
+default and every one of them can be switched off on its own.
 
 Built and tested against **Mists of Pandaria Classic**, 5.5.4 (build 69585), interface `50504`.
 Support for other client versions is in the research pipeline.
