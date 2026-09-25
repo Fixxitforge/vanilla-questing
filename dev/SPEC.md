@@ -41,6 +41,8 @@ The work list is by **state**.
 | The framed questgiver portrait beside quest text | `hideCharacterFrame` | v0.16.0 |
 | Quest progress appended to tooltips | `hideTooltipsQuestProgress` | v0.16.0 |
 | Yellow quest-item highlight in bags | `noBagItemHighlight` | v0.13.0 |
+| Achievement titles in the tracker made plain text too | `trackerPlainTextAchievements` | v1.1.0 |
+| Loot sparkles on quest objects, through `ShowQuestObjectHighlightEffect` | `noQuestSparkles` | v1.1.0 |
 
 Plus the options panel itself: Blizzard's own vertical layout, real checkboxes, the real
 dropdown, the real Apply and Defaults buttons.
@@ -102,7 +104,7 @@ a line in Blizzard's code — and the first thing reading it turned up was an er
 
 ### Every option, and what it does
 
-Thirteen options. The behaviour columns are taken from the suite, not from reading the code: each
+Fourteen options. The behaviour columns are taken from the suite, not from reading the code: each
 option with observable state was switched on and off against the harness and what moved was
 recorded.
 
@@ -312,8 +314,8 @@ overwritten with `2`.
 
 ### Known limitations
 
-Documented in `README.md` and to be repeated on the CurseForge page. These are things this
-client will not let an AddOn do cleanly, not things left undone.
+Documented in `README.md` and in `dev/LISTING.md`, the CurseForge page's text, at their own
+depths. These are things this client will not let an AddOn do cleanly, not things left undone.
 
 1. **~~Achievement tracker lines also stop being clickable.~~** Fixed in v1.0.1, played and
    confirmed. Kept here because the reasoning is worth more than the entry was.
@@ -408,6 +410,26 @@ client will not let an AddOn do cleanly, not things left undone.
    not CVars. Whether a `SetCVar` that late reaches `Config.wtf` is a round trip nobody has spent,
    and a half-persisted set would be worse than none.
 
+   **What it would and would not cover**, because the first reading of this got it wrong. #32 was
+   closed on the argument that unticking the AddOn at character select defeats it — it never loads,
+   so it never restores. But character select is reached by logging out, and the restore runs at
+   that logout, before the untick. The in-game AddOn list's ReloadUI is covered the same way, and
+   so is deleting the folder with the game shut. What it cannot cover is anything that skips the
+   logout: a crash, a force-quit.
+
+   **Does anyone else do it?** Advanced Interface Options is the AddOn that exists to write CVars,
+   and its source (checked 2026-09-25) registers no `PLAYER_LOGOUT` and restores nothing: it
+   records what it changes and leaves it. So nobody has been seen to try, which is not the same
+   as it not working.
+
+   **`[G36]` asks the question.** Armed with `/unrecon logout arm <label>`, it flips `showBosses`
+   (stored per character) and `instantQuestText` (per account) inside `PLAYER_LOGOUT`, reads them
+   at `ADDON_LOADED`, `VARIABLES_LOADED`, `PLAYER_LOGIN` and `PLAYER_ENTERING_WORLD` on the next
+   login, calls each SURVIVED or LOST, and puts the player's values back. It refuses to arm beside
+   Vanilla Questing, whose login pass would overwrite the reading. The trips that matter: a
+   `/reload` (does `PLAYER_LOGOUT` run at all?), a logout to character select and back, and a full
+   exit and restart — the last is the one that answers #32.
+
    A "whole-AddOn guard" does not help and is worth writing down so it is not proposed again: a
    guard is code, code needs the AddOn loaded, and the case is precisely the one where it is not.
 
@@ -466,19 +488,18 @@ the minimap tracking this AddOn drives all survive deleting the folder, so each 
 it is touched and written back when the option is switched off. **This is an internal design rule
 and is never advertised** — no "leaves no trace" on any public page, and no version in which it
 becomes one. [#19](https://github.com/Fixxitforge/vanilla-questing/issues/19) and
-[#27](https://github.com/Fixxitforge/vanilla-questing/issues/27) are fixed in v1.0.1;
-[#18](https://github.com/Fixxitforge/vanilla-questing/issues/18) is open. But
-[#32](https://github.com/Fixxitforge/vanilla-questing/issues/32) settled the question those three were
-gating: the remembered values live in SavedVariables, inside the folder, so deleting the folder
-destroys the record of what to restore in the same action. A logout-time restore would cover the
-tidy case and miss unticking the AddOn on the character select screen, which is commoner. The
-README claims `/vq off` and nothing beyond it.
+[#27](https://github.com/Fixxitforge/vanilla-questing/issues/27) and
+[#18](https://github.com/Fixxitforge/vanilla-questing/issues/18) were fixed in v1.1.0. What is left is
+[#32](https://github.com/Fixxitforge/vanilla-questing/issues/32): the remembered values live in
+SavedVariables, inside the folder, and nothing of ours runs once the AddOn is disabled. A
+logout-time restore is the one candidate, and it is unprobed — Known limitations entry 4 has what
+it would and would not cover. The README claims `/vq off` and nothing beyond it.
 
 **SavedVariables:** account-wide, not per character. Whether that should be the player's choice
 is [issue #10](https://github.com/Fixxitforge/vanilla-questing/issues/10).
 
-**Slash command:** `/vq` opens the panel, with `/vanillaquesting` as a long-form alias.
-`/vq reset` restores defaults.
+**Slash command:** `/vq` opens the panel, with `/vanillaquesting` as a long-form alias. There is
+no `/vq reset` since v1.1.1: `/vq on` is the defaults, and the panel's Defaults button resets.
 
 **One name per feature — no second name anywhere.** v1 gave each feature a display key
 (`hideBossPortraits`) *and* a saved-setting name mirroring the CVar (`showBosses`). That
@@ -538,8 +559,9 @@ Details that matter:
 - **Defaults** needs nothing from this AddOn. Blizzard's button reloads the UI itself when a
   setting it reset requires one. Two workarounds for this were written and both removed; see the
   v0.14.3 notes.
-- **Tooltips** are built as strings with colour escapes: yellow body, orange for an experimental
-  note or a known limitation, grey for the slash handle at the foot.
+- **Tooltips** are built as strings with colour escapes: yellow body, blue for a known
+  limitation, orange for the experimental note. The grey slash handle that used to sit at the foot
+  is gone, and the suite asserts it stays gone.
 
 ### The canvas panel — the fallback
 
@@ -553,14 +575,18 @@ window and `/vq` still opens it. One warning line, once.
 
 ### Presets
 
-Three entries, in this order: **Vanilla (Default)**, **Custom**, **Disabled**.
+Two to choose from, **Vanilla** and the client's own name — *Mists of Pandaria* on this client,
+read from `EXPANSION_NAME<n>`, and *Disabled* only where that cannot be read (#55). **Custom** is
+the third state and is not a choice: it appears in the dropdown only while it is the one the
+settings are in.
 
-- *Vanilla (Default)* — every normal option on, experimental ones **left exactly as the player
-  set them**.
+- *Vanilla* — every normal option on, experimental ones **left exactly as the player set them**.
+  It lost "(Default)" in v1.1.1; the dropdown opens on it anyway.
 - *Custom* — **derived, never stored.** Shown whenever the settings match neither of the others.
-  Listed in the dropdown because a dropdown cannot display a value that is not among its entries,
-  but never a choice.
-- *Disabled* — every option off, experimental included.
+- *Mists of Pandaria* — every option off, experimental included.
+
+The selected entry carries a count when an experimental option is on: *Vanilla (1 experimental
+on)* (#43).
 
 Experimental options do not enter into whether the settings read as Vanilla. See
 "Presets and experimental options". That they are left alone is said **once**, as a line of
@@ -629,12 +655,13 @@ read as modal.
 
 **Work lands on `main`.** The repository had no `main` at all — its default branch was the
 working branch, which is why nothing was ever merged anywhere. From v0.17.1 the default is
-`main` and changes go there directly. Once `1.0.0` ships, that changes to asking first.
+`main` and changes go there directly, and that did not change at 1.0.0: `AGENT.md` has the rule,
+no feature branches and no pull requests.
 
 **The slash path says nothing about reloading; the panel asks.** These are not inconsistent —
 they are two different situations, and I had the reasoning backwards until it was corrected:
 
-- **`/vq on|off|reset`** — the player is at the keyboard with the map reachable, and the map is
+- **`/vq on|off`** — the player is at the keyboard with the map reachable, and the map is
   correct the next time it opens. No reload is involved, so saying otherwise is advice for a
   problem they do not have. A regression guard in the suite asserts the slash path never says
   "reload".
@@ -742,8 +769,7 @@ Its **Known limitations** section must include, at minimum:
   sparkles in the original game.
 
   This replaces the old "either an outline or loot sparkles, never neither" entry, which is
-  withdrawn — see the known-limitations section above. **The listing must be updated to match**;
-  it still carries the old text, and wants a shorter form of this than the README carries.
+  withdrawn — see the known-limitations section above. The listing carries the shorter form now.
 - Anything else discovered to be unreachable gets listed here rather than quietly omitted.
 
 ## Version history
@@ -2331,6 +2357,53 @@ the function now, which is both honest and immune to the command being retired.
   leaving about a line and a half of dead space under it. The note **stays under the heading and
   above the options** — moving it below the group was suggested while the padding looked
   unfixable, and a sentence about a list belongs before the list.
+
+### v1.1.2 — an audit of the suite itself, and the logout question put to the game
+
+#### The suite could be green while nothing ran
+
+`run.sh` totalled `[FAIL]` lines. A scenario that dies on a Lua error prints none — the interpreter
+stops it and every check after the error never happens — so with an `error()` planted at the top of
+`run_tests.lua` all seventeen scenarios crashed and the run printed **"0 failed"** and exited 0. The
+probe smoke test was read the same way. And `run_tests.lua` itself called `os.exit(1)` half-way on
+any failure, so one failure in the first half hid everything the second half would have said,
+summary line included.
+
+A scenario now has to exit cleanly **and** reach its own summary line, the smoke test is judged by
+its exit status too, and a missing `luacheck` fails the run rather than printing a skip notice
+above a green total.
+
+#### Four guards that could not fail
+
+Found by breaking a sample of fixes and watching for red, which is AGENT.md's rule and had not been
+applied to these:
+
+- `check("all off reads as a preset state", true)`;
+- `"unknown command did not open the panel"`, ending `... or true)`;
+- `"a tooltip still uses grey where it should"`, `sawGrey or true` — while the grey slash handle it
+  meant had been removed;
+- the #18 guard *"Disable restores even with a refusal latched"*, whose setup never latched a
+  refusal: the locked restore left `questPOI` at `0`, so switching on again found it already there
+  and wrote nothing. Disable could honour `refused` and the check still passed.
+
+Each now measures what its label says, and each was broken and watched going red. A fifth,
+*"option tooltip bodies still open in yellow"*, repeated the boolean of the check above it; it now
+checks the first escape of every body.
+
+**The fallback panel's tooltips had no guard at all.** Deleting the limitation line or the
+experimental note from them left the suite green. They are compared with the native builder, option
+by option, in every canvas scenario. They agree today.
+
+#### A rule that named a guard which did not exist
+
+AGENT.md and `dev/README.md` both said `lint_hygiene.py` fails the suite on a closing keyword
+beside an issue reference in a commit message. It did not; there was no such check in the file.
+It exists now, and a planted `closes #999` on a throwaway ref turns it red. The model-name list in
+the same file gained the family it was missing, and the id shape.
+
+#### `[G36]` — the question #32 has been waiting on
+
+See Known limitations entry 4. The probe is v0.35.
 
 ### v0.33 probe
 

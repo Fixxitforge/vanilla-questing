@@ -13,7 +13,7 @@ exist?", it now enumerates what is really there — method tables, provider obje
 types, registered settings — so a negative result means "not present" rather than "I guessed the
 wrong name".
 
-Sections are tagged `[G1]`..`[G27]` and map onto the conclusions in `SPEC.md`. An `ACTIVE`
+Sections are tagged `[G1]`..`[G36]` and map onto the conclusions in `SPEC.md`. An `ACTIVE`
 table at the top of `Recon.lua` decides which ones print; settled sections are switched off but
 kept in full, one flag away from running again.
 
@@ -24,6 +24,8 @@ first to use one.
 /unrecon              run it, summary to chat and the full report to SavedVariables
 /unrecon print        dump the whole report to chat
 /unrecon copy         a selectable box to copy out of
+/unrecon logout arm <label>   arm [G36]; it is answered by a logout and the next login
+/unrecon logout       what [G36] has recorded
 ```
 
 Then `/reload` to flush SavedVariables to disk and read
@@ -74,9 +76,13 @@ frames — and `run_tests.lua` drives the real AddOn files against it.
 cd dev/tests && ./run.sh
 ```
 
-Needs `lua5.1`, the client's own Lua version, and `luacheck` (`apt-get install lua-check`) for the
-static pass — the suite runs without it and says so, but CI installs it, so the same forward-reference and scoping rules
-apply here as in game — a trap this project has hit twice.
+Needs `lua5.1`, the client's own Lua version, so the same forward-reference and scoping rules
+apply here as in game — a trap this project has hit twice — and `luacheck`
+(`apt-get install lua5.1 lua-check`) for the static pass. **Without luacheck the run fails**: a
+skipped check is not a passed one.
+
+A scenario passes only if it exits cleanly and reaches its own summary line. Counting `[FAIL]`
+lines alone let a scenario that died on a Lua error — which prints no `[FAIL]` — read as a pass.
 
 Every scenario in `run.sh`'s `SCENARIOS` list, including the ones that matter for a subtractive
 AddOn: a client with no Settings API, one that refuses a CVar write, one with no `C_Minimap`, and

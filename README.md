@@ -93,7 +93,7 @@ in brackets is what you type after `/vq on` or `/vq off`.
 
 ### 🧪 Experimental
 
-Never switched on by the **Vanilla (Default)** preset. Turn them on yourself.
+Never switched on by the **Vanilla** preset. Turn them on yourself.
 
 - **"Complete Quest" popups** (`noCompleteQuestPopup`): removes the popups that allow you to
   complete quests faster *(untested feature)*

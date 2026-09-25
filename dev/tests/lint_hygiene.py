@@ -60,7 +60,19 @@ API_REF = re.compile(r"api\.github\.com/repos/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)"
 # a public repository it is a dead link with a session id sitting in it.
 SESSION = re.compile(r"claude\.ai/code/session", re.I)
 # AGENT.md: the repository names the tool, never the model behind it.
-MODEL = re.compile(r"\b(Opus|Sonnet|Haiku)\b")
+# Every family name in use, and the id shape, so a new family is one word here
+# rather than a gap nobody notices: "Fable" was missing while it was current.
+MODEL = re.compile(r"\b(Opus|Sonnet|Haiku|Fable)\b|(?i:\bclaude-[a-z]+-\d)")
+
+# GitHub closes an issue when a commit reaching the default branch says one of
+# these next to a reference to it, whatever the sentence around them says, and
+# credits the close to whoever owns the push credential. AGENT.md forbids it,
+# and AGENT.md and dev/README.md both said this file enforced it -- it did not;
+# the check below is the one they described.
+CLOSING = re.compile(
+    r"\b(close[sd]?|fix(e[sd])?|resolve[sd]?)\b[\s:]*"
+    r"([\w.-]+/[\w.-]+#\d+|#\d+|https?://github\.com/[\w.-]+/[\w.-]+/issues/\d+)",
+    re.I)
 
 fails = []
 def check(ok, label, detail=""):
@@ -106,6 +118,10 @@ check(not SESSION.search(msgs), "no coding-session links in commit messages")
 hits = [f"{p}: {MODEL.search(t).group(0)}" for p, t in files if MODEL.search(t)]
 check(not hits, "no model identifiers in tracked files", "\n".join(hits))
 check(not MODEL.search(msgs), "no model identifiers in commit messages")
+
+hits = sorted({m.group(0) for m in CLOSING.finditer(msgs)})
+check(not hits, "no closing keyword beside an issue reference in any commit message",
+      "\n".join(hits))
 
 people = {tuple(l.split("\t")) for l in
           git("log", "--all", "--format=%an\t%ae%n%cn\t%ce").split("\n") if "\t" in l}

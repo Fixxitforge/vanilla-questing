@@ -581,7 +581,17 @@ Written down so nobody takes silence for an answer.
   this the likely one), or those panels are canvas layouts the walk never saw. It stopped
   mattering once the AddOn shipped its own template, and it is the question to re-open if the
   panel ever needs to read a Blizzard setting that lives in a canvas category.
-- **Whether the client's own quest-log toggle already refreshes the on-screen quest helper**, which
-  would make this AddOn's map cycle four versions of re-implementing the game.
-  [#46](https://github.com/Fixxitforge/vanilla-questing/issues/46), and v1.1.1 ships
-  `/vq mapcycle` so one round trip can answer it.
+- **Whether a `SetCVar` made during `PLAYER_LOGOUT` persists** to the next login — after a
+  `/reload`, a logout to character select, and a full exit. It decides whether the AddOn can put
+  the game's settings back when it is disabled or deleted
+  ([#32](https://github.com/Fixxitforge/vanilla-questing/issues/32),
+  [#57](https://github.com/Fixxitforge/vanilla-questing/issues/57)). Blizzard's source registers
+  the event only to write SavedVariables. Probe `[G36]` asks it.
+- **Whether `PLAYER_LOGOUT` fires on a `/reload` at all.** Widely assumed, never measured here.
+  `[G36]` records it as a side effect: a reload trip that finds nothing written says no.
+
+Answered since this list was written, and moved out of it: whether the client's own quest-log
+toggle already refreshes the on-screen quest helper
+([#46](https://github.com/Fixxitforge/vanilla-questing/issues/46)). With the map shut it does, and
+the AddOn's cycle is kept only for a map that is already open — see `../SPEC.md`, v1.1.1. The
+`/vq mapcycle` switch that asked it is gone.

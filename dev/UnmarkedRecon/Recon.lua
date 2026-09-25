@@ -1,4 +1,4 @@
--- Unmarked Recon v0.3
+-- Unmarked Recon -- the version is the .toc's, read back below.
 -- Throwaway dev-only probe. Not part of Vanilla Questing, never shipped with it.
 -- Probes which quest-helper UI pieces this client actually has.
 --
@@ -6,11 +6,12 @@
 -- /unrecon print        run and dump the whole report to chat
 -- /unrecon copy         open a selectable text box you can Ctrl+A / Ctrl+C out of
 -- /unrecon set <cvar> <value>   set one of the four quest CVars, for the G5 effect test
+-- /unrecon logout arm <label>   arm [G36], the logout write test; see that section
 --
 -- After running it, type /reload to flush SavedVariables to disk, then read:
 --   _classic_\WTF\Account\<ACCOUNT>\SavedVariables\UnmarkedRecon.lua
 --
--- Sections are tagged [G1]..[G15] so the output maps back to SPEC.md.
+-- Sections are tagged [G1]..[G36] so the output maps back to SPEC.md.
 --
 -- v0.15 stops printing the settled sections. See the ACTIVE table below: every
 -- section is still here in full, but only the open questions run, so a report
@@ -151,6 +152,8 @@ local ACTIVE = {
 	-- Still open.
 	g35 = true, -- which frame is the minimap tracking button, and does the
 	            --   tooltip guard in Minimap.lua drop our line?
+	g36 = true, -- #32/#57: does a CVar written at PLAYER_LOGOUT survive to
+	            --   the next login? Armed with /unrecon logout arm <label>.
 }
 
 ---------------------------------------------------------------------
@@ -3372,6 +3375,283 @@ function UnmarkedRecon_TrackDump()
 end
 
 ---------------------------------------------------------------------
+-- [G36] #32 and #57. Does a SetCVar made during PLAYER_LOGOUT survive?
+--
+-- The one mechanism that could put the game's settings back when Vanilla
+-- Questing is disabled or deleted is a restore at PLAYER_LOGOUT, re-applied at
+-- the next login: the client's saved settings would then hold the player's own
+-- values whenever the game is not running, which is when an AddOn gets
+-- unticked or deleted. Blizzard's source for this build registers the event in
+-- two places -- Blizzard_TimeManager and Blizzard_BattlefieldMap -- and both
+-- write SavedVariables, not CVars. So whether a CVar write that late reaches
+-- the client's saved configuration is a question the source cannot answer.
+-- Only a logout can.
+--
+-- Two variables, one of each scope, per [G32]: showBosses is stored per
+-- CHARACTER and instantQuestText per ACCOUNT, and both report stored-on-server.
+-- The probe flips each at logout, reads them at the next login, and then puts
+-- the player's own value back. It leaves nothing moved.
+--
+-- It is not a section `/unrecon` runs. It is armed by a command, answered by a
+-- logout and a login, and the report carries every trip it has recorded:
+--
+--   /unrecon logout arm <label>   arm it; the label says which trip this is
+--   /unrecon logout               what it has recorded so far
+--   /unrecon logout clear         forget the record and disarm
+--
+-- It refuses to arm while Vanilla Questing is loaded: VQ re-applies its
+-- options at every login, which would overwrite the very reading this takes.
+---------------------------------------------------------------------
+local G36_CVARS = { "showBosses", "instantQuestText" }
+
+local function g36State()
+	UnmarkedReconDB.logoutProbe = UnmarkedReconDB.logoutProbe or {}
+	local s = UnmarkedReconDB.logoutProbe
+	s.trips = s.trips or {}
+	return s
+end
+
+local function g36Read(name)
+	local ok, v = pcall(GetCVar, name)
+	if ok then return v end
+	return nil
+end
+
+local function g36Flags(name)
+	local ok, _, default, ssa, ssc, locked = cvarInfo(name)
+	if not ok then return "C_CVar.GetCVarInfo unavailable" end
+	return string.format("default=%s serverAccount=%s serverCharacter=%s locked=%s",
+		tostring(default), tostring(ssa), tostring(ssc), tostring(locked))
+end
+
+-- Which character this is. A per-character variable read on a different
+-- character than it was written on says nothing about the write.
+local function g36Who()
+	local okN, n = pcall(UnitName, "player")
+	local okR, r = pcall(GetRealmName)
+	return tostring(okN and n or "?") .. "-" .. tostring(okR and r or "?")
+end
+
+-- nil when it cannot be asked, which is reported rather than guessed.
+local function g36VQLoaded()
+	local fn = type(C_AddOns) == "table" and C_AddOns.IsAddOnLoaded
+	if type(fn) ~= "function" then return nil end
+	local ok, loaded = pcall(fn, "VanillaQuesting")
+	return ok and loaded and true or false
+end
+
+local function g36Say(msg)
+	DEFAULT_CHAT_FRAME:AddMessage("|cff66ccff[Recon G36]|r " .. msg)
+end
+
+local function g36Arm(label)
+	if g36VQLoaded() then
+		g36Say("|cffff5555Not armed.|r Vanilla Questing is loaded, and it re-applies its " ..
+			"options at every login -- that would overwrite the reading. Untick it in " ..
+			"the AddOn list, log out and back in, then arm again.")
+		return
+	end
+	local s = g36State()
+	local armed = {
+		label = (label and label ~= "") and label or "unlabelled",
+		armedAt = date("%Y-%m-%d %H:%M:%S"),
+		who = g36Who(),
+		vqLoaded = tostring(g36VQLoaded()),
+		vars = {}, seen = {},
+	}
+	for _, name in ipairs(G36_CVARS) do
+		local before = g36Read(name)
+		if before ~= nil then
+			armed.vars[name] = {
+				before = before,
+				target = (before == "0") and "1" or "0",
+				flags = g36Flags(name),
+			}
+		end
+	end
+	s.armed = armed
+	g36Say("armed as '" .. armed.label .. "'. At the next logout it flips " ..
+		table.concat(G36_CVARS, " and ") .. "; at the next login it reads them and " ..
+		"puts them back. Now make the trip, and log back in on THIS character.")
+end
+
+-- Everything the probe has, as report lines. Shared by the report section and
+-- by `/unrecon logout`, so the two cannot disagree.
+local function g36Lines()
+	local out = {}
+	local s = g36State()
+	if s.armed then
+		local a = s.armed
+		out[#out + 1] = "   ARMED as '" .. tostring(a.label) .. "' at " .. tostring(a.armedAt) ..
+			" on " .. tostring(a.who) ..
+			(a.wrote and (", written at logout " .. tostring(a.wrote.at)) or ", not yet written")
+	end
+	if #s.trips == 0 then
+		out[#out + 1] = "   No trip recorded yet."
+	end
+	for i, t in ipairs(s.trips) do
+		out[#out + 1] = string.format("   Trip %d '%s': armed %s, written %s, read %s",
+			i, tostring(t.label), tostring(t.armedAt), tostring(t.wroteAt), tostring(t.readAt))
+		out[#out + 1] = string.format("      character: armed on %s, read on %s",
+			tostring(t.whoArmed), tostring(t.whoRead))
+		out[#out + 1] = string.format("      isInitialLogin=%s isReloadingUi=%s VanillaQuesting loaded=%s",
+			tostring(t.isInitialLogin), tostring(t.isReloadingUi), tostring(t.vqLoaded))
+		if t.note then out[#out + 1] = "      " .. t.note end
+		for _, name in ipairs(G36_CVARS) do
+			local v = t.vars and t.vars[name]
+			if v then
+				out[#out + 1] = string.format("      %-18s %s", name, tostring(v.verdict))
+				out[#out + 1] = string.format(
+					"      %-18s before=%s wrote=%s SetCVar=%s readBackAtLogout=%s",
+					"", tostring(v.before), tostring(v.target),
+					tostring(v.logoutSetCVar), tostring(v.readBackAtLogout))
+				out[#out + 1] = string.format(
+					"      %-18s at ADDON_LOADED=%s VARIABLES_LOADED=%s PLAYER_LOGIN=%s PLAYER_ENTERING_WORLD=%s",
+					"", tostring(v.atAddonLoaded), tostring(v.atVariablesLoaded),
+					tostring(v.atPlayerLogin), tostring(v.atEnteringWorld))
+				out[#out + 1] = string.format("      %-18s put back: %s   %s",
+					"", tostring(v.restored), tostring(v.flags))
+			end
+		end
+	end
+	return out
+end
+
+local function sectionLogoutProbe()
+	head("[G36] Does a CVar written at PLAYER_LOGOUT survive to the next login? (#32, #57)")
+	for _, l in ipairs(g36Lines()) do add(l) end
+	add("")
+	add("   SURVIVED on a full exit and restart is the answer that matters. A /reload")
+	add("   does not reload CVars at all, so it can only say whether PLAYER_LOGOUT ran.")
+end
+
+-- The world is entered after the trip: read, judge, put back, record.
+local function g36Finish(isInitialLogin, isReloadingUi)
+	local s = g36State()
+	local a = s.armed
+	if not a then return end
+	-- A loading screen is not a login. Only the first world entry after a
+	-- login or a reload closes a trip.
+	if not (isInitialLogin or isReloadingUi) then return end
+
+	local trip = {
+		label = a.label, armedAt = a.armedAt, readAt = date("%Y-%m-%d %H:%M:%S"),
+		whoArmed = a.who, whoRead = g36Who(),
+		isInitialLogin = tostring(isInitialLogin), isReloadingUi = tostring(isReloadingUi),
+		vqLoaded = tostring(g36VQLoaded()), vars = {},
+	}
+
+	if not a.wrote then
+		-- The session ended and PLAYER_LOGOUT never ran our handler. That is
+		-- itself the finding for this kind of trip, and nothing was moved.
+		trip.note = "PLAYER_LOGOUT did not run before this login: nothing was written."
+		s.trips[#s.trips + 1] = trip
+		s.armed = nil
+		g36Say("recorded: PLAYER_LOGOUT did not run before this login. /unrecon logout for the record.")
+		return
+	end
+	trip.wroteAt = a.wrote.at
+
+	if g36VQLoaded() then
+		-- Loaded again between the logout and this login. Its own login pass
+		-- writes these variables, so a reading here may be VQ's, not the
+		-- client's. Recorded rather than refused: the trip has happened.
+		trip.note = "Vanilla Questing was loaded on this login: the readings may be its own writes."
+	end
+
+	if trip.whoRead ~= a.wrote.who then
+		-- Reading a per-character variable on another character measures
+		-- nothing, and putting its value back here would move THIS
+		-- character's setting. Stay armed and wait for the right one.
+		g36Say("|cffff5555still armed:|r written on " .. tostring(a.wrote.who) ..
+			", and this is " .. trip.whoRead .. ". Log in on that character to finish.")
+		return
+	end
+
+	local seen = a.seen or {}
+	for name, v in pairs(a.vars) do
+		local now = g36Read(name)
+		local r = {
+			before = v.before, target = v.target, flags = v.flags,
+			logoutSetCVar = v.logoutSetCVar, readBackAtLogout = v.readBackAtLogout,
+			atAddonLoaded = seen.ADDON_LOADED and seen.ADDON_LOADED[name],
+			atVariablesLoaded = seen.VARIABLES_LOADED and seen.VARIABLES_LOADED[name],
+			atPlayerLogin = seen.PLAYER_LOGIN and seen.PLAYER_LOGIN[name],
+			atEnteringWorld = now,
+		}
+		if v.readBackAtLogout ~= v.target then
+			r.verdict = "NOT TESTED -- the write at logout did not even read back"
+		elseif now == v.target then
+			r.verdict = "SURVIVED -- the logout write was still there at login"
+		elseif now == v.before then
+			r.verdict = "LOST -- back at the value from before the logout"
+		else
+			r.verdict = "NEITHER -- reads " .. tostring(now)
+		end
+		-- Put the player's own value back, and say whether it took.
+		pcall(SetCVar, name, v.before)
+		r.restored = (g36Read(name) == v.before) and ("yes, " .. tostring(v.before))
+			or ("NO -- reads " .. tostring(g36Read(name)) .. ", wanted " .. tostring(v.before))
+		trip.vars[name] = r
+	end
+	s.trips[#s.trips + 1] = trip
+	s.armed = nil
+
+	local verdicts = {}
+	for _, name in ipairs(G36_CVARS) do
+		local r = trip.vars[name]
+		if r then verdicts[#verdicts + 1] = name .. ": " .. (r.verdict:match("^(%u+)") or "?") end
+	end
+	g36Say("trip '" .. tostring(trip.label) .. "' recorded -- " .. table.concat(verdicts, ", ") ..
+		". Values put back. /unrecon logout for the detail, /reload to write it to disk.")
+end
+
+local g36Frame = CreateFrame("Frame")
+for _, e in ipairs({ "PLAYER_LOGOUT", "ADDON_LOADED", "VARIABLES_LOADED",
+                     "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD" }) do
+	g36Frame:RegisterEvent(e)
+end
+g36Frame:SetScript("OnEvent", function(_, event, arg1, arg2)
+	-- Guarded like a section: the probe must never be the reason a logout
+	-- or a login throws.
+	pcall(function()
+		if event == "ADDON_LOADED" and arg1 ~= "UnmarkedRecon" then return end
+		local s = g36State()
+		local a = s.armed
+		if not a then return end
+
+		if event == "PLAYER_LOGOUT" then
+			if a.wrote then return end
+			a.wrote = { at = date("%Y-%m-%d %H:%M:%S"), who = g36Who() }
+			for name, v in pairs(a.vars) do
+				local called, reported = pcall(SetCVar, name, v.target)
+				v.logoutSetCVar = called and tostring(reported) or ("error: " .. tostring(reported))
+				v.readBackAtLogout = g36Read(name)
+			end
+			return
+		end
+
+		if not a.wrote then
+			-- Armed this session and not yet logged out. A /reload that skips
+			-- PLAYER_LOGOUT would land here with isReloadingUi true.
+			if event == "PLAYER_ENTERING_WORLD" then g36Finish(arg1, arg2) end
+			return
+		end
+
+		if event == "PLAYER_ENTERING_WORLD" then
+			g36Finish(arg1, arg2)
+			return
+		end
+		-- ADDON_LOADED, VARIABLES_LOADED, PLAYER_LOGIN: a reading each, so
+		-- the record shows WHEN the value arrived, not only whether it did.
+		a.seen = a.seen or {}
+		local row = {}
+		for name in pairs(a.vars) do row[name] = g36Read(name) end
+		a.seen[event] = row
+	end)
+end)
+
+---------------------------------------------------------------------
 -- Never let one section take the whole run down.
 --
 -- v0.31 went out and produced nothing at all. GetCVar ERRORS on an unknown
@@ -3504,6 +3784,7 @@ local function collect()
 	section(ACTIVE.g33, sectionTrackerButtonProtection, "G33")
 	section(ACTIVE.g34, sectionCVarHelp, "G34")
 	section(ACTIVE.g35, sectionTrackingButton, "G35")
+	section(ACTIVE.g36, sectionLogoutProbe, "G36")
 
 	-- Any full method dumps collected via "/unrecon methods <global>" get
 	-- folded in here so they travel inside the readable report rather than
@@ -4018,6 +4299,20 @@ SlashCmdList["UNRECON"] = function(msg)
 		DEFAULT_CHAT_FRAME:AddMessage("|cff66ccff[Recon]|r last tooltip (" .. tostring(UnmarkedReconDB.tooltipAt) .. "):")
 		for line in t:gmatch("[^\n]+") do DEFAULT_CHAT_FRAME:AddMessage("   " .. line) end
 		DEFAULT_CHAT_FRAME:AddMessage("|cffffd100Saved to SavedVariables too - /reload writes it out.|r")
+		return
+	end
+
+	if cmd == "logout" then
+		-- The label keeps its case; the rest of the line was lowercased above.
+		if a == "arm" then
+			g36Arm(msg:match("^%s*%a+%s+%a+%s+(.-)%s*$"))
+		elseif a == "clear" then
+			local s = g36State()
+			s.armed, s.trips = nil, {}
+			g36Say("record cleared and disarmed.")
+		else
+			for _, l in ipairs(g36Lines()) do DEFAULT_CHAT_FRAME:AddMessage(l) end
+		end
 		return
 	end
 

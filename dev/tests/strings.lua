@@ -4,11 +4,16 @@
 --
 -- Written for the one review the stub cannot do: reading the AddOn's own
 -- wording, all of it at once, away from the code it is spread across. The
--- lines are DRIVEN, not transcribed -- the slash commands run, the panel is
--- built, the tooltip bodies come from the AddOn's own builder -- so a wording
--- this file shows is a wording that ships. The one exception is the warnings,
--- which only appear on a client that is missing something: those are read out
--- of the source, and say so.
+-- lines are DRIVEN, not transcribed -- the slash commands run, both panels are
+-- built and hovered, the buttons are clicked and the dialogs they raise are
+-- read back -- so a wording this file shows is a wording that ships. The one
+-- exception is the warnings, which only appear on a client that is missing
+-- something: those are read out of the source, and say so.
+--
+-- It was not always true. The dialog texts and the Defaults button's label
+-- and tooltip were typed in here as literals, and the literal copy had
+-- already lost one of the dialogs' variants ("Note: The UI will reload.")
+-- and every button label. Nothing below is typed in any more.
 --
 -- It loads the test harness, so it has to run from this directory. It writes
 -- to stdout and touches nothing.
@@ -50,8 +55,9 @@ local function colours(s)
 end
 
 local function plain(s)
+	-- Both line breaks: the native panel writes |n, the fallback writes \n.
 	return (tostring(s):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
-		:gsub("|n", "\n                             "))
+		:gsub("|n", "\n"):gsub("\n", "\n                             "))
 end
 
 local function line(s)
@@ -219,11 +225,6 @@ for _, c in ipairs(_G.__nativeControls or {}) do
 	if c.kind == "dropdown" and c.tooltip then line(c.tooltip) end
 end
 
-head("THE DIALOGS")
-line("The UI needs to reload for this option to take effect.")
-line("The UI needs to reload for some of these options to take effect.")
-line("Do you want to reset " .. ns.title .. " options to their defaults?")
-
 ---------------------------------------------------------------------
 -- The client whose settings panel it cannot use: the AddOn draws its
 -- own window, and says so.
@@ -236,16 +237,109 @@ mark = 0
 since()
 
 head("FALLBACK PANEL: what the AddOn draws itself")
-note("Its tooltips are the same bodies as above.")
 emit("")
 ns:OpenOptions()
 for _, t in ipairs(_G.fontstrings) do
 	if type(t.__text) == "string" and t.__text ~= "" then line(t.__text) end
 end
+
+-- Hover something and print what the tooltip got, title first.
+local function hover(f)
+	_G.__tooltipLines = {}
+	pcall(rawget(f, "script_OnEnter"), f)
+	for _, t in ipairs(_G.__tooltipLines) do line(t) end
+end
+
+head("FALLBACK PANEL: every checkbox's tooltip, title then body")
+note("Built by this panel's own code, not the native panel's -- the two have")
+note("drifted apart before, so these are hovered rather than assumed. A body")
+note("marked [-] is yellow all the same: this panel passes the colour to")
+note("AddLine as numbers rather than as an escape in the text.")
+local boxes, seen = {}, {}
+for i = 1, #frames do
+	local f = frames[i]
+	if rawget(f, "script_OnEnter") and rawget(f, "__checked") ~= nil and not seen[f] then
+		seen[f] = true
+		boxes[#boxes + 1] = f
+		emit("")
+		hover(f)
+	end
+end
+
+local function button(text)
+	for i = 1, #frames do
+		if rawget(frames[i], "__text") == text and rawget(frames[i], "script_OnClick") then
+			return frames[i]
+		end
+	end
+end
+
+head("FALLBACK PANEL: the preset control's tooltip")
 emit("")
-note("the Defaults button, and what it says when hovered")
-line("Defaults")
-line("Restore default options.")
+local arrow = button(">")
+if arrow then hover(arrow) end
+
+head("FALLBACK PANEL: the Defaults button")
+emit("")
+local defaults = button("Defaults")
+if defaults then
+	note("its label")
+	line(rawget(defaults, "__text"))
+	note("hovered")
+	hover(defaults)
+end
+
+-- Whatever dialog is up, as the player would read it: the question, then the
+-- two buttons.
+local function dialog()
+	local d = _G.__popup and StaticPopupDialogs[_G.__popup]
+	if not d then note("(no dialog)") return end
+	line(d.text)
+	line("[" .. tostring(d.button1) .. "]  [" .. tostring(d.button2) .. "]")
+end
+
+head("THE DIALOGS")
+note("These belong to the fallback panel. Blizzard's own panel asks through")
+note("its own Apply button instead.")
+
+ns:ResetDefaults(true)
+ns.RefreshOptions()
+emit("")
+note("ticking the one option that needs a reload")
+local mapBox
+for _, f in ipairs(boxes) do
+	_G.__tooltipLines = {}
+	pcall(rawget(f, "script_OnEnter"), f)
+	if _G.__tooltipLines[1] == ns.modules.hideMapQuestHelper.title then mapBox = f end
+end
+_G.__popup = nil
+if mapBox then pcall(rawget(mapBox, "script_OnClick"), mapBox) end
+dialog()
+popupCancel()
+
+emit("")
+note("a preset that moves it along with others")
+_G.__popup = nil
+if arrow then pcall(rawget(arrow, "script_OnClick"), arrow) end
+dialog()
+popupCancel()
+
+emit("")
+note("Defaults, with nothing that needs a reload")
+ns:ResetDefaults(true)
+ns.RefreshOptions()
+_G.__popup = nil
+if defaults then pcall(rawget(defaults, "script_OnClick"), defaults) end
+dialog()
+popupCancel()
+
+emit("")
+note("Defaults, with the reload option moved")
+ns:Set("hideMapQuestHelper", false)
+_G.__popup = nil
+if defaults then pcall(rawget(defaults, "script_OnClick"), defaults) end
+dialog()
+popupCancel()
 
 ---------------------------------------------------------------------
 

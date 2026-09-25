@@ -712,9 +712,18 @@ elseif scenario == "cvar_refused" then
 	pcall(fire, "PLAYER_ENTERING_WORLD")
 	ns:Set("hideMapQuestHelper", true)
 	check("a variable that works again is driven", cvars.questPOI == "0", cvars.questPOI)
+	-- The refusal has to be LATCHED before Disable is asked to see past it.
+	-- This used to lock, switch off and switch on again -- but the locked
+	-- restore left questPOI at 0, so switching on found it already there,
+	-- wrote nothing and latched nothing. The check below then passed with
+	-- Disable gated on `refused` or not; breaking the fix left it green.
 	lockCVar("questPOI")
-	ns:Set("hideMapQuestHelper", false)
-	ns:Set("hideMapQuestHelper", true)     -- latches `refused` again
+	ns:Set("hideMapQuestHelper", false)    -- the restore is silently ignored
+	cvars.questPOI = "1"                   -- and the variable moves anyway
+	ns:Set("hideMapQuestHelper", true)     -- the write is ignored: latched
+	check("the refusal really latched",
+		tostring(ns.modules.hideMapQuestHelper:Status()):find("write refused", 1, true) ~= nil,
+		ns.modules.hideMapQuestHelper:Status())
 	allowCVar("questPOI")
 	cvars.questPOI = "0"
 	VanillaQuestingDB.state.questPOI = "1"
@@ -927,13 +936,23 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 	-- defaults (tier 1 on, rest off) must read as Custom, not a preset
 	ok, err = pcall(ns.RefreshOptions)
 	check("refresh after reset", ok, err)
+	-- Whatever is showing a preset name right now, so the next check can ask
+	-- what it says once everything is off.
+	local presetShown = {}
+	for _, t in ipairs(_G.fontstrings) do
+		if rawget(t, "__text") == "Vanilla" then presetShown[#presetShown + 1] = t end
+	end
 
     -- everything off -> Disabled
 	for i = 1, #ns.modules do VanillaQuestingDB.settings[ns.modules[i].key] = false end
 	pcall(ns.ApplyAll, ns)
 	pcall(ns.RefreshOptions)
 	local panelFrame = _G.VanillaQuestingOptions
-	check("all off reads as a preset state", true)
+	-- It used to be `check(..., true)`: a guard with nothing to fail on.
+	local reads = {}
+	for _, t in ipairs(presetShown) do reads[#reads + 1] = tostring(rawget(t, "__text")) end
+	check("all off reads as the everything-off preset, not Custom",
+		table.concat(reads, ","):find("Disabled", 1, true) ~= nil, table.concat(reads, ","))
 
 	-- stepping from Disabled must turn the non-experimental ones on only
 	if presetText then
@@ -986,6 +1005,49 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 		and joined:find("/hideMinimapQuestHelper", 1, true) == nil, joined)
 		ok, err = pcall(rawget(hovered, "script_OnLeave"), hovered)
 		check("tooltip OnLeave runs", ok, err)
+	end
+
+	-- ---- the fallback's tooltips say what the native panel's say ----
+	--
+	-- The two panels build their tooltip bodies separately, and they have
+	-- drifted apart twice: the limitation went missing from this one once,
+	-- and the experimental note before that. Nothing asserted it: removing
+	-- the limitation or the experimental note from this panel's body left
+	-- the whole suite green. Every option is hovered and its body compared,
+	-- words and line breaks, with `ns.TooltipBodyFor` -- the native builder.
+	do
+		local function words(t)
+			return (tostring(t):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+				:gsub("|n", "\n"))
+		end
+		local compared, differ = 0, nil
+		local seen = {}
+		for i = 1, #frames do
+			local f = frames[i]
+			local enter = rawget(f, "script_OnEnter")
+			if enter and rawget(f, "__checked") ~= nil then
+				_G.__tooltipLines = {}
+				pcall(enter, f)
+				local title, body = _G.__tooltipLines[1], _G.__tooltipLines[2]
+				for j = 1, #ns.modules do
+					local m = ns.modules[j]
+					if (m.title or m.key) == title and not seen[m.key] then
+						seen[m.key] = true
+						compared = compared + 1
+						if words(body) ~= words(ns.TooltipBodyFor(m)) then
+							differ = m.key .. ": " .. words(body)
+						end
+						if m.limitation and not tostring(body):find(
+							ns.color.limitation .. m.limitation, 1, true) then
+							differ = m.key .. ": limitation not in its colour"
+						end
+					end
+				end
+			end
+		end
+		check("every option's fallback tooltip was hovered",
+			compared == #ns.modules, compared .. " of " .. #ns.modules)
+		check("and says what the native panel's says", differ == nil, tostring(differ))
 	end
 
 	-- ---- Defaults asks once, not twice ----
@@ -1547,6 +1609,8 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 	end
 
 	-- ---- unknown commands ----
+	_G.__openedCategory = nil
+	panel:Hide()
 	local before2 = #chatlog
 	ok, err = pcall(SlashCmdList["VANILLAQUESTING"], "wibble")
 	check("unknown command runs", ok, err)
@@ -1555,14 +1619,8 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 		if tostring(chatlog[i]):find("Unknown command", 1, true) then complained = true end
 	end
 	check("unknown command complains", complained)
-	-- Two refusal colours on purpose, and under trial (2026-09-16).
-	--
-	-- "Command blocked" is the game's own system-notice yellow; "Unknown
-	-- command" and "Unknown option" keep this AddOn's salmon. The first is the
-	-- client telling you it will not do a thing, the second is this AddOn
-	-- telling you it did not understand you, and whether those should look
-	-- alike is being decided by looking at them. Asserted so the two cannot
-	-- quietly converge while that is still open.
+	-- The trial of two refusal colours is over (#58): one colour, the
+	-- client's, asserted on the lines themselves below.
 	do
 		local unknownLine
 		for i = before2 + 1, #chatlog do
@@ -1603,8 +1661,11 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 		check("and no line anywhere still uses the retired salmon",
 			table.concat(chatlog, "\n"):find("|cffff9955", 1, true) == nil)
 	end
+	-- It ended `or true`, and could not fail. Both ways the panel can open --
+	-- Blizzard's category, or the AddOn's own window -- are asked about now.
 	check("unknown command did not open the panel",
-		_G.__openedCategory == nil or scenario ~= "normal" or true)
+		_G.__openedCategory == nil and not panel:IsShown(),
+		tostring(_G.__openedCategory) .. " / shown=" .. tostring(panel:IsShown()))
 
 	-- Refreshing map data providers wipes fog-of-war state, so the addon must
 	-- never call it. Regression guard.
@@ -1822,7 +1883,12 @@ if scenario == "normal" or scenario == "no_settings" or scenario == "settings_re
 	ns:ResetDefaults(true)
 end
 
-if fail > 0 then os.exit(1) end
+-- There was an `os.exit(1)` here on any failure so far. It stopped every
+-- check below it from running and the summary line from printing, so one
+-- failure in the first half hid whatever the second half would have said.
+-- The exit status at the foot of the file carries the verdict; a check that
+-- falls over because an earlier one failed is caught by run.sh as a scenario
+-- that did not reach its summary.
 
 if scenario == "native" or scenario == "no_tooltipfunc" or scenario == "no_template" then
 	-- The whole point of the native path: these are Blizzard's controls, so
@@ -2015,7 +2081,14 @@ if scenario == "native" or scenario == "no_tooltipfunc" or scenario == "no_templ
 	-- White inside a body is now deliberate: one description names a Blizzard
 	-- control and paints it white. What must not happen is a body that is
 	-- white INSTEAD of yellow.
-	check("option tooltip bodies still open in yellow", sawYellow)
+	local notYellowFirst
+	for _, c in ipairs(boxes) do
+		if c.tooltip:sub(1, 10) ~= "|cffffd100" then
+			notYellowFirst = c.setting:GetVariable()
+		end
+	end
+	check("option tooltip bodies still open in yellow", notYellowFirst == nil,
+		tostring(notYellowFirst))
 	check("the experimental tooltip paints orange", sawOrange)
 	check("the experimental note warns it is untested", sawPresetWording)
 
@@ -2062,7 +2135,10 @@ if scenario == "native" or scenario == "no_tooltipfunc" or scenario == "no_templ
 	check("nor the experimental warning", tips.noOutlineMode and
 		tips.noOutlineMode:find("untested and potentially unstable", 1, true) == nil,
 		tips.noOutlineMode)
-	check("a tooltip still uses grey where it should", sawGrey or true)
+	-- It read `sawGrey or true`, which cannot fail. Grey was the slash handle
+	-- at the foot of each tooltip; the handle was removed, so what is left to
+	-- guard is that the grey does not come back with it.
+	check("no option tooltip carries the retired grey handle colour", not sawGrey)
 	local noSlash = true
 	for _, c in ipairs(boxes) do
 		local key = c.setting:GetVariable():gsub("VanillaQuesting_", "")

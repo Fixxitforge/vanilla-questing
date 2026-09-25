@@ -8,7 +8,13 @@ On 2026-09-12 that branch's `version.txt` read:
 5.5.4.69585
 ```
 
-That is the build this AddOn is developed against, to the revision. The repository is a git mirror
+That is the build this AddOn is developed against, to the revision.
+
+**On 2026-09-22 the branch moved to `5.5.4.69934`**, and the commit between the two changes one
+file: `version.txt`. Every Lua and XML file in the interface is byte-identical to 69585's (checked
+2026-09-25 with `git diff --stat` across the two commits), so nothing in this directory's index or
+in `../SPEC.md` needs re-deriving for it. The interface number is not in the source; the patch
+number is still 5.5.4. See [#21](https://github.com/Fixxitforge/vanilla-questing/issues/21). The repository is a git mirror
 of the interface code Blizzard ships inside the game: 1,897 Lua files and 774 XML files, about
 35 MB checked out, seconds to fetch. `dev/knowledge/fetch_client_source.sh` does the clone and
 rebuilds the index.

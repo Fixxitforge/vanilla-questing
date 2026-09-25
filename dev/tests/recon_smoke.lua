@@ -25,7 +25,7 @@ h("normal")
 -- The probe is not the AddOn and does not load through RegisterModule, so it
 -- needs the few globals the harness does not already provide.
 _G.GetAddOnMetadata = function(_, key)
-	if key == "Version" then return "0.31" end
+	if key == "Version" then return "0.35" end
 end
 _G.GetBuildInfo = function() return "5.5.4", "69585", "2026-09-14", 50504 end
 _G.date = os.date
@@ -98,6 +98,10 @@ _G.C_Console = nil
 local printed = {}
 _G.DEFAULT_CHAT_FRAME = { AddMessage = function(_, msg) printed[#printed + 1] = msg end }
 
+-- Everything the harness built before the probe loads, Vanilla Questing's
+-- event frame among them. G36 below has to switch those off.
+local framesBeforeProbe = #frames
+
 local ok, err = pcall(function()
 	local f = assert(loadfile("../UnmarkedRecon/Recon.lua"))
 	f("UnmarkedRecon", {})
@@ -159,6 +163,87 @@ if type(report) == "string" then
 	end
 	check("at least one section is switched on", heads > 0, heads)
 	print("  (" .. heads .. " sections, " .. #report .. " bytes)")
+end
+
+-- ---- [G36]: the logout probe, walked end to end ----
+--
+-- Its answer is in the client. What is checked here is that a trip RUNS: it
+-- arms, it writes at PLAYER_LOGOUT, it judges at the next login, and it puts
+-- the player's values back -- because a probe that moves a setting and then
+-- fails to restore it costs the tester more than a probe that produces nothing.
+do
+	local function trips() return #((UnmarkedReconDB.logoutProbe or {}).trips or {}) end
+	local function lastTrip()
+		local t = UnmarkedReconDB.logoutProbe.trips
+		return t[#t]
+	end
+	-- The harness loads Vanilla Questing, and VQ re-applies its options on
+	-- every world entry -- which rewrote showBosses under this test and made
+	-- a trip read SURVIVED for VQ's reasons rather than the client's. That is
+	-- the exact contamination G36 refuses to arm against in game, so it is
+	-- modelled away here: the frames that existed before the probe loaded
+	-- stop hearing events.
+	for i = 1, framesBeforeProbe do frames[i].events = {} end
+	knownCVars.showBosses, knownCVars.instantQuestText = "1", "0"
+
+	-- Vanilla Questing loaded: it must refuse, because VQ re-applies at login.
+	_G.C_AddOns = { IsAddOnLoaded = function(n) return n == "VanillaQuesting" end,
+		GetAddOnMetadata = _G.C_AddOns and _G.C_AddOns.GetAddOnMetadata }
+	pcall(SlashCmdList["UNRECON"], "logout arm refused")
+	check("G36 will not arm beside Vanilla Questing",
+		(UnmarkedReconDB.logoutProbe or {}).armed == nil)
+	_G.C_AddOns.IsAddOnLoaded = function() return false end
+
+	-- A trip whose write survives.
+	check("G36 arms", pcall(SlashCmdList["UNRECON"], "logout arm Exit"))
+	check("and keeps the label's case",
+		UnmarkedReconDB.logoutProbe.armed and UnmarkedReconDB.logoutProbe.armed.label == "Exit",
+		UnmarkedReconDB.logoutProbe.armed and UnmarkedReconDB.logoutProbe.armed.label)
+	pcall(fire, "PLAYER_LOGOUT")
+	check("PLAYER_LOGOUT flips both variables",
+		knownCVars.showBosses == "0" and knownCVars.instantQuestText == "1",
+		knownCVars.showBosses .. " " .. knownCVars.instantQuestText)
+	pcall(fire, "ADDON_LOADED", "UnmarkedRecon")
+	pcall(fire, "VARIABLES_LOADED")
+	pcall(fire, "PLAYER_ENTERING_WORLD", false, false)
+	check("a loading screen does not close a trip", trips() == 0, trips())
+	pcall(fire, "PLAYER_ENTERING_WORLD", true, false)
+	check("the login after it records a trip", trips() == 1, trips())
+	check("and calls it survived",
+		trips() == 1 and tostring(lastTrip().vars.showBosses.verdict):find("^SURVIVED") ~= nil,
+		trips() == 1 and lastTrip().vars.showBosses.verdict)
+	check("and puts both values back",
+		knownCVars.showBosses == "1" and knownCVars.instantQuestText == "0",
+		knownCVars.showBosses .. " " .. knownCVars.instantQuestText)
+
+	-- A trip whose write is lost: the client comes back with the old value.
+	pcall(SlashCmdList["UNRECON"], "logout arm lost")
+	pcall(fire, "PLAYER_LOGOUT")
+	knownCVars.showBosses, knownCVars.instantQuestText = "1", "0"
+	pcall(fire, "PLAYER_ENTERING_WORLD", true, false)
+	check("a write that did not persist is called lost",
+		trips() == 2 and tostring(lastTrip().vars.instantQuestText.verdict):find("^LOST") ~= nil,
+		trips() == 2 and lastTrip().vars.instantQuestText.verdict)
+
+	-- A reload that never ran PLAYER_LOGOUT is recorded as that, and moves nothing.
+	pcall(SlashCmdList["UNRECON"], "logout arm reload")
+	pcall(fire, "PLAYER_ENTERING_WORLD", false, true)
+	check("no PLAYER_LOGOUT is recorded as a finding",
+		trips() == 3 and tostring(lastTrip().note):find("did not run", 1, true) ~= nil,
+		trips() == 3 and lastTrip().note)
+	check("and nothing was moved",
+		knownCVars.showBosses == "1" and knownCVars.instantQuestText == "0",
+		knownCVars.showBosses .. " " .. knownCVars.instantQuestText)
+
+	check("/unrecon logout prints the record", pcall(SlashCmdList["UNRECON"], "logout"))
+	pcall(SlashCmdList["UNRECON"], "")
+	local rep = UnmarkedReconDB.report or ""
+	check("the report carries G36 and its trips",
+		rep:find("[G36]", 1, true) ~= nil and rep:find("Trip 3", 1, true) ~= nil)
+	check("and no Lua error text in it",
+		rep:find("attempt to", 1, true) == nil)
+	check("/unrecon logout clear empties it",
+		pcall(SlashCmdList["UNRECON"], "logout clear") and trips() == 0, trips())
 end
 
 check("/unrecon copy runs", pcall(SlashCmdList["UNRECON"], "copy"))

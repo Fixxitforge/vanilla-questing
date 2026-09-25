@@ -61,7 +61,10 @@ if command -v luacheck >/dev/null 2>&1; then
         printf '%s\n' "$lcout"
     fi
 else
-    printf 'luacheck      not installed -- skipping (apt-get install lua-check)\n'
+    # Not a skip. A run that never asked luacheck anything has not passed it,
+    # and "0 failed" at the foot of such a run was a claim nobody had checked.
+    lintfail=1
+    printf 'luacheck       NOT INSTALLED -- a skipped check is not a pass (apt-get install lua-check)\n'
 fi
 
 # And the probe has to at least compile. It is not covered by any scenario --
@@ -86,8 +89,11 @@ done
 # them -- and it has cost two wasted round trips by shipping in a state where
 # it produced nothing at all. This does not check what it FINDS, which lives
 # in the client; it checks that it RUNS, which is the part that failed.
-smoke=$(lua5.1 recon_smoke.lua 2>&1)
-if printf '%s\n' "$smoke" | grep -q '\[FAIL\]'; then
+# By exit status as well as by what it printed. A smoke test that dies with a
+# Lua error prints no [FAIL] line at all -- only the interpreter's -- and
+# grepping for [FAIL] alone read that as a pass.
+smoke=$(lua5.1 recon_smoke.lua 2>&1); smokerc=$?
+if [ "$smokerc" -ne 0 ] || printf '%s\n' "$smoke" | grep -q '\[FAIL\]'; then
     lintfail=1
     printf 'probe runs     FAILED\n'
     printf '%s\n' "$smoke" | grep '\[FAIL\]\|lua5.1:'
@@ -96,9 +102,19 @@ else
 fi
 say ''
 for s in $SCENARIOS; do
-    out=$(lua5.1 run_tests.lua "$s" 2>&1)
+    out=$(lua5.1 run_tests.lua "$s" 2>&1); rc=$?
     ok=$(printf '%s\n' "$out" | grep -c '\[ok\]')
     bad=$(printf '%s\n' "$out" | grep -c '\[FAIL\]')
+    # A scenario that dies part-way prints no [FAIL] line: the interpreter
+    # stops it, and every check after the error simply never runs. Counting
+    # [FAIL] lines alone turned that into "0 failed" -- every scenario could
+    # crash at its first line and the run still passed. So a scenario also
+    # has to exit cleanly AND reach its own closing summary line.
+    if [ "$rc" -ne 0 ] && [ "$bad" -eq 0 ] ||
+       ! printf '%s\n' "$out" | grep -q "^--- $s: [0-9]* passed"; then
+        bad=$((bad + 1))
+        out=$(printf '%s\n  [FAIL] %s did not run to the end (exit %s)' "$out" "$s" "$rc")
+    fi
     total=$((total + ok))
     failed=$((failed + bad))
     if [ "$verbose" -eq 1 ] || [ "$bad" -ne 0 ]; then

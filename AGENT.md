@@ -27,31 +27,37 @@ and switching the option off writes **their** value back.
 simply always work, silently, and a player should never have to think about it — a promise on a
 page invites them to check, which is the opposite of the point.
 
-**It is not fully true today**, which is the other reason not to say it. Two paths keep a change
-([#18](https://github.com/Fixxitforge/vanilla-questing/issues/18),
-[#19](https://github.com/Fixxitforge/vanilla-questing/issues/19)) and one restores Blizzard's default
+**It was not fully true for a while**, which is the other reason not to say it. Two paths kept a
+change ([#18](https://github.com/Fixxitforge/vanilla-questing/issues/18),
+[#19](https://github.com/Fixxitforge/vanilla-questing/issues/19)) and one restored Blizzard's default
 instead of the player's value ([#27](https://github.com/Fixxitforge/vanilla-questing/issues/27)).
-Treat all three as real bugs on their own merits — the design rule is the argument, not a public
-commitment.
+All three were fixed in v1.1.0. The design rule is the argument, not a public commitment.
 
-**The claim stops at `/vq off`, and it stops there permanently.** Not "once the bugs are fixed" —
-there is no fix. `#32` walked the rest of the path and it does not close:
+**Today the claim stops at `/vq off`.** The README says what is true and no more: **`/vq off`
+hands the game's own settings back while the AddOn is still loaded to do it**, then delete the
+folder. Disabling or deleting it without that leaves the settings where the AddOn put them, and
+all three Known limitations sections say so.
 
-- The remembered values live in SavedVariables, inside the folder. Deleting the folder deletes the
-  record of what to restore in the same action.
-- A logout-time restore would cover the tidy case, and does not cover the others. Unticking the
-  AddOn on the character select screen means it never loads and never restores — and that is a
-  far commoner thing to do than deleting a folder.
-- A crash, a force-quit, or deleting the folder mid-session are all outside anything an AddOn can
-  hook.
+**Whether it can go further is open again** —
+[#32](https://github.com/Fixxitforge/vanilla-questing/issues/32) was closed as "there is a wall", and
+the owner reopened it with [#57](https://github.com/Fixxitforge/vanilla-questing/issues/57). The
+closing argument had a hole in it, and it is worth keeping the correction:
 
-So the README says what is true and no more: **`/vq off` hands the game's own settings back while
-the AddOn is still loaded to do it**, then delete the folder. It never promises that deleting the
-folder alone restores anything, and there is no future in which it starts to.
+- The one candidate is a **restore at `PLAYER_LOGOUT`, re-applied at login**. The client's own
+  saved settings would then hold the player's values whenever the game is not running.
+- The argument against it was that unticking the AddOn at character select means it never loads
+  and never restores. **But the restore has already run by then**: character select is reached by
+  logging out, and the logout is when it runs. The same goes for unticking it in the in-game AddOn
+  list, whose ReloadUI is a logout of the interface. Deleting the folder with the game shut is
+  covered for the same reason.
+- What it cannot cover is a crash, a force-quit, or deleting the folder mid-session and then
+  crashing. Those skip the logout.
+- **And nobody knows yet whether a `SetCVar` during `PLAYER_LOGOUT` persists.** Blizzard's source
+  for this build does not say. `[G36]` in the probe asks it: see `dev/SPEC.md`, Known limitations
+  entry 4. Nothing is promised, and no public page changes, until that comes back.
 
-The design rule above is unchanged. Putting settings back is still the job, and #18 and #27 are
-still real bugs. What changed is that the end of the road has been walked, and it has a wall at
-the end of it.
+A "whole-AddOn guard" is not a candidate: a guard is code, and the case is the one where our code
+does not run.
 
 ---
 
@@ -107,6 +113,7 @@ VanillaQuesting/
 AGENT.md                this file
 CHANGELOG.md            short, per-version, user-facing. The release workflow reads it.
 .github/workflows/release.yml   builds the zip and publishes on a version tag
+.github/release-footer.md       appended to every release's notes by release.yml
 .github/workflows/tests.yml     runs dev/tests/run.sh on every push and pull request.
                         Checks out the FULL history: lint_hygiene.py reads `git log --all`
                         and a shallow clone silently checks one commit.
@@ -118,8 +125,9 @@ dev/SPEC.md             the living record: work list, architecture, rules, versi
 dev/LISTING.md          the CurseForge listing's text. The FILE is the source, the page is
                         the copy -- see "The CurseForge page" below.
 dev/UnmarkedRecon/      the probe AddOn. Dev-only, never folded into Vanilla Questing.
-                        Recon.lua + Templates.xml. Sections G1..G27; the ACTIVE
-                        table switches them on and off.
+                        Recon.lua + Templates.xml. Sections G1..G36; the ACTIVE
+                        table switches them on and off. [G36] is armed by a command
+                        and answered by a logout, not by `/unrecon`.
 dev/logs/recon-log-*.txt  raw probe output. Every conclusion in dev/SPEC.md is evidence from one.
                         Kept, never pruned: a later run switches settled sections off, so an
                         earlier log is often the only remaining record of an answer.
@@ -135,6 +143,10 @@ dev/audits/             external reviews, kept verbatim. Each finding is verifie
                         evidence, not a verdict.
 dev/tests/strings.lua   every line the AddOn can put in front of a player, printed in one
                         pass by driving the real code: `lua5.1 strings.lua`, from `dev/tests`.
+                        Both panels are built and hovered and the dialogs raised by
+                        clicking; only the warnings are read out of the source. It
+                        used to type the dialogs and the Defaults button in as
+                        literals, and the copy had already drifted.
                         For reading the wording all at once, away from the eight files it is
                         spread across -- which is how five wordings the stub could never
                         judge got fixed in one round. Not part of `run.sh`.
@@ -142,8 +154,10 @@ dev/tests/              the off-client suite. ./run.sh runs, in this order:
                         lint_forward_refs.py, lint_hygiene.py, luacheck,
                         luac -p on every Lua file
                         including the probe, XML well-formedness on every XML file,
-                        a probe smoke test -- and then every scenario in its
-                        SCENARIOS list. The count is whatever the run prints at the
+                        a probe smoke test (recon_smoke.lua) -- and then every
+                        scenario in its SCENARIOS list. A scenario that does not
+                        exit cleanly and reach its own summary line is a failure,
+                        and so is a missing luacheck. The count is whatever the run prints at the
                         end; it is not written down here, because it has been wrong
                         in three places at once.
 ```
@@ -161,6 +175,7 @@ Change one of these and the others are part of the same change, not a follow-up.
 | **A module** | Give it a unique `order`; add it to the panel and to `/vq status` (all three are guarded by tests). Update `dev/SPEC.md`'s work list. |
 | **Anything about what the AddOn can't do** | All **three** Known limitations sections: `README.md`, `dev/SPEC.md`, and `dev/LISTING.md` (the CurseForge listing). See below — they are written at different depths on purpose, but they must never disagree about the facts. |
 | **A feature, or a command** | `dev/LISTING.md` **and `README.md`**, in the same pass — both list the commands, and both went a whole round advertising `/vq reset` after it was retired. A command that is REMOVED is the easy one to miss: nothing in the code refers to it any more, so nothing points at the pages that still do. Grep the command's name across the repository before calling it done. |
+| **A rule I learn the hard way** | This file. |
 
 **A temporary command is allowed, and it is not a feature.** `/vq mapcycle` existed for exactly
 one build: it let a single zip be asked both halves of a question no stub could answer (#46), and
@@ -172,7 +187,6 @@ row above does not read as an omission to be fixed.
 behaviours, ship both behind a switch rather than arguing for one. One round trip settled a
 question four versions of work had been resting on, and the answer was a shape neither side had
 proposed. The switch goes the moment the answer arrives.
-| **A rule I learn the hard way** | This file. |
 
 ### Backlog and bugs do **not** live in a file
 
@@ -267,7 +281,9 @@ It is not hypothetical, and the negation does not save you. A message here read 
 this closes #11"*, which is the opposite of what GitHub understood: it matched the two words,
 ignored the sentence around them, closed the issue and put the author's name on a decision
 nobody had made — for a bug that is still open and still unconfirmed in game.
-`dev/tests/lint_hygiene.py` fails the suite on the adjacency now.
+`dev/tests/lint_hygiene.py` fails the suite on the adjacency now. (This sentence was here for
+several versions before the check was: the audit for v1.1.2 found no such check in the file, and it
+was written then. A rule that names its guard is only as good as a look at the guard.)
 
 ### The three Known limitations sections
 
@@ -424,6 +440,16 @@ the **Releases → Draft a new release** page on GitHub, which creates the tag i
    client, the stub has to include the client's answer.
 15. **A count written into prose goes stale.** "Ten scenarios" in this file, "twelve" in
    `dev/README.md`, seventeen in `run.sh`. Let the run print the number; do not repeat it.
+16. **A suite that counts only the failures it prints can be green while nothing ran.** `run.sh`
+   counted `[FAIL]` lines, and a scenario that dies on a Lua error prints none: with every scenario
+   crashing at its first line the run said "0 failed" and exited 0, and CI would have agreed.
+   `run_tests.lua` also stopped itself half-way on any failure, so a first-half failure hid the
+   second half. A scenario now has to exit cleanly and reach its summary line. **Ask what the
+   harness does when the test itself falls over, not only when a check fails.**
+17. **A guard can be written so it cannot fail.** Three checks read `check(label, true)` or ended
+   `or true)`, and one #18 guard set up a "latched refusal" that never latched. All four passed
+   with the fix removed. Trap 13 says to break the fix and watch; this is what it finds when
+   nobody does.
 
 ---
 
@@ -458,9 +484,12 @@ the **Releases → Draft a new release** page on GitHub, which creates the tag i
   error, so there is no way round it. Guard with `InCombatLockdown` and move on; this is settled
   and not worth revisiting.
 - **`Outline` is not a boolean.** 1, 2 and 3 all mean on; only 0 is off. `2` is Blizzard's default.
-- **`C_Console.GetAllCommands` is absent**, so CVars cannot be enumerated. Blizzard's settings
-  registry (`SettingsPanel.categoryLayouts` → `initializers` → `init:GetSetting()`) is the
-  discovery route, and it is how `instantQuestText` was found.
+- **`C_Console.GetAllCommands` is absent, but `ConsoleGetAllCommands` is here** (`[G28]`): 1642
+  entries, each with a `help` column, and searching that column is how
+  `ShowQuestObjectHighlightEffect` was found. This line used to say CVars could not be enumerated
+  at all, which was the absent name talking. Blizzard's settings registry
+  (`SettingsPanel.categoryLayouts` → `initializers` → `init:GetSetting()`) is the other discovery
+  route, and it is how `instantQuestText` was found.
 - **A tooltip's height is set by the client *after* every hook in the frame.** The only correction
   that is not a frame late is inside `OnSizeChanged`.
 - **Nothing tells a frame that a CVar it reads has changed.** It keeps what it last drew — and the
@@ -541,7 +570,8 @@ cd dev/tests && ./run.sh -v     every check, passing ones included
 failures and nothing else, so they are not buried under thirty green lines — which is the same
 reason the static-failure notice is repeated at the bottom.
 
-Needs `lua5.1` and `luacheck` (`apt-get install lua-check`). The run prints the number of checks
+Needs `lua5.1` and `luacheck` (`apt-get install lua5.1 lua-check`). **A missing luacheck fails the
+run**: a check that never ran has not passed. The run prints the number of checks
 and the number of scenarios; **do not write either down anywhere**, here or in `dev/README.md` —
 both were stated as a number, both went stale, and at the last audit this file said ten,
 `dev/README.md` said twelve and `run.sh` ran seventeen.

@@ -166,4 +166,7 @@ files["dev/UnmarkedRecon/*.lua"] = {
 		-- Hung on the frame by name because the XML template calls them.
 		"UnmarkedRecon_DescriptionOnLoad", "UnmarkedRecon_TrackDump",
 	},
+	-- [G36] records which character a per-character CVar was read on. Both
+	-- are in api-compat.txt as present on this flavour.
+	read_globals = { "UnitName", "GetRealmName" },
 }
